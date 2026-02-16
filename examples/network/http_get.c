@@ -50,8 +50,8 @@ int main(void)
     /* Open HTTP connection */
     printf("Opening HTTP connection...\n");
     result = fn_open(&handle, FN_METHOD_GET, 
-                     "https://fujinet.online/", 
-                     FN_OPEN_TLS | FN_OPEN_FOLLOW_REDIR);
+                     "http://192.168.1.101:8080/get", 
+                     0);
     if (result != FN_OK) {
         printf("Open failed: %s\n", fn_error_string(result));
         return 1;
@@ -78,8 +78,9 @@ int main(void)
         result = fn_read(handle, total_read, buffer, BUFFER_SIZE - 1, 
                          &bytes_read, &flags);
         
-        if (result == FN_ERR_NOT_READY) {
+        if (result == FN_ERR_NOT_READY || result == FN_ERR_BUSY) {
             /* Data not ready yet, wait and retry */
+            printf("Waiting for data...\n");
             continue;
         }
         

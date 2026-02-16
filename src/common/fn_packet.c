@@ -18,7 +18,7 @@
 /**
  * Calculate FujiBus checksum.
  * 
- * The checksum is a simple XOR of all bytes in the packet.
+ * The checksum is a sum of all bytes with carry folding.
  * 
  * @param data    Packet data
  * @param len     Length of data
@@ -26,15 +26,16 @@
  */
 uint8_t fn_calc_checksum(const uint8_t *data, uint16_t len)
 {
-    uint8_t checksum;
+    uint16_t chk;
     uint16_t i;
     
-    checksum = 0;
+    chk = 0;
     for (i = 0; i < len; i++) {
-        checksum ^= data[i];
+        chk += data[i];
+        chk = ((chk >> 8) + (chk & 0xFF)) & 0xFFFF;
     }
     
-    return checksum;
+    return (uint8_t)(chk & 0xFF);
 }
 
 /* ============================================================================
@@ -44,18 +45,18 @@ uint8_t fn_calc_checksum(const uint8_t *data, uint16_t len)
 /**
  * Build a FujiBus packet header.
  * 
+ * Header format: device(1) + command(1) + length(2) + checksum(1) + descr(1) = 6 bytes
+ * 
  * @param buffer       Output buffer
  * @param device_id    WireDeviceId
  * @param command      Command byte
- * @param param_count  Number of parameters
- * @param data_len     Payload length
+ * @param total_len    Total packet length (header + payload)
  * @return Number of bytes written
  */
 uint16_t fn_build_header(uint8_t *buffer,
                          uint8_t device_id,
                          uint8_t command,
-                         uint8_t param_count,
-                         uint16_t data_len)
+                         uint16_t total_len)
 {
     uint16_t offset;
     
@@ -67,15 +68,15 @@ uint16_t fn_build_header(uint8_t *buffer,
     /* Command */
     buffer[offset++] = command;
     
-    /* Parameter count */
-    buffer[offset++] = param_count;
+    /* Total length (little-endian) */
+    buffer[offset++] = total_len & 0xFF;
+    buffer[offset++] = (total_len >> 8) & 0xFF;
     
     /* Checksum placeholder (will be filled later) */
     buffer[offset++] = 0;
     
-    /* Data length (little-endian) */
-    buffer[offset++] = data_len & 0xFF;
-    buffer[offset++] = (data_len >> 8) & 0xFF;
+    /* Descriptor (0 for simple packets) */
+    buffer[offset++] = 0;
     
     return offset;
 }
@@ -133,7 +134,8 @@ uint16_t fn_build_open_packet(uint8_t *buffer,
 {
     uint16_t offset;
     uint16_t url_len;
-    uint16_t data_len;
+    uint16_t payload_len;
+    uint16_t total_len;
     uint8_t checksum;
     
     url_len = 0;
@@ -146,10 +148,13 @@ uint16_t fn_build_open_packet(uint8_t *buffer,
     
     /* Calculate payload length */
     /* version(1) + method(1) + flags(1) + url_len(2) + url + header_count(2) + body_len(4) + resp_header_count(2) */
-    data_len = 1 + 1 + 1 + 2 + url_len + 2 + 4 + 2;
+    payload_len = 1 + 1 + 1 + 2 + url_len + 2 + 4 + 2;
+    
+    /* Total packet length = header(6) + payload */
+    total_len = FN_HEADER_SIZE + payload_len;
     
     /* Build header */
-    offset = fn_build_header(buffer, FN_DEVICE_NETWORK, FN_CMD_OPEN, 0, data_len);
+    offset = fn_build_header(buffer, FN_DEVICE_NETWORK, FN_CMD_OPEN, total_len);
     
     /* Build payload */
     /* Version */
@@ -185,7 +190,7 @@ uint16_t fn_build_open_packet(uint8_t *buffer,
     
     /* Calculate and insert checksum */
     checksum = fn_calc_checksum(buffer, offset);
-    buffer[3] = checksum;  /* Checksum is at offset 3 */
+    buffer[4] = checksum;  /* Checksum is at offset 4 in new header format */
     
     return offset;
 }
@@ -205,14 +210,16 @@ uint16_t fn_build_read_packet(uint8_t *buffer,
                                uint16_t max_bytes)
 {
     uint16_t offset;
-    uint16_t data_len;
+    uint16_t payload_len;
+    uint16_t total_len;
     uint8_t checksum;
     
     /* Payload: version(1) + handle(2) + offset(4) + max_bytes(2) = 9 bytes */
-    data_len = 9;
+    payload_len = 9;
+    total_len = FN_HEADER_SIZE + payload_len;
     
     /* Build header */
-    offset = fn_build_header(buffer, FN_DEVICE_NETWORK, FN_CMD_READ, 0, data_len);
+    offset = fn_build_header(buffer, FN_DEVICE_NETWORK, FN_CMD_READ, total_len);
     
     /* Version */
     buffer[offset++] = FN_PROTOCOL_VERSION;
@@ -233,7 +240,7 @@ uint16_t fn_build_read_packet(uint8_t *buffer,
     
     /* Calculate and insert checksum */
     checksum = fn_calc_checksum(buffer, offset);
-    buffer[3] = checksum;
+    buffer[4] = checksum;  /* Checksum is at offset 4 */
     
     return offset;
 }
@@ -256,13 +263,15 @@ uint16_t fn_build_write_packet(uint8_t *buffer,
 {
     uint16_t offset;
     uint16_t payload_len;
+    uint16_t total_len;
     uint8_t checksum;
     
     /* Payload: version(1) + handle(2) + offset(4) + data_len(2) + data */
     payload_len = 1 + 2 + 4 + 2 + data_len;
+    total_len = FN_HEADER_SIZE + payload_len;
     
     /* Build header */
-    offset = fn_build_header(buffer, FN_DEVICE_NETWORK, FN_CMD_WRITE, 0, payload_len);
+    offset = fn_build_header(buffer, FN_DEVICE_NETWORK, FN_CMD_WRITE, total_len);
     
     /* Version */
     buffer[offset++] = FN_PROTOCOL_VERSION;
@@ -289,7 +298,7 @@ uint16_t fn_build_write_packet(uint8_t *buffer,
     
     /* Calculate and insert checksum */
     checksum = fn_calc_checksum(buffer, offset);
-    buffer[3] = checksum;
+    buffer[4] = checksum;  /* Checksum is at offset 4 */
     
     return offset;
 }
@@ -304,14 +313,16 @@ uint16_t fn_build_write_packet(uint8_t *buffer,
 uint16_t fn_build_close_packet(uint8_t *buffer, fn_handle_t handle)
 {
     uint16_t offset;
-    uint16_t data_len;
+    uint16_t payload_len;
+    uint16_t total_len;
     uint8_t checksum;
     
     /* Payload: version(1) + handle(2) = 3 bytes */
-    data_len = 3;
+    payload_len = 3;
+    total_len = FN_HEADER_SIZE + payload_len;
     
     /* Build header */
-    offset = fn_build_header(buffer, FN_DEVICE_NETWORK, FN_CMD_CLOSE, 0, data_len);
+    offset = fn_build_header(buffer, FN_DEVICE_NETWORK, FN_CMD_CLOSE, total_len);
     
     /* Version */
     buffer[offset++] = FN_PROTOCOL_VERSION;
@@ -322,7 +333,7 @@ uint16_t fn_build_close_packet(uint8_t *buffer, fn_handle_t handle)
     
     /* Calculate and insert checksum */
     checksum = fn_calc_checksum(buffer, offset);
-    buffer[3] = checksum;
+    buffer[4] = checksum;  /* Checksum is at offset 4 */
     
     return offset;
 }
@@ -337,14 +348,16 @@ uint16_t fn_build_close_packet(uint8_t *buffer, fn_handle_t handle)
 uint16_t fn_build_info_packet(uint8_t *buffer, fn_handle_t handle)
 {
     uint16_t offset;
-    uint16_t data_len;
+    uint16_t payload_len;
+    uint16_t total_len;
     uint8_t checksum;
     
     /* Payload: version(1) + handle(2) = 3 bytes */
-    data_len = 3;
+    payload_len = 3;
+    total_len = FN_HEADER_SIZE + payload_len;
     
     /* Build header */
-    offset = fn_build_header(buffer, FN_DEVICE_NETWORK, FN_CMD_INFO, 0, data_len);
+    offset = fn_build_header(buffer, FN_DEVICE_NETWORK, FN_CMD_INFO, total_len);
     
     /* Version */
     buffer[offset++] = FN_PROTOCOL_VERSION;
@@ -355,7 +368,7 @@ uint16_t fn_build_info_packet(uint8_t *buffer, fn_handle_t handle)
     
     /* Calculate and insert checksum */
     checksum = fn_calc_checksum(buffer, offset);
-    buffer[3] = checksum;
+    buffer[4] = checksum;  /* Checksum is at offset 4 */
     
     return offset;
 }
@@ -366,6 +379,8 @@ uint16_t fn_build_info_packet(uint8_t *buffer, fn_handle_t handle)
 
 /**
  * Parse a response packet header.
+ * 
+ * Header format: device(1) + command(1) + length(2) + checksum(1) + descr(1) = 6 bytes
  * 
  * @param response      Response packet buffer
  * @param resp_len      Response length
@@ -380,33 +395,98 @@ uint8_t fn_parse_response_header(const uint8_t *response,
                                   uint16_t *data_offset,
                                   uint16_t *data_len)
 {
+    uint16_t pkt_len;
+    uint8_t descr;
     uint8_t checksum;
+    uint16_t offset;
+    uint8_t tmp_buffer[1024];
     
-    /* Minimum response: device(1) + command(1) + param_count(1) + checksum(1) + data_len(2) = 6 bytes */
-    if (resp_len < 6) {
+    /* Minimum response: header(6) */
+    if (resp_len < FN_HEADER_SIZE) {
         return FN_ERR_INVALID;
     }
     
-    /* Verify checksum */
-    checksum = fn_calc_checksum(response, resp_len);
-    if (checksum != 0) {
+    /* Extract packet length */
+    pkt_len = response[2] | (response[3] << 8);
+    
+    /* Verify packet length matches */
+    if (pkt_len != resp_len) {
+        return FN_ERR_INVALID;
+    }
+    
+    /* Verify checksum - copy to temp buffer and zero checksum byte */
+    if (resp_len > sizeof(tmp_buffer)) {
+        return FN_ERR_INVALID;
+    }
+    memcpy(tmp_buffer, response, resp_len);
+    tmp_buffer[4] = 0;  /* Zero checksum for calculation */
+    checksum = fn_calc_checksum(tmp_buffer, resp_len);
+    if (checksum != response[4]) {
         return FN_ERR_IO;
     }
     
-    /* Extract status from first parameter (if present) */
-    /* In FujiBus, status is typically in param[0] */
-    if (response[2] > 0 && resp_len >= 10) {
-        /* Parameter 0 is at offset 6 */
-        *status = response[9];  /* Low byte of param value */
-    } else {
-        *status = FN_OK;
+    /* Extract descriptor */
+    descr = response[5];
+    
+    /* For simple packets (descr=0), payload starts immediately after header */
+    if (descr == 0) {
+        *data_offset = FN_HEADER_SIZE;
+        *data_len = resp_len - FN_HEADER_SIZE;
+        *status = FN_OK;  /* No params means status is in payload */
+        return FN_OK;
     }
     
-    /* Extract data length */
-    *data_len = response[4] | (response[5] << 8);
+    /* Parse descriptor to find params and payload offset */
+    /* Descriptor format: low 3 bits encode field type */
+    /* For now, handle simple case: descr encodes param count in low nibble */
+    offset = FN_HEADER_SIZE;
     
-    /* Calculate data offset (after header and parameters) */
-    *data_offset = 6 + (response[2] * FN_PARAM_DESC_SIZE);
+    /* Handle continuation bit (0x80) - varint-like descriptor */
+    while (descr & 0x80) {
+        if (offset >= resp_len) {
+            return FN_ERR_INVALID;
+        }
+        descr = response[offset++];
+    }
+    
+    /* Parse params based on descriptor */
+    /* Field size table: 0->0, 1->1, 2->1, 3->1, 4->1, 5->2, 6->2, 7->4 */
+    /* Num fields table: 0->0, 1->1, 2->2, 3->3, 4->4, 5->1, 6->2, 7->1 */
+    {
+        uint8_t field_desc;
+        uint8_t field_count;
+        uint8_t field_size;
+        uint8_t i;
+        
+        field_desc = descr & 0x07;
+        
+        /* Field size table */
+        static const uint8_t field_size_table[8] = {0, 1, 1, 1, 1, 2, 2, 4};
+        /* Field count table */
+        static const uint8_t field_count_table[8] = {0, 1, 2, 3, 4, 1, 2, 1};
+        
+        field_size = field_size_table[field_desc];
+        field_count = field_count_table[field_desc];
+        
+        /* Extract first param as status (if present) */
+        if (field_count > 0 && offset + field_size <= resp_len) {
+            *status = 0;
+            for (i = 0; i < field_size; i++) {
+                *status |= response[offset + i] << (8 * i);
+            }
+            offset += field_size;
+            
+            /* Skip remaining params */
+            for (i = 1; i < field_count; i++) {
+                offset += field_size;
+            }
+        } else {
+            *status = FN_OK;
+        }
+    }
+    
+    *data_offset = offset;
+    *data_len = resp_len - offset;
     
     return FN_OK;
 }

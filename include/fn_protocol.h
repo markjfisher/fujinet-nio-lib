@@ -22,6 +22,8 @@ extern "C" {
     #include <stdint.h>
 #endif
 
+#include "fujinet-nio.h"
+
 /* ============================================================================
  * SLIP Protocol Constants
  * ============================================================================ */
@@ -139,11 +141,10 @@ extern "C" {
  * Wire format:
  *   u8  device_id     - WireDeviceId
  *   u8  command       - Command byte
- *   u8  param_count   - Number of parameters (0-4)
- *   u8  checksum      - XOR checksum of all bytes including payload
- *   u16 data_len      - Length of payload data (little-endian)
- *   u8[] params[]     - Parameter descriptors (4 bytes each)
- *   u8[] data         - Payload data
+ *   u16 length        - Total packet length (little-endian)
+ *   u8  checksum      - Checksum byte (sum with carry folding)
+ *   u8  descriptor    - Parameter descriptor (0 for simple packets)
+ *   u8[] payload      - Payload data
  */
 
 /** Maximum FujiBus packet size */
@@ -155,8 +156,11 @@ extern "C" {
 /** Parameter descriptor size in bytes */
 #define FN_PARAM_DESC_SIZE   4
 
-/** FujiBus packet header size (before parameters and payload) */
-#define FN_PACKET_HEADER_SIZE 6
+/** FujiBus packet header size */
+#define FN_HEADER_SIZE       6
+
+/** Legacy name for compatibility */
+#define FN_PACKET_HEADER_SIZE FN_HEADER_SIZE
 
 /* ============================================================================
  * Parameter Descriptor Format
@@ -187,6 +191,7 @@ typedef struct {
     uint8_t is_tcp;        /**< 1 if TCP session, 0 if HTTP */
     uint8_t needs_body;    /**< 1 if body write required */
     uint8_t reserved;      /**< Padding */
+    fn_handle_t handle;    /**< Device-assigned handle */
     uint32_t write_offset; /**< Current write offset */
     uint32_t read_offset;  /**< Current read offset */
 } fn_session_t;
@@ -207,18 +212,18 @@ uint8_t fn_calc_checksum(const uint8_t *data, uint16_t len);
 /**
  * Build a FujiBus packet header.
  * 
+ * Header format: device(1) + command(1) + length(2) + checksum(1) + descr(1) = 6 bytes
+ * 
  * @param buffer      Output buffer
  * @param device_id   WireDeviceId
  * @param command     Command byte
- * @param param_count Number of parameters
- * @param data_len    Payload length
+ * @param total_len   Total packet length (header + payload)
  * @return Number of bytes written
  */
 uint16_t fn_build_header(uint8_t *buffer,
                          uint8_t device_id,
                          uint8_t command,
-                         uint8_t param_count,
-                         uint16_t data_len);
+                         uint16_t total_len);
 
 /**
  * Add a parameter to a packet.

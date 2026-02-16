@@ -92,8 +92,8 @@ uint16_t fn_slip_decode(const uint8_t *input, uint16_t in_len, uint8_t *output)
         if (b == SLIP_ESCAPE) {
             /* Escaped byte */
             if (i >= in_len) {
-                /* Incomplete escape sequence */
-                return 0;
+                /* Incomplete escape sequence - return what we have */
+                break;
             }
             
             b = input[i++];
@@ -103,8 +103,8 @@ uint16_t fn_slip_decode(const uint8_t *input, uint16_t in_len, uint8_t *output)
             } else if (b == SLIP_ESC_ESC) {
                 output[out_len++] = SLIP_ESCAPE;
             } else {
-                /* Invalid escape sequence */
-                return 0;
+                /* Unknown escape - keep original escape byte (Python behavior) */
+                output[out_len++] = b;
             }
         } else {
             /* Normal byte */

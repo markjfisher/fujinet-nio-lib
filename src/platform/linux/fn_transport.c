@@ -12,6 +12,8 @@
  *   FN_PORT=/dev/pts/2 ./my_app
  */
 
+#define _POSIX_C_SOURCE 199309L  /* For nanosleep */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,6 +21,7 @@
 #include <fcntl.h>
 #include <termios.h>
 #include <errno.h>
+#include <time.h>
 #include <sys/select.h>
 
 #include "fujinet-nio.h"
@@ -92,9 +95,9 @@ uint8_t fn_transport_init(void) {
     /* Configure for raw binary I/O */
     memset(&tio, 0, sizeof(tio));
     tio.c_cflag = CS8 | CLOCAL | CREAD;
-    tio.c_iflag = 0;
-    tio.c_oflag = 0;
-    tio.c_lflag = 0;
+    tio.c_iflag = 0;  /* No input processing */
+    tio.c_oflag = 0;  /* No output processing */
+    tio.c_lflag = 0;  /* No local modes (no echo, no signals) */
     
     /* Set baud rate */
     cfsetispeed(&tio, _get_baud(baud));
@@ -133,7 +136,7 @@ uint8_t fn_transport_ready(void) {
  * 
  * request: FujiBus request packet (not SLIP-encoded)
  * req_len: length of request packet
- * response: buffer for response packet (not SLIP-decoded)
+ * response: buffer for response packet (SLIP-decoded)
  * resp_max: maximum response buffer size
  * resp_len: pointer to receive actual response length
  *
@@ -153,6 +156,11 @@ uint8_t fn_transport_exchange(const uint8_t *request,
     int ret;
     uint8_t slip_buf[1024];
     uint16_t slip_len;
+    uint8_t raw_buf[1024];
+    uint16_t raw_len;
+    uint16_t i;
+    
+    (void)resp_max;  /* Suppress unused parameter warning */
     
     if (_fd < 0) {
         return FN_ERR_NOT_FOUND;
@@ -167,6 +175,13 @@ uint8_t fn_transport_exchange(const uint8_t *request,
     if (slip_len == 0) {
         return FN_ERR_IO;
     }
+    
+    /* Debug: print request packet */
+    fprintf(stderr, "DEBUG: Request packet (%d bytes): ", req_len);
+    for (i = 0; i < req_len && i < 32; i++) {
+        fprintf(stderr, "%02X ", request[i]);
+    }
+    fprintf(stderr, "\n");
     
     /* Send the SLIP-encoded request */
     total = 0;
@@ -194,11 +209,22 @@ uint8_t fn_transport_exchange(const uint8_t *request,
     /* Make sure data is sent */
     tcdrain(_fd);
     
+    /* Flush any pending input (e.g., echoes) */
+    tcflush(_fd, TCIFLUSH);
+    
+    /* Small delay to allow device to process request */
+    {
+        struct timespec ts;
+        ts.tv_sec = 0;
+        ts.tv_nsec = 10000000;  /* 10ms */
+        nanosleep(&ts, NULL);
+    }
+    
     /* Receive the SLIP-encoded response with timeout */
-    total = 0;
+    raw_len = 0;
     timeout_ms = 5000;  /* 5 second overall timeout */
     
-    while (total < resp_max) {
+    while (raw_len < sizeof(raw_buf)) {
         /* Wait for data */
         FD_ZERO(&read_fds);
         FD_SET(_fd, &read_fds);
@@ -212,9 +238,14 @@ uint8_t fn_transport_exchange(const uint8_t *request,
         }
         if (ret == 0) {
             /* Timeout - check if we have a complete SLIP frame */
-            if (total > 0 && response[total - 1] == SLIP_END) {
+            /* A valid frame needs at least 2 END markers: C0 ... C0 */
+            if (raw_len >= 2 && raw_buf[0] == SLIP_END && raw_buf[raw_len - 1] == SLIP_END) {
                 /* We have a complete frame */
                 break;
+            }
+            /* If we have some data but not a complete frame, keep waiting */
+            if (raw_len > 0) {
+                fprintf(stderr, "DEBUG: Partial frame (%d bytes), waiting...\n", raw_len);
             }
             timeout_ms -= 100;
             if (timeout_ms == 0) {
@@ -225,7 +256,7 @@ uint8_t fn_transport_exchange(const uint8_t *request,
         }
         
         /* Read available data */
-        n = read(_fd, response + total, resp_max - total);
+        n = read(_fd, raw_buf + raw_len, sizeof(raw_buf) - raw_len);
         if (n < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 continue;
@@ -239,15 +270,35 @@ uint8_t fn_transport_exchange(const uint8_t *request,
             return FN_ERR_IO;
         }
         
-        total += (uint16_t)n;
+        raw_len += (uint16_t)n;
         
-        /* Check for end of SLIP frame */
-        if (response[total - 1] == SLIP_END) {
+        /* Check for end of SLIP frame - need at least 2 bytes (C0 ... C0) */
+        if (raw_len >= 2 && raw_buf[raw_len - 1] == SLIP_END && raw_buf[0] == SLIP_END) {
             break;
         }
     }
     
-    *resp_len = total;
+    /* Debug: print raw response */
+    fprintf(stderr, "DEBUG: Raw response (%d bytes): ", raw_len);
+    for (i = 0; i < raw_len && i < 64; i++) {
+        fprintf(stderr, "%02X ", raw_buf[i]);
+    }
+    fprintf(stderr, "\n");
+    
+    /* SLIP-decode the response */
+    *resp_len = fn_slip_decode(raw_buf, raw_len, response);
+    if (*resp_len == 0) {
+        fprintf(stderr, "fn_transport: SLIP decode failed\n");
+        return FN_ERR_IO;
+    }
+    
+    /* Debug: print decoded response */
+    fprintf(stderr, "DEBUG: Decoded response (%d bytes): ", *resp_len);
+    for (i = 0; i < *resp_len && i < 64; i++) {
+        fprintf(stderr, "%02X ", response[i]);
+    }
+    fprintf(stderr, "\n");
+    
     return FN_OK;
 }
 

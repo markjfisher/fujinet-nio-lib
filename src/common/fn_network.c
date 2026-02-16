@@ -49,7 +49,7 @@ static int8_t _find_session(fn_handle_t handle)
 {
     int8_t i;
     for (i = 0; i < FN_MAX_SESSIONS; i++) {
-        if (_sessions[i].active && (fn_handle_t)(i + 1) == handle) {
+        if (_sessions[i].active && _sessions[i].handle == handle) {
             return i;
         }
     }
@@ -88,8 +88,8 @@ static void _free_handle(fn_handle_t handle)
         return;
     }
     
-    slot = handle - 1;
-    if (slot >= 0 && slot < FN_MAX_SESSIONS) {
+    slot = _find_session(handle);
+    if (slot >= 0) {
         _sessions[slot].active = 0;
     }
 }
@@ -158,11 +158,6 @@ uint8_t fn_open(fn_handle_t *handle,
         return FN_ERR_URL_TOO_LONG;
     }
     
-    *handle = _alloc_handle();
-    if (*handle == FN_INVALID_HANDLE) {
-        return FN_ERR_NO_HANDLES;
-    }
-    
     open_flags = 0;
     if (flags & FN_OPEN_TLS) {
         open_flags |= FN_OPEN_FLAG_TLS;
@@ -176,23 +171,36 @@ uint8_t fn_open(fn_handle_t *handle,
     
     req_len = fn_build_open_packet(_req_buf, method, open_flags, url);
     if (req_len == 0) {
-        _free_handle(*handle);
         return FN_ERR_INVALID;
     }
     
     result = fn_transport_exchange(_req_buf, req_len, _resp_buf, FN_MAX_PACKET_SIZE, &resp_len);
     if (result != FN_OK) {
-        _free_handle(*handle);
         return result;
     }
     
     result = fn_parse_open_response(_resp_buf, resp_len, &resp_handle, &resp_flags);
     if (result != FN_OK) {
-        _free_handle(*handle);
         return result;
     }
     
-    slot = *handle - 1;
+    /* Find a free session slot for tracking */
+    slot = _find_free_slot();
+    if (slot < 0) {
+        /* No free slots - but device already allocated handle. Continue anyway. */
+        *handle = resp_handle;
+        return FN_OK;
+    }
+    
+    /* Store the device-assigned handle and mark session active */
+    *handle = resp_handle;
+    _sessions[slot].active = 1;
+    _sessions[slot].handle = resp_handle;
+    _sessions[slot].is_tcp = 0;
+    _sessions[slot].needs_body = 0;
+    _sessions[slot].write_offset = 0;
+    _sessions[slot].read_offset = 0;
+    
     if (resp_flags & FN_OPEN_RESP_NEEDS_BODY) {
         _sessions[slot].needs_body = 1;
     }

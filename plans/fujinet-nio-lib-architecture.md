@@ -18,17 +18,17 @@
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Application API                       │
+│                    Application API                      │
 │         fn_network_open, fn_network_read, etc.          │
 └─────────────────────────────────────────────────────────┘
                            │
 ┌─────────────────────────────────────────────────────────┐
-│                   Protocol Layer                         │
+│                   Protocol Layer                        │
 │      FujiBus packet construction, SLIP encoding         │
 └─────────────────────────────────────────────────────────┘
                            │
 ┌─────────────────────────────────────────────────────────┐
-│                   Transport Layer                        │
+│                   Transport Layer                       │
 │    Platform-specific I/O: SIO, SmartPort, Drivewire     │
 └─────────────────────────────────────────────────────────┘
 ```

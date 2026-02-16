@@ -1,5 +1,7 @@
 /build/
 /obj/
+/bin/
+/examples/bin/
 
 *.o
 *.obj
