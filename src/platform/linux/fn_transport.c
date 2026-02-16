@@ -158,7 +158,6 @@ uint8_t fn_transport_exchange(const uint8_t *request,
     uint16_t slip_len;
     uint8_t raw_buf[1024];
     uint16_t raw_len;
-    uint16_t i;
     
     (void)resp_max;  /* Suppress unused parameter warning */
     
@@ -175,13 +174,6 @@ uint8_t fn_transport_exchange(const uint8_t *request,
     if (slip_len == 0) {
         return FN_ERR_IO;
     }
-    
-    /* Debug: print request packet */
-    fprintf(stderr, "DEBUG: Request packet (%d bytes): ", req_len);
-    for (i = 0; i < req_len && i < 32; i++) {
-        fprintf(stderr, "%02X ", request[i]);
-    }
-    fprintf(stderr, "\n");
     
     /* Send the SLIP-encoded request */
     total = 0;
@@ -244,9 +236,6 @@ uint8_t fn_transport_exchange(const uint8_t *request,
                 break;
             }
             /* If we have some data but not a complete frame, keep waiting */
-            if (raw_len > 0) {
-                fprintf(stderr, "DEBUG: Partial frame (%d bytes), waiting...\n", raw_len);
-            }
             timeout_ms -= 100;
             if (timeout_ms == 0) {
                 fprintf(stderr, "fn_transport: receive timeout\n");
@@ -278,26 +267,12 @@ uint8_t fn_transport_exchange(const uint8_t *request,
         }
     }
     
-    /* Debug: print raw response */
-    fprintf(stderr, "DEBUG: Raw response (%d bytes): ", raw_len);
-    for (i = 0; i < raw_len && i < 64; i++) {
-        fprintf(stderr, "%02X ", raw_buf[i]);
-    }
-    fprintf(stderr, "\n");
-    
     /* SLIP-decode the response */
     *resp_len = fn_slip_decode(raw_buf, raw_len, response);
     if (*resp_len == 0) {
         fprintf(stderr, "fn_transport: SLIP decode failed\n");
         return FN_ERR_IO;
     }
-    
-    /* Debug: print decoded response */
-    fprintf(stderr, "DEBUG: Decoded response (%d bytes): ", *resp_len);
-    for (i = 0; i < *resp_len && i < 64; i++) {
-        fprintf(stderr, "%02X ", response[i]);
-    }
-    fprintf(stderr, "\n");
     
     return FN_OK;
 }

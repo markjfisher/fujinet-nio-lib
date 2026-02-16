@@ -16,11 +16,27 @@ A clean, multi-platform 6502 library for communicating with FujiNet-NIO devices 
 
 - HTTP GET/POST/PUT/DELETE operations
 - TCP socket connections
-- TLS/HTTPS support
+- TLS/HTTPS support (requires firmware TLS configuration)
 - Automatic redirect following
 - Streaming reads for large responses
 - Caller-provided buffers (no hidden malloc)
 - Minimal RAM footprint
+
+## Current Status
+
+**Working:**
+- HTTP operations tested and working
+- Linux native target for PC-based testing
+- FujiBus protocol with SLIP framing
+- Handle-based session management
+
+**In Progress:**
+- HTTPS/TLS requires ESP32 firmware configuration (see Known Issues)
+- Atari SIO transport (assembly implementation complete, needs testing)
+- Additional platform transports (Apple II, CoCo, etc.)
+
+**Known Issues:**
+- HTTPS connections fail on ESP32 firmware due to missing TLS certificate verification configuration. The ESP32 TLS stack needs `esp_tls_cfg_t` properly configured. HTTP works correctly.
 
 ## Requirements
 

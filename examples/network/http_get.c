@@ -4,14 +4,27 @@
  * 
  * Demonstrates how to use the fujinet-nio-lib to perform an HTTP GET request.
  * 
+ * Usage:
+ *   Set environment variables to configure:
+ *     FN_TEST_URL - URL to fetch (default: http://localhost:8080/get)
+ *     FN_PORT     - Serial port device (default: /dev/ttyUSB0)
+ * 
+ * Build for Linux:
+ *   make TARGET=linux
+ * 
  * Build for Atari:
- *   cl65 -t atari -I../include http_get.c ../build/fujinet-nio.atari.lib -o http_get.xex
+ *   make TARGET=atari
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "fujinet-nio.h"
+
+/* Default test URL - can be overridden via environment variable or build define */
+#ifndef FN_DEFAULT_TEST_URL
+#define FN_DEFAULT_TEST_URL "http://localhost:8080/get"
+#endif
 
 /* Buffer for reading data */
 #define BUFFER_SIZE 512
@@ -27,9 +40,16 @@ int main(void)
     uint32_t content_length;
     uint8_t info_flags;
     uint32_t total_read;
+    const char *url;
     
     printf("FujiNet-NIO HTTP GET Example\n");
     printf("============================\n\n");
+    
+    /* Get URL from environment or use default */
+    url = getenv("FN_TEST_URL");
+    if (url == NULL || url[0] == '\0') {
+        url = FN_DEFAULT_TEST_URL;
+    }
     
     /* Initialize the library */
     printf("Initializing...\n");
@@ -48,10 +68,8 @@ int main(void)
     printf("Device ready.\n\n");
     
     /* Open HTTP connection */
-    printf("Opening HTTP connection...\n");
-    result = fn_open(&handle, FN_METHOD_GET, 
-                     "http://192.168.1.101:8080/get", 
-                     0);
+    printf("Opening HTTP connection to: %s\n", url);
+    result = fn_open(&handle, FN_METHOD_GET, url, 0);
     if (result != FN_OK) {
         printf("Open failed: %s\n", fn_error_string(result));
         return 1;

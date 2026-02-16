@@ -3,11 +3,15 @@
 # Build system for fujinet-nio-lib examples
 #
 # Usage:
-#   make                  - Build all examples for current target
-#   make TARGET=atari     - Build all examples for Atari
-#   make TARGET=linux     - Build all examples for Linux
-#   make http_get         - Build specific example
-#   make clean            - Clean build artifacts
+#   make                          - Build all examples for current target
+#   make TARGET=atari             - Build all examples for Atari
+#   make TARGET=linux             - Build all examples for Linux
+#   make http_get                 - Build specific example
+#   make clean                    - Clean build artifacts
+#
+# Custom test URL (can be set via environment or make argument):
+#   make TEST_URL="https://example.com/api"
+#   TEST_URL="https://example.com/api" make
 
 # Default target
 TARGET ?= linux
@@ -17,6 +21,10 @@ LIB_DIR := ..
 
 # Include paths
 INCDIR := $(LIB_DIR)/include
+
+# Test URL - can be overridden via environment or make argument
+# Default to localhost httpbin for local testing
+TEST_URL ?= http://localhost:8080/get
 
 # Library to link
 ifeq ($(TARGET),linux)
@@ -34,6 +42,9 @@ else ifeq ($(TARGET),atari)
 else
     $(error Unsupported target: $(TARGET))
 endif
+
+# Add test URL define to CFLAGS (properly quoted for C string)
+CFLAGS += -DFN_DEFAULT_TEST_URL=\"$(TEST_URL)\"
 
 # Output directory
 OUTDIR := bin/$(TARGET)
