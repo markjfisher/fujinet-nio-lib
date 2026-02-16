@@ -8,8 +8,8 @@ A clean, multi-platform 6502 library for communicating with FujiNet-NIO devices 
 
 - **Handle-based API** - Simple, intuitive session management
 - **FujiBus protocol** - Binary protocol with SLIP framing
-- **Multi-platform support** - Atari, Apple II, CoCo, C64, MS-DOS
-- **Multi-compiler support** - CC65, CMOC, Watcom
+- **Multi-platform support** - Atari, Apple II, CoCo, C64, MS-DOS, and Linux
+- **Multi-compiler support** - CC65, CMOC, Watcom, GCC
 - **HTTP and TCP** - Both protocols supported from day one
 
 ## Features
@@ -37,6 +37,10 @@ A clean, multi-platform 6502 library for communicating with FujiNet-NIO devices 
 - Open Watcom (wcc, wlib)
 - GNU Make
 
+### For Linux builds (native testing):
+- GCC compiler
+- GNU Make
+
 ## Building
 
 ### Build all targets:
@@ -50,11 +54,44 @@ make atari      # Atari 8-bit
 make apple2     # Apple II
 make coco       # Tandy CoCo
 make msdos      # MS-DOS
+make linux      # Native Linux (for testing)
 ```
 
 ### Clean build artifacts:
 ```bash
 make clean
+```
+
+## Linux Native Testing
+
+The Linux target allows you to build and test applications natively on your PC, communicating with a FujiNet-NIO device via serial port or PTY.
+
+### Setting up the connection
+
+Set the `FN_PORT` environment variable to specify the serial device:
+
+```bash
+# For ESP32 via USB-serial
+export FN_PORT=/dev/ttyUSB0
+
+# For POSIX fujinet-nio via PTY
+export FN_PORT=/dev/pts/2
+
+# Optionally set baud rate (default: 115200)
+export FN_BAUD=115200
+```
+
+### Building a test application
+
+```bash
+# Build the library
+make linux
+
+# Compile your application
+gcc -o my_test my_test.c -I include -L build -l:libfujinet-nio-linux.a
+
+# Run with the serial port
+FN_PORT=/dev/ttyUSB0 ./my_test
 ```
 
 ## Usage

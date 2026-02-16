@@ -22,8 +22,15 @@ INCDIR      := include
 # Platform-specific source directory
 PLATFORM_DIR := $(SRCDIR)/platform/$(PLATFORM)
 
+# Library extension (GCC uses .a, CC65 uses .lib)
+ifeq ($(COMPILER_FAMILY),gcc)
+    LIBEXT := .a
+else
+    LIBEXT := .lib
+endif
+
 # Output files
-LIBRARY     := $(BUILDDIR)/$(PROGRAM)-$(TARGET).lib
+LIBRARY     := $(BUILDDIR)/$(PROGRAM)-$(TARGET)$(LIBEXT)
 
 # Common sources (shared across all platforms)
 COMMON_SRCS := $(SRCDIR)/common/fn_slip.c \
@@ -76,6 +83,17 @@ $(BUILDDIR):
 	@mkdir -p $@
 
 # Compile C files
+ifeq ($(COMPILER_FAMILY),gcc)
+# GCC compilation
+$(OBJDIR)/$(TARGET)/common/%.o: $(SRCDIR)/common/%.c | $(OBJDIR)/$(TARGET)/common
+	@echo "  CC $<"
+	$(CC) -c $(CFLAGS) -MMD -MF $(@:.o=.d) -o $@ $<
+
+$(OBJDIR)/$(TARGET)/platform/$(PLATFORM)/%.o: $(SRCDIR)/platform/$(PLATFORM)/%.c | $(OBJDIR)/$(TARGET)/platform/$(PLATFORM)
+	@echo "  CC $<"
+	$(CC) -c $(CFLAGS) -MMD -MF $(@:.o=.d) -o $@ $<
+else
+# CC65 compilation
 $(OBJDIR)/$(TARGET)/common/%.o: $(SRCDIR)/common/%.c | $(OBJDIR)/$(TARGET)/common
 	@echo "  CC $<"
 	$(CC) -t $(TARGET) -c $(CFLAGS) --create-dep $(@:.o=.d) -o $@ $<
@@ -83,17 +101,25 @@ $(OBJDIR)/$(TARGET)/common/%.o: $(SRCDIR)/common/%.c | $(OBJDIR)/$(TARGET)/commo
 $(OBJDIR)/$(TARGET)/platform/$(PLATFORM)/%.o: $(SRCDIR)/platform/$(PLATFORM)/%.c | $(OBJDIR)/$(TARGET)/platform/$(PLATFORM)
 	@echo "  CC $<"
 	$(CC) -t $(TARGET) -c $(CFLAGS) --create-dep $(@:.o=.d) -o $@ $<
+endif
 
-# Assemble ASM files
+# Assemble ASM files (CC65 only)
 $(OBJDIR)/$(TARGET)/platform/$(PLATFORM)/%.o: $(SRCDIR)/platform/$(PLATFORM)/%.s | $(OBJDIR)/$(TARGET)/platform/$(PLATFORM)
 	@echo "  AS $<"
 	$(CC) -t $(TARGET) -c $(ASFLAGS) -o $@ $<
 
 # Create library
+ifeq ($(COMPILER_FAMILY),gcc)
+$(LIBRARY): $(OBJECTS) | $(BUILDDIR)
+	@echo "  AR $@"
+	$(AR) rcs $@ $(OBJECTS)
+	@echo "  Created $@"
+else
 $(LIBRARY): $(OBJECTS) | $(BUILDDIR)
 	@echo "  AR $@"
 	$(AR) a $@ $(OBJECTS)
 	@echo "  Created $@"
+endif
 
 # Clean object files for this target
 clean-obj:

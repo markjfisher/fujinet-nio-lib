@@ -11,6 +11,7 @@ PLATFORM_apple2enh  := apple2
 PLATFORM_c64        := c64
 PLATFORM_coco       := coco
 PLATFORM_msdos      := msdos
+PLATFORM_linux      := linux
 
 # Get platform for current target
 PLATFORM := $(PLATFORM_$(TARGET))
@@ -24,6 +25,7 @@ COMPILER_FAMILY_apple2enh  := cc65
 COMPILER_FAMILY_c64        := cc65
 COMPILER_FAMILY_coco       := cmoc
 COMPILER_FAMILY_msdos      := wcc
+COMPILER_FAMILY_linux      := gcc
 
 # Get compiler family for current target
 COMPILER_FAMILY := $(COMPILER_FAMILY_$(TARGET))
@@ -53,6 +55,10 @@ TARGET_ASFLAGS_coco     :=
 # MS-DOS
 TARGET_CFLAGS_msdos     :=
 TARGET_ASFLAGS_msdos    :=
+
+# Linux (native)
+TARGET_CFLAGS_linux     :=
+TARGET_ASFLAGS_linux    :=
 
 # Get flags for current target
 TARGET_CFLAGS  := $(TARGET_CFLAGS_$(TARGET))

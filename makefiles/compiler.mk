@@ -13,6 +13,8 @@ else ifeq ($(COMPILER_FAMILY),cmoc)
     -include makefiles/compiler-cmoc.mk
 else ifeq ($(COMPILER_FAMILY),wcc)
     -include makefiles/compiler-wcc.mk
+else ifeq ($(COMPILER_FAMILY),gcc)
+    -include makefiles/compiler-gcc.mk
 else
     $(error Unknown compiler family: $(COMPILER_FAMILY))
 endif

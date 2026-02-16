@@ -11,7 +11,7 @@
 #   make help       - Show this help
 
 # Supported targets
-TARGETS = atari apple2 apple2enh c64 coco msdos
+TARGETS = atari apple2 apple2enh c64 coco msdos linux
 
 # Output library name
 PROGRAM := fujinet-nio
