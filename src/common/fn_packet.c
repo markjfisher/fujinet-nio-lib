@@ -12,6 +12,20 @@
 #include <string.h>
 
 /* ============================================================================
+ * Static Buffers (for cc65 compatibility - no large stack buffers)
+ * ============================================================================ */
+
+/* Temporary buffer for checksum calculation */
+#define FN_TMP_BUFFER_SIZE 1024
+static uint8_t fn_tmp_buffer[FN_TMP_BUFFER_SIZE];
+
+/* Field size table for descriptor parsing */
+static const uint8_t fn_field_size_table[8] = {0, 1, 1, 1, 1, 2, 2, 4};
+
+/* Field count table for descriptor parsing */
+static const uint8_t fn_field_count_table[8] = {0, 1, 2, 3, 4, 1, 2, 1};
+
+/* ============================================================================
  * Checksum Calculation
  * ============================================================================ */
 
@@ -399,7 +413,10 @@ uint8_t fn_parse_response_header(const uint8_t *response,
     uint8_t descr;
     uint8_t checksum;
     uint16_t offset;
-    uint8_t tmp_buffer[1024];
+    uint8_t field_desc;
+    uint8_t field_count;
+    uint8_t field_size;
+    uint8_t i;
     
     /* Minimum response: header(6) */
     if (resp_len < FN_HEADER_SIZE) {
@@ -415,12 +432,12 @@ uint8_t fn_parse_response_header(const uint8_t *response,
     }
     
     /* Verify checksum - copy to temp buffer and zero checksum byte */
-    if (resp_len > sizeof(tmp_buffer)) {
+    if (resp_len > FN_TMP_BUFFER_SIZE) {
         return FN_ERR_INVALID;
     }
-    memcpy(tmp_buffer, response, resp_len);
-    tmp_buffer[4] = 0;  /* Zero checksum for calculation */
-    checksum = fn_calc_checksum(tmp_buffer, resp_len);
+    memcpy(fn_tmp_buffer, response, resp_len);
+    fn_tmp_buffer[4] = 0;  /* Zero checksum for calculation */
+    checksum = fn_calc_checksum(fn_tmp_buffer, resp_len);
     if (checksum != response[4]) {
         return FN_ERR_IO;
     }
@@ -452,37 +469,25 @@ uint8_t fn_parse_response_header(const uint8_t *response,
     /* Parse params based on descriptor */
     /* Field size table: 0->0, 1->1, 2->1, 3->1, 4->1, 5->2, 6->2, 7->4 */
     /* Num fields table: 0->0, 1->1, 2->2, 3->3, 4->4, 5->1, 6->2, 7->1 */
-    {
-        uint8_t field_desc;
-        uint8_t field_count;
-        uint8_t field_size;
-        uint8_t i;
-        
-        field_desc = descr & 0x07;
-        
-        /* Field size table */
-        static const uint8_t field_size_table[8] = {0, 1, 1, 1, 1, 2, 2, 4};
-        /* Field count table */
-        static const uint8_t field_count_table[8] = {0, 1, 2, 3, 4, 1, 2, 1};
-        
-        field_size = field_size_table[field_desc];
-        field_count = field_count_table[field_desc];
-        
-        /* Extract first param as status (if present) */
-        if (field_count > 0 && offset + field_size <= resp_len) {
-            *status = 0;
-            for (i = 0; i < field_size; i++) {
-                *status |= response[offset + i] << (8 * i);
-            }
-            offset += field_size;
-            
-            /* Skip remaining params */
-            for (i = 1; i < field_count; i++) {
-                offset += field_size;
-            }
-        } else {
-            *status = FN_OK;
+    field_desc = descr & 0x07;
+    
+    field_size = fn_field_size_table[field_desc];
+    field_count = fn_field_count_table[field_desc];
+    
+    /* Extract first param as status (if present) */
+    if (field_count > 0 && offset + field_size <= resp_len) {
+        *status = 0;
+        for (i = 0; i < field_size; i++) {
+            *status |= response[offset + i] << (8 * i);
         }
+        offset += field_size;
+        
+        /* Skip remaining params */
+        for (i = 1; i < field_count; i++) {
+            offset += field_size;
+        }
+    } else {
+        *status = FN_OK;
     }
     
     *data_offset = offset;

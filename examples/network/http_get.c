@@ -5,9 +5,12 @@
  * Demonstrates how to use the fujinet-nio-lib to perform an HTTP GET request.
  * 
  * Usage:
- *   Set environment variables to configure:
+ *   Set environment variables to configure (Linux only):
  *     FN_TEST_URL - URL to fetch (default: http://localhost:8080/get)
  *     FN_PORT     - Serial port device (default: /dev/ttyUSB0)
+ * 
+ *   For Atari, modify FN_DEFAULT_TEST_URL at compile time:
+ *     make TARGET=atari CFLAGS="-DFN_DEFAULT_TEST_URL=\\\"http://your-server/path\\\""
  * 
  * Build for Linux:
  *   make TARGET=linux
@@ -21,7 +24,7 @@
 #include <string.h>
 #include "fujinet-nio.h"
 
-/* Default test URL - can be overridden via environment variable or build define */
+/* Default test URL - can be overridden via build define */
 #ifndef FN_DEFAULT_TEST_URL
 #define FN_DEFAULT_TEST_URL "http://localhost:8080/get"
 #endif
@@ -46,10 +49,15 @@ int main(void)
     printf("============================\n\n");
     
     /* Get URL from environment or use default */
+    /* Note: getenv() not available on Atari, use compile-time default */
+#ifdef __ATARI__
+    url = FN_DEFAULT_TEST_URL;
+#else
     url = getenv("FN_TEST_URL");
     if (url == NULL || url[0] == '\0') {
         url = FN_DEFAULT_TEST_URL;
     }
+#endif
     
     /* Initialize the library */
     printf("Initializing...\n");
