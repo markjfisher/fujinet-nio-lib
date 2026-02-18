@@ -45,35 +45,38 @@ extern "C" {
 /** Operation completed successfully */
 #define FN_OK               0x00
 
+/** Device not found */
+#define FN_ERR_NOT_FOUND    0x01
+
 /** Invalid parameter or malformed request */
-#define FN_ERR_INVALID      0x01
+#define FN_ERR_INVALID      0x02
 
 /** Device is busy, retry later */
-#define FN_ERR_BUSY         0x02
+#define FN_ERR_BUSY         0x03
 
 /** Operation not ready, poll again */
-#define FN_ERR_NOT_READY    0x03
+#define FN_ERR_NOT_READY    0x04
 
 /** I/O error during operation */
-#define FN_ERR_IO           0x04
+#define FN_ERR_IO           0x05
 
-/** Out of memory or resources */
-#define FN_ERR_NO_MEMORY    0x05
+/** Device did not respond in time */
+#define FN_ERR_TIMEOUT      0x06
 
-/** Device or handle not found */
-#define FN_ERR_NOT_FOUND    0x06
+/** Internal error */
+#define FN_ERR_INTERNAL     0x07
 
-/** Device did not respond */
-#define FN_ERR_TIMEOUT      0x07
+/** Operation not supported */
+#define FN_ERR_UNSUPPORTED  0x08
 
 /** Transport layer error */
-#define FN_ERR_TRANSPORT    0x08
+#define FN_ERR_TRANSPORT    0x10
 
 /** URL too long */
-#define FN_ERR_URL_TOO_LONG 0x09
+#define FN_ERR_URL_TOO_LONG 0x11
 
 /** No free handles available */
-#define FN_ERR_NO_HANDLES   0x0A
+#define FN_ERR_NO_HANDLES   0x12
 
 /** Unknown/unexpected error */
 #define FN_ERR_UNKNOWN      0xFF

@@ -57,27 +57,6 @@ static int8_t _find_session(fn_handle_t handle)
 }
 
 /**
- * Allocate a new handle.
- */
-static fn_handle_t _alloc_handle(void)
-{
-    int8_t slot;
-    
-    slot = _find_free_slot();
-    if (slot < 0) {
-        return FN_INVALID_HANDLE;
-    }
-    
-    _sessions[slot].active = 1;
-    _sessions[slot].is_tcp = 0;
-    _sessions[slot].needs_body = 0;
-    _sessions[slot].write_offset = 0;
-    _sessions[slot].read_offset = 0;
-    
-    return (fn_handle_t)(slot + 1);
-}
-
-/**
  * Free a handle.
  */
 static void _free_handle(fn_handle_t handle)
@@ -439,13 +418,14 @@ const char *fn_error_string(uint8_t error)
 {
     switch (error) {
         case FN_OK:               return "OK";
+        case FN_ERR_NOT_FOUND:    return "Device not found";
         case FN_ERR_INVALID:      return "Invalid parameter";
         case FN_ERR_BUSY:         return "Device busy";
         case FN_ERR_NOT_READY:    return "Not ready";
         case FN_ERR_IO:           return "I/O error";
-        case FN_ERR_NO_MEMORY:    return "Out of memory";
-        case FN_ERR_NOT_FOUND:    return "Not found";
         case FN_ERR_TIMEOUT:      return "Timeout";
+        case FN_ERR_INTERNAL:     return "Internal error";
+        case FN_ERR_UNSUPPORTED:  return "Unsupported";
         case FN_ERR_TRANSPORT:    return "Transport error";
         case FN_ERR_URL_TOO_LONG: return "URL too long";
         case FN_ERR_NO_HANDLES:   return "No free handles";

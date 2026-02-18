@@ -3,9 +3,10 @@
 # Native Linux build using GCC
 
 # Compiler tools
-CC = gcc
-AR = ar
-AS = as
+# Use absolute paths to avoid conflicts with cc65 tools (ar65, etc.)
+CC = /usr/bin/gcc
+AR = /usr/bin/ar
+AS = /usr/bin/as
 
 # Platform name (used for source directory)
 PLATFORM = linux
