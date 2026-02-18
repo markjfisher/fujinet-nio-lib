@@ -40,6 +40,12 @@ make http_get TARGET=linux
 make tcp_get TARGET=linux
 ```
 
+### Build Atari examples with custom configuration:
+```bash
+# Build with TLS enabled and custom host/port
+make TARGET=atari FN_TCP_HOST=example.com FN_TCP_PORT=443 FN_TCP_TLS=1
+```
+
 ### Debug the build configuration:
 ```bash
 make info TARGET=linux
@@ -64,14 +70,32 @@ export FN_PORT=/dev/ttyUSB0
 # For POSIX fujinet-nio via PTY
 export FN_PORT=/dev/pts/2
 
-# Run the example
+# Run HTTP example
 ./bin/linux/http_get
+
+# Run TCP example (connects to localhost:7777 by default)
 ./bin/linux/tcp_get
+
+# Run TLS example with custom host
+FN_TCP_HOST=127.0.0.1 FN_TCP_PORT=7778 FN_TCP_TLS=1 ./bin/linux/tcp_get
+
+# Run with full URL override
+FN_TEST_URL="tls://echo.fujinet.online:6001?testca=1" ./bin/linux/tcp_get
 ```
 
 ### Atari Examples
 
 Copy the `.xex` files to your Atari storage medium (SD card, ATR disk, etc.) and run them from the Atari DOS menu.
+
+**Note:** Atari examples use compile-time configuration. To change the target server, rebuild with different parameters:
+
+```bash
+# Build for a specific server
+make TARGET=atari FN_TCP_HOST=192.168.1.100 FN_TCP_PORT=7777
+
+# Build with TLS enabled
+make TARGET=atari FN_TCP_HOST=example.com FN_TCP_PORT=443 FN_TCP_TLS=1
+```
 
 ## Example Categories
 
@@ -87,11 +111,12 @@ Copy the `.xex` files to your Atari storage medium (SD card, ATR disk, etc.) and
 
 - **tcp_get** - TCP/TLS client demonstrating:
   - TCP socket connections
-  - TLS encryption support
+  - TLS encryption support (via `tls://` URL scheme)
   - Sending data to server
+  - Half-close (FIN) for echo servers
+  - Idle timeout for response detection
   - Reading response data
   - Connection state monitoring
-  - Peer close detection
 
 ### Clock Examples (`clock/`) - Planned
 
@@ -101,21 +126,38 @@ Examples for clock/time synchronization.
 
 Examples for disk device operations.
 
-## Environment Variables
+## Configuration
 
-Examples can be configured via environment variables:
+### Linux (Runtime Environment Variables)
 
-### HTTP Get Example
+Examples can be configured via environment variables at runtime:
+
+#### HTTP Get Example
 - `FN_TEST_URL` - URL to fetch (default: `http://localhost:8080/get`)
 
-### TCP Get Example
+#### TCP Get Example
+- `FN_TEST_URL` - Full URL (e.g., `tcp://host:port` or `tls://host:port?testca=1`)
 - `FN_TCP_HOST` - Host to connect to (default: `localhost`)
-- `FN_TCP_PORT` - Port to connect to (default: `8080`)
+- `FN_TCP_PORT` - Port to connect to (default: `7777`)
 - `FN_TCP_TLS` - Set to `1` to enable TLS (default: disabled)
 - `FN_TCP_REQUEST` - Custom request string to send
 
-### Common
+#### Common
 - `FN_PORT` - Serial port device (default: `/dev/ttyUSB0`)
+
+### Atari (Compile-Time Defines)
+
+Atari examples are configured at compile time via Makefile variables:
+
+```bash
+make TARGET=atari FN_TCP_HOST=192.168.1.100 FN_TCP_PORT=7778 FN_TCP_TLS=1
+```
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `FN_TCP_HOST` | `localhost` | Target host |
+| `FN_TCP_PORT` | `7777` | Target port |
+| `FN_TCP_TLS` | `0` | Enable TLS (0=disabled, 1=enabled) |
 
 ## Adding New Examples
 
@@ -139,3 +181,19 @@ Examples can be configured via environment variables:
    ALL_EXAMPLES := $(NETWORK_EXAMPLES) $(CLOCK_EXAMPLES)
    ```
 5. Add a build directory rule and pattern rule for the new category
+
+## Testing with Local Servers
+
+For testing the TCP/TLS examples locally, you can use the test services from the fujinet-nio project:
+
+```bash
+# Start TCP echo server on port 7777
+./scripts/start_test_services.sh tcp
+
+# Start TLS echo server on port 7778
+./scripts/start_test_services.sh tls
+
+# Run the examples
+FN_TCP_HOST=localhost FN_TCP_PORT=7777 ./bin/linux/tcp_get
+FN_TCP_HOST=localhost FN_TCP_PORT=7778 FN_TCP_TLS=1 ./bin/linux/tcp_get
+```

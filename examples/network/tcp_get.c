@@ -1,90 +1,257 @@
 /**
  * @file tcp_get.c
- * @brief Simple TCP/TLS Client Example
+ * @brief TCP/TLS Client Example
  * 
- * Demonstrates how to use the fujinet-nio-lib to perform TCP and TLS connections.
- * This example connects to a TCP/TLS server, sends a request, and reads the response.
+ * Demonstrates TCP and TLS connections using fujinet-nio-lib.
+ * Works identically on Linux and Atari platforms.
  * 
- * Usage:
- *   Set environment variables to configure (Linux only):
- *     FN_TCP_HOST - Host to connect to (default: localhost)
- *     FN_TCP_PORT - Port to connect to (default: 7777)
- *     FN_TCP_TLS  - Set to "1" to enable TLS (default: disabled)
- *     FN_PORT     - Serial port device (default: /dev/ttyUSB0)
+ * Configuration:
+ *   Compile-time defines (all platforms):
+ *     FN_TCP_HOST - Host to connect to (default: "localhost")
+ *     FN_TCP_PORT - Port to connect to (default: "7777")
+ *     FN_TCP_TLS  - Set to 1 to enable TLS (default: 0)
  * 
- *   Or use a URL:
- *     FN_TEST_URL - Full URL (e.g., tcp://host:port or tls://host:port?testca=1)
+ *   Runtime environment variables (Linux only):
+ *     FN_TEST_URL    - Full URL (e.g., tcp://host:port or tls://host:port?testca=1)
+ *     FN_TCP_HOST    - Overrides compile-time default
+ *     FN_TCP_PORT    - Overrides compile-time default
+ *     FN_TCP_TLS     - Overrides compile-time default ("1" to enable)
+ *     FN_PORT        - Serial port device (default: /dev/ttyUSB0)
  * 
- * Build for Linux:
+ * Build:
  *   make TARGET=linux tcp_get
- * 
- * Build for Atari:
  *   make TARGET=atari tcp_get
+ *   make TARGET=atari FN_TCP_HOST=\"example.com\" FN_TCP_PORT=\"443\" FN_TCP_TLS=1 tcp_get
  * 
  * Examples:
- *   # Connect to local TCP echo server
+ *   # TCP echo (using defaults)
  *   ./bin/linux/tcp_get
  * 
- *   # Connect to TLS server
+ *   # TLS with test CA (runtime override)
  *   FN_TCP_HOST=127.0.0.1 FN_TCP_PORT=7778 FN_TCP_TLS=1 ./bin/linux/tcp_get
  * 
- *   # Using full URL
+ *   # Full URL (runtime override)
  *   FN_TEST_URL="tls://echo.fujinet.online:6001?testca=1" ./bin/linux/tcp_get
  */
 
-/* Feature test macros for POSIX functions */
+/* Feature test macros MUST come before any includes */
+#ifndef __ATARI__
 #ifndef _DEFAULT_SOURCE
 #define _DEFAULT_SOURCE
 #endif
+#endif
 
+/* Standard includes (all platforms) */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+/* Platform-specific includes */
+#ifndef __ATARI__
+/* POSIX includes for Linux */
 #include <time.h>
 #include <unistd.h>
+#endif
+
+/* FujiNet library */
 #include "fujinet-nio.h"
 
-/* Default configuration - can be overridden via build defines */
-#ifndef FN_DEFAULT_TCP_HOST
-#define FN_DEFAULT_TCP_HOST "localhost"
+/* ============================================================================
+ * Compile-time Configuration (can be overridden via CFLAGS)
+ * ============================================================================ */
+
+#ifndef FN_TCP_HOST
+#define FN_TCP_HOST "localhost"
 #endif
 
-#ifndef FN_DEFAULT_TCP_PORT
-#define FN_DEFAULT_TCP_PORT 7777
+#ifndef FN_TCP_PORT
+#define FN_TCP_PORT "7777"
 #endif
 
-/* Buffer for reading data - static for cc65 compatibility */
-#define BUFFER_SIZE 512
-static uint8_t buffer[BUFFER_SIZE];
+#ifndef FN_TCP_TLS
+#define FN_TCP_TLS 0
+#endif
 
-/* URL buffer - static for cc65 compatibility */
-#define URL_MAX_LEN 256
-static char url_buffer[URL_MAX_LEN];
-
-/* Idle timeout in seconds - stop reading after this long with no data */
 #ifndef FN_IDLE_TIMEOUT_SECS
 #define FN_IDLE_TIMEOUT_SECS 2
 #endif
 
-/* Simple request to send (echo test) */
-static const char *default_request = "Hello from FujiNet-NIO!\r\n";
+/* ============================================================================
+ * Static Buffers (for cc65 compatibility - no large stack allocations)
+ * ============================================================================ */
+
+#define BUFFER_SIZE 512
+#define URL_MAX_LEN 256
+
+static uint8_t g_buffer[BUFFER_SIZE];
+static char g_url[URL_MAX_LEN];
+
+/* ============================================================================
+ * Platform Abstraction: Time and Delay
+ * ============================================================================ */
 
 /**
- * @brief Get current time in seconds
- * 
- * For Linux: uses clock_gettime(CLOCK_MONOTONIC)
- * For Atari: returns 0 (no idle timeout on Atari)
+ * @brief Idle timer state
  */
-static double get_time_secs(void)
-{
+typedef struct {
+    int count;          /* Iteration count (all platforms) */
 #ifndef __ATARI__
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (double)ts.tv_sec + (double)ts.tv_nsec / 1e9;
-#else
-    return 0.0;
+    long deadline_ms;   /* Deadline in milliseconds (POSIX only) */
+#endif
+} idle_timer_t;
+
+/**
+ * @brief Initialize idle timer
+ */
+static void idle_init(idle_timer_t *t)
+{
+    t->count = 0;
+#ifndef __ATARI__
+    {
+        struct timespec ts;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        t->deadline_ms = ts.tv_sec * 1000 + ts.tv_nsec / 1000000 
+                       + (FN_IDLE_TIMEOUT_SECS * 1000);
+    }
 #endif
 }
+
+/**
+ * @brief Check if idle timeout has expired
+ * @return 1 if expired, 0 if not
+ */
+static int idle_expired(idle_timer_t *t)
+{
+    t->count++;
+    
+#ifndef __ATARI__
+    {
+        struct timespec ts;
+        long now_ms;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        now_ms = ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+        return (now_ms >= t->deadline_ms) ? 1 : 0;
+    }
+#else
+    /* Atari: count-based timeout (~100 iterations = ~2 seconds) */
+    return (t->count >= 100) ? 1 : 0;
+#endif
+}
+
+/**
+ * @brief Reset idle timer after receiving data
+ */
+static void idle_reset(idle_timer_t *t)
+{
+    t->count = 0;
+#ifndef __ATARI__
+    {
+        struct timespec ts;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        t->deadline_ms = ts.tv_sec * 1000 + ts.tv_nsec / 1000000 
+                       + (FN_IDLE_TIMEOUT_SECS * 1000);
+    }
+#endif
+}
+
+/**
+ * @brief Brief sleep to avoid busy looping
+ */
+static void sleep_brief(void)
+{
+#ifndef __ATARI__
+    usleep(20000);  /* 20ms */
+#endif
+    /* Atari: no sleep, just retry */
+}
+
+/* ============================================================================
+ * Platform Abstraction: Configuration
+ * ============================================================================ */
+
+/**
+ * @brief Get configuration URL
+ * 
+ * Priority (POSIX only):
+ *   1. FN_TEST_URL environment variable (full URL)
+ *   2. FN_TCP_HOST/PORT/TLS environment variables
+ *   3. Compile-time defines
+ * 
+ * For Atari, only compile-time defines are used.
+ * 
+ * @return URL string (points to g_url or environment variable)
+ */
+static const char *get_config_url(void)
+{
+#ifndef __ATARI__
+    const char *url;
+    const char *host;
+    const char *port_str;
+    const char *tls_str;
+    int use_tls;
+    
+    /* Priority 1: Full URL from environment */
+    url = getenv("FN_TEST_URL");
+    if (url != NULL && url[0] != '\0') {
+        return url;
+    }
+    
+    /* Priority 2: Individual environment variables */
+    host = getenv("FN_TCP_HOST");
+    if (host == NULL || host[0] == '\0') {
+        /* Priority 3: Compile-time default */
+        host = FN_TCP_HOST;
+    }
+    
+    port_str = getenv("FN_TCP_PORT");
+    if (port_str == NULL || port_str[0] == '\0') {
+        port_str = FN_TCP_PORT;
+    }
+    
+    tls_str = getenv("FN_TCP_TLS");
+    if (tls_str != NULL && tls_str[0] == '1') {
+        use_tls = 1;
+    } else {
+        use_tls = FN_TCP_TLS;
+    }
+    
+    /* Build URL */
+    if (use_tls) {
+        snprintf(g_url, URL_MAX_LEN, "tls://%s:%s?testca=1", host, port_str);
+    } else {
+        snprintf(g_url, URL_MAX_LEN, "tcp://%s:%s", host, port_str);
+    }
+    
+    return g_url;
+#else
+    /* Atari: Use compile-time defines only */
+    #if FN_TCP_TLS
+    snprintf(g_url, URL_MAX_LEN, "tls://%s:%s?testca=1", FN_TCP_HOST, FN_TCP_PORT);
+    #else
+    snprintf(g_url, URL_MAX_LEN, "tcp://%s:%s", FN_TCP_HOST, FN_TCP_PORT);
+    #endif
+    return g_url;
+#endif
+}
+
+/**
+ * @brief Get request data to send
+ * @return Request string
+ */
+static const char *get_config_request(void)
+{
+#ifndef __ATARI__
+    const char *req = getenv("FN_TCP_REQUEST");
+    if (req != NULL && req[0] != '\0') {
+        return req;
+    }
+#endif
+    return "Hello from FujiNet-NIO!\r\n";
+}
+
+/* ============================================================================
+ * Main Application
+ * ============================================================================ */
 
 int main(void)
 {
@@ -95,67 +262,21 @@ int main(void)
     uint8_t flags;
     uint32_t total_read;
     uint16_t total_written;
+    uint16_t request_len;
     const char *url;
     const char *request;
-    uint16_t request_len;
+    idle_timer_t idle;
     
+    /* Print header */
     printf("FujiNet-NIO TCP/TLS Client Example\n");
     printf("==================================\n\n");
     
-    /* Get configuration from environment or use defaults */
-#ifdef __ATARI__
-    /* On Atari, use compile-time defaults */
-    snprintf(url_buffer, URL_MAX_LEN, "tcp://%s:%u", FN_DEFAULT_TCP_HOST, FN_DEFAULT_TCP_PORT);
-    url = url_buffer;
-    request = default_request;
-#else
-    const char *host;
-    const char *port_str;
-    const char *tls_str;
-    uint16_t port;
-    uint8_t use_tls;
+    /* Get configuration */
+    url = get_config_url();
+    request = get_config_request();
+    printf("URL: %s\n\n", url);
     
-    /* Check for full URL first */
-    url = getenv("FN_TEST_URL");
-    if (url != NULL && url[0] != '\0') {
-        /* Using full URL - nothing else needed */
-    } else {
-        /* Build URL from individual components */
-        host = getenv("FN_TCP_HOST");
-        if (host == NULL || host[0] == '\0') {
-            host = FN_DEFAULT_TCP_HOST;
-        }
-        
-        port_str = getenv("FN_TCP_PORT");
-        if (port_str != NULL && port_str[0] != '\0') {
-            port = (uint16_t)atoi(port_str);
-        } else {
-            port = FN_DEFAULT_TCP_PORT;
-        }
-        
-        tls_str = getenv("FN_TCP_TLS");
-        use_tls = (tls_str != NULL && tls_str[0] == '1');
-        
-        /* Build URL */
-        if (use_tls) {
-            snprintf(url_buffer, URL_MAX_LEN, "tls://%s:%u?testca=1", host, port);
-        } else {
-            snprintf(url_buffer, URL_MAX_LEN, "tcp://%s:%u", host, port);
-        }
-        url = url_buffer;
-    }
-    
-    /* Get custom request from environment, or use default */
-    request = getenv("FN_TCP_REQUEST");
-    if (request == NULL || request[0] == '\0') {
-        request = default_request;
-    }
-#endif
-    
-    printf("URL: %s\n", url);
-    printf("\n");
-    
-    /* Initialize the library */
+    /* Initialize library */
     printf("Initializing...\n");
     result = fn_init();
     if (result != FN_OK) {
@@ -163,129 +284,76 @@ int main(void)
         return 1;
     }
     
-    /* Check if device is ready */
     if (!fn_is_ready()) {
         printf("FujiNet device not ready!\n");
         return 1;
     }
-    
     printf("Device ready.\n\n");
     
-    /* Open connection - URL scheme determines protocol:
-     * tcp://host:port - plain TCP
-     * tls://host:port?testca=1 - TLS with test CA
-     * tls://host:port?insecure=1 - TLS with cert verification disabled
-     */
+    /* Open connection */
     printf("Opening connection...\n");
     result = fn_open(&handle, 0, url, 0);
-    
     if (result != FN_OK) {
         printf("Connection failed: %s\n", fn_error_string(result));
         return 1;
     }
+    printf("Handle: %u\nConnection established.\n", handle);
     
-    printf("Handle: %u\n", handle);
-    printf("Connection established.\n");
-    
-    /* Send request */
+    /* Send data */
     request_len = (uint16_t)strlen(request);
     printf("\nSending data (%u bytes)...\n", request_len);
-    total_written = 0;
     
-    result = fn_write(handle, 0, (const uint8_t *)request, 
-                      request_len, &bytes_written);
+    result = fn_write(handle, 0, (const uint8_t *)request, request_len, &bytes_written);
     if (result != FN_OK) {
         printf("Write failed: %s\n", fn_error_string(result));
         fn_close(handle);
         return 1;
     }
+    total_written = bytes_written;
+    printf("Sent %u bytes: \"%.*s\"\n", bytes_written, 
+           bytes_written > 50 ? 50 : bytes_written, request);
     
-    total_written += bytes_written;
-    printf("Sent %u bytes: \"%.*s\"\n", 
-           bytes_written, 
-           bytes_written > 50 ? 50 : bytes_written, 
-           request);
-    
-    /* Half-close: signal we're done writing.
-     * This sends FIN to the peer, which is important for echo servers
-     * to know when to stop reading and send their response.
-     * 
-     * To half-close, we write 0 bytes at the current write offset.
-     * The device interprets this as a shutdown(SHUT_WR).
-     */
+    /* Half-close write side (signals FIN to peer) */
     printf("Half-closing write side...\n");
     result = fn_write(handle, total_written, NULL, 0, &bytes_written);
     if (result != FN_OK && result != FN_ERR_UNSUPPORTED) {
-        /* Some protocols may not support half-close, that's OK */
-        printf("Half-close not supported or failed: %s (continuing)\n", 
-               fn_error_string(result));
+        printf("Half-close: %s (continuing)\n", fn_error_string(result));
     }
     
-    /* Read response with idle timeout.
-     * 
-     * This follows the same pattern as the Python client:
-     * - Track idle time since last data received
-     * - Stop when idle timeout expires
-     * - Sleep briefly between reads to avoid busy looping
-     */
+    /* Read response with idle timeout */
     printf("\nReading response...\n");
     total_read = 0;
+    idle_init(&idle);
     
-#ifndef __ATARI__
-    double idle_timeout = (double)FN_IDLE_TIMEOUT_SECS;
-    double idle_deadline = get_time_secs() + idle_timeout;
-#else
-    /* On Atari, use a simple counter instead of time */
-    uint16_t idle_count = 0;
-    const uint16_t max_idle_count = 100;  /* ~1 second at 10ms per iteration */
-#endif
-    
-    while (1) {
-        result = fn_read(handle, total_read, buffer, BUFFER_SIZE - 1, 
+    for (;;) {
+        result = fn_read(handle, total_read, g_buffer, BUFFER_SIZE - 1, 
                          &bytes_read, &flags);
         
         if (result == FN_ERR_NOT_READY || result == FN_ERR_BUSY) {
-            /* Data not ready yet - check idle timeout */
-#ifndef __ATARI__
-            double now = get_time_secs();
-            if (total_read > 0 && now >= idle_deadline) {
+            /* Data not ready - check idle timeout if we've received data */
+            if (total_read > 0 && idle_expired(&idle)) {
                 printf("\n[Read complete - idle timeout]\n");
                 break;
             }
-            /* Sleep briefly to avoid busy looping (20ms like Python client) */
-            usleep(20000);
-#else
-            /* On Atari, use counter-based idle detection */
-            if (total_read > 0) {
-                idle_count++;
-                if (idle_count >= max_idle_count) {
-                    printf("\n[Read complete - idle timeout]\n");
-                    break;
-                }
-            }
-#endif
+            sleep_brief();
             continue;
         }
         
         if (result == FN_ERR_TIMEOUT) {
-            /* Timeout - if we've received data, consider it complete */
             if (total_read > 0) {
                 printf("\n[Read complete - timeout]\n");
-                break;
+            } else {
+                printf("\nRead timeout (no data received)\n");
             }
-            printf("\nRead timeout (no data received)\n");
             break;
         }
         
         if (result == FN_ERR_IO) {
-            /* I/O error - often means peer closed connection.
-             * If we've received data, treat as EOF.
-             */
             if (total_read > 0) {
                 printf("\n[Read complete - peer closed]\n");
-                break;
+            } else {
+                printf("\nRead error: %s\n", fn_error_string(result));
             }
-            printf("\nRead error: %s\n", fn_error_string(result));
             break;
         }
         
@@ -295,25 +363,16 @@ int main(void)
         }
         
         if (bytes_read == 0) {
-            /* No more data */
             printf("\n[Read complete - no more data]\n");
             break;
         }
         
-        /* Got data - reset idle timeout */
-#ifndef __ATARI__
-        idle_deadline = get_time_secs() + idle_timeout;
-#else
-        idle_count = 0;
-#endif
-        
-        /* Null-terminate and print */
-        buffer[bytes_read < BUFFER_SIZE ? bytes_read : BUFFER_SIZE - 1] = '\0';
-        printf("%s", (char *)buffer);
-        
+        /* Got data - reset idle timer and print */
+        idle_reset(&idle);
+        g_buffer[bytes_read < BUFFER_SIZE ? bytes_read : BUFFER_SIZE - 1] = '\0';
+        printf("%s", (char *)g_buffer);
         total_read += bytes_read;
         
-        /* Check for EOF flag */
         if (flags & FN_READ_EOF) {
             printf("\n[EOF reached]\n");
             break;
@@ -322,7 +381,7 @@ int main(void)
     
     printf("\n\nTotal bytes read: %lu\n", (unsigned long)total_read);
     
-    /* Close the connection */
+    /* Close connection */
     printf("Closing connection...\n");
     result = fn_close(handle);
     if (result != FN_OK) {

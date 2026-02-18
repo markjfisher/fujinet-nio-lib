@@ -12,6 +12,13 @@
 #   make clean                    - Clean build artifacts
 #   make clean-all                - Clean all targets
 #
+# TCP/TLS Example Configuration:
+#   For Linux, defaults can be overridden via environment variables:
+#     FN_TCP_HOST, FN_TCP_PORT, FN_TCP_TLS
+#
+#   For Atari (or to override defaults at compile time):
+#     make TARGET=atari FN_TCP_HOST=\"192.168.1.100\" FN_TCP_PORT=\"443\" FN_TCP_TLS=1
+#
 # Build structure:
 #   build/
 #     linux/
@@ -45,7 +52,30 @@ INCDIR := $(LIB_DIR)/include
 BUILD_DIR := build/$(TARGET)
 BIN_DIR := bin/$(TARGET)
 
+# ============================================================================
+# TCP/TLS Example Configuration
+# ============================================================================
+# These can be overridden on the make command line for any target.
+# For Atari, this is the primary way to configure the example.
+# For Linux, environment variables can also be used at runtime.
+#
+# Example:
+#   make TARGET=atari FN_TCP_HOST=example.com FN_TCP_PORT=443 FN_TCP_TLS=1
+
+# Default values
+FN_TCP_HOST ?= localhost
+FN_TCP_PORT ?= 7777
+FN_TCP_TLS ?= 0
+
+# Pass to compiler as defines (with quotes for C strings)
+TCP_DEFINES = -DFN_TCP_HOST=\"$(FN_TCP_HOST)\" \
+              -DFN_TCP_PORT=\"$(FN_TCP_PORT)\" \
+              -DFN_TCP_TLS=$(FN_TCP_TLS)
+
+# ============================================================================
 # Compiler configuration per target
+# ============================================================================
+
 ifeq ($(TARGET),linux)
     LIB_FILE := $(LIB_DIR)/build/fujinet-nio-linux.a
     CC := gcc
@@ -149,6 +179,11 @@ info:
 	@echo "Bin dir: $(BIN_DIR)"
 	@echo "Library: $(LIB_FILE)"
 	@echo "Library exists: $$(test -f $(LIB_FILE) && echo yes || echo no)"
+	@echo ""
+	@echo "TCP Config:"
+	@echo "  FN_TCP_HOST: $(FN_TCP_HOST)"
+	@echo "  FN_TCP_PORT: $(FN_TCP_PORT)"
+	@echo "  FN_TCP_TLS: $(FN_TCP_TLS)"
 
 # ============================================================================
 # Pattern rules for building examples
@@ -170,6 +205,19 @@ $(BIN_DIR):
 
 # Compile source to object file
 # Pattern: build/TARGET/category/example.o from category/example.c
+# TCP examples get the TCP config defines
+$(BUILD_DIR)/network/tcp_get.o: network/tcp_get.c | $(BUILD_DIR)/network
+	@echo "Compiling $< for $(TARGET)..."
+ifeq ($(CC),cl65)
+	$(CC) -t $(TARGET) -c $(CFLAGS) $(TCP_DEFINES) -o $@ $<
+else
+	$(CC) $(CFLAGS) $(TCP_DEFINES) -c $< -o $@
+endif
+
+$(BUILD_DIR)/network/http_get.o: network/http_get.c | $(BUILD_DIR)/network
+	@echo "Compiling $< for $(TARGET)..."
+	$(COMPILE)
+
 $(BUILD_DIR)/network/%.o: network/%.c | $(BUILD_DIR)/network
 	@echo "Compiling $< for $(TARGET)..."
 	$(COMPILE)
