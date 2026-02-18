@@ -25,6 +25,17 @@ extern "C" {
     #include <stddef.h>
 #endif
 
+/* cc65 doesn't have uint64_t - use struct for 64-bit time values */
+#ifdef __CC65__
+    /* 64-bit time value as 8-byte array (little-endian) */
+    typedef struct {
+        uint8_t b[8];
+    } fn_time_t;
+    #define FN_TIME_T fn_time_t
+#else
+    #define FN_TIME_T uint64_t
+#endif
+
 /* ============================================================================
  * Constants and Configuration
  * ============================================================================ */
@@ -286,6 +297,30 @@ uint8_t fn_info(fn_handle_t handle,
  * @return FN_OK on success, error code on failure
  */
 uint8_t fn_close(fn_handle_t handle);
+
+/* ============================================================================
+ * Clock Operations
+ * ============================================================================ */
+
+/**
+ * @brief Get the current time from the FujiNet device.
+ * 
+ * Returns the current Unix timestamp (seconds since 1970-01-01).
+ * 
+ * @param time       Pointer to receive the Unix timestamp (8 bytes, little-endian)
+ * @return FN_OK on success, FN_ERR_NOT_READY if time not available
+ */
+uint8_t fn_clock_get(FN_TIME_T *time);
+
+/**
+ * @brief Set the time on the FujiNet device.
+ * 
+ * Sets the device's real-time clock to the specified Unix timestamp.
+ * 
+ * @param time       Pointer to Unix timestamp to set (8 bytes, little-endian)
+ * @return FN_OK on success, error code on failure
+ */
+uint8_t fn_clock_set(const FN_TIME_T *time);
 
 /* ============================================================================
  * Utility Functions

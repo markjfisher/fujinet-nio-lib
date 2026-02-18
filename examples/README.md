@@ -13,17 +13,23 @@ examples/
       network/               # Network examples
         http_get.o
         tcp_get.o
+      clock/                 # Clock examples
+        clock_test.o
     atari/                   # Atari target
       network/
         http_get.o
         tcp_get.o
+      clock/
+        clock_test.o
   bin/                       # Final executables
     linux/
       http_get
       tcp_get
+      clock_test
     atari/
       http_get.xex
       tcp_get.xex
+      clock_test.xex
 ```
 
 ## Building Examples
@@ -38,6 +44,7 @@ make TARGET=atari    # Build for Atari 8-bit
 ```bash
 make http_get TARGET=linux
 make tcp_get TARGET=linux
+make clock_test TARGET=linux
 ```
 
 ### Build Atari examples with custom configuration:
@@ -81,13 +88,16 @@ FN_TCP_HOST=127.0.0.1 FN_TCP_PORT=7778 FN_TCP_TLS=1 ./bin/linux/tcp_get
 
 # Run with full URL override
 FN_TEST_URL="tls://echo.fujinet.online:6001?testca=1" ./bin/linux/tcp_get
+
+# Run clock example
+./bin/linux/clock_test
 ```
 
 ### Atari Examples
 
 Copy the `.xex` files to your Atari storage medium (SD card, ATR disk, etc.) and run them from the Atari DOS menu.
 
-**Note:** Atari examples use compile-time configuration. To change the target server, rebuild with different parameters:
+**Note:** Atari examples use compile-time configuration for TCP settings. To change the target server, rebuild with different parameters:
 
 ```bash
 # Build for a specific server
@@ -96,6 +106,8 @@ make TARGET=atari FN_TCP_HOST=192.168.1.100 FN_TCP_PORT=7777
 # Build with TLS enabled
 make TARGET=atari FN_TCP_HOST=example.com FN_TCP_PORT=443 FN_TCP_TLS=1
 ```
+
+The clock example works without any configuration - it simply reads and displays the current time from the FujiNet device.
 
 ## Example Categories
 
@@ -118,9 +130,14 @@ make TARGET=atari FN_TCP_HOST=example.com FN_TCP_PORT=443 FN_TCP_TLS=1
   - Reading response data
   - Connection state monitoring
 
-### Clock Examples (`clock/`) - Planned
+### Clock Examples (`clock/`)
 
-Examples for clock/time synchronization.
+- **clock_test** - Clock device demonstration showing:
+  - Getting the current time from FujiNet
+  - Setting the time on the device
+  - Human-readable time formatting (year, month, day, hour, minute, second)
+  - Raw time value display (Unix timestamp)
+  - Note: Time setting may be disabled on some FujiNet configurations
 
 ### Disk Examples (`disk/`) - Planned
 
@@ -170,16 +187,16 @@ make TARGET=atari FN_TCP_HOST=192.168.1.100 FN_TCP_PORT=7778 FN_TCP_TLS=1
 
 ### Adding a New Category
 
-1. Create a new folder (e.g., `clock/`)
+1. Create a new folder (e.g., `disk/`)
 2. Add your example files
 3. Add a new example list in the Makefile:
-   ```makefile
-   CLOCK_EXAMPLES := clock_sync
-   ```
+    ```makefile
+    DISK_EXAMPLES := disk_info
+    ```
 4. Add to `ALL_EXAMPLES`:
-   ```makefile
-   ALL_EXAMPLES := $(NETWORK_EXAMPLES) $(CLOCK_EXAMPLES)
-   ```
+    ```makefile
+    ALL_EXAMPLES := $(NETWORK_EXAMPLES) $(CLOCK_EXAMPLES) $(DISK_EXAMPLES)
+    ```
 5. Add a build directory rule and pattern rule for the new category
 
 ## Testing with Local Servers

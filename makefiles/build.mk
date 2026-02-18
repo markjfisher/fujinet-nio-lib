@@ -35,7 +35,8 @@ LIBRARY     := $(BUILDDIR)/$(PROGRAM)-$(TARGET)$(LIBEXT)
 # Common sources (shared across all platforms)
 COMMON_SRCS := $(SRCDIR)/common/fn_slip.c \
                $(SRCDIR)/common/fn_packet.c \
-               $(SRCDIR)/common/fn_network.c
+               $(SRCDIR)/common/fn_network.c \
+               $(SRCDIR)/common/fn_clock.c
 
 # Platform-specific sources
 PLATFORM_SRCS := $(wildcard $(PLATFORM_DIR)/*.c)

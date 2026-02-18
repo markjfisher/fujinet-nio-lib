@@ -56,6 +56,9 @@ extern "C" {
 /** File service device */
 #define FN_DEVICE_FILE       0xFE
 
+/** Clock device */
+#define FN_DEVICE_CLOCK      0x45
+
 /* ============================================================================
  * Network Device Commands
  * ============================================================================ */
@@ -74,6 +77,19 @@ extern "C" {
 
 /** Get session information */
 #define FN_CMD_INFO    0x05
+
+/* ============================================================================
+ * Clock Device Commands
+ * ============================================================================ */
+
+/** Get current time */
+#define FN_CMD_CLOCK_GET    0x01
+
+/** Set current time */
+#define FN_CMD_CLOCK_SET    0x02
+
+/** Clock protocol version */
+#define FN_CLOCK_VERSION    0x01
 
 /* ============================================================================
  * Protocol Version

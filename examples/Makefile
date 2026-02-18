@@ -110,14 +110,14 @@ CFLAGS += -I$(INCDIR)
 # Network examples (TCP/HTTP/TLS)
 NETWORK_EXAMPLES := http_get tcp_get
 
-# Clock examples (future)
-# CLOCK_EXAMPLES := clock_sync
+# Clock examples
+CLOCK_EXAMPLES := clock_test
 
 # Disk examples (future)
 # DISK_EXAMPLES := disk_info
 
 # All examples (add categories as they are created)
-ALL_EXAMPLES := $(NETWORK_EXAMPLES)
+ALL_EXAMPLES := $(NETWORK_EXAMPLES) $(CLOCK_EXAMPLES)
 
 # ============================================================================
 # Source and object file mappings
@@ -236,9 +236,9 @@ $(BIN_DIR)/%$(EXEEXT): $(BUILD_DIR)/network/%.o | $(BIN_DIR) lib
 	@echo "Linking $@ for $(TARGET)..."
 	$(LINK)
 
-# Note: Add similar rules for other categories as needed:
-# $(BIN_DIR)/%$(EXEEXT): $(BUILD_DIR)/clock/%.o | $(BIN_DIR) lib
-#	$(LINK)
+$(BIN_DIR)/%$(EXEEXT): $(BUILD_DIR)/clock/%.o | $(BIN_DIR) lib
+	@echo "Linking $@ for $(TARGET)..."
+	$(LINK)
 
 # ============================================================================
 # Convenience targets for individual examples
