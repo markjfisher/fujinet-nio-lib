@@ -396,6 +396,23 @@ int main(void)
     }
     printf("\n");
     
+    /* ========================================================================
+     * Test 9: Sync network time (restore from NTP)
+     * ======================================================================== */
+    printf("--- Test 9: Sync Network Time (restore from NTP) ---\n");
+    printf("Requesting time sync from network...\n");
+    
+    result = fn_clock_sync_network_time(&current_time);
+    if (result != FN_OK) {
+        printf("Failed to sync time: %s\n", fn_error_string(result));
+        printf("(This may fail if network is not available)\n");
+    } else {
+        printf("Time synchronized from network.\n");
+        printf("Current time:\n  ");
+        print_time(&current_time);
+    }
+    printf("\n");
+    
     printf("Done.\n");
     return 0;
 }

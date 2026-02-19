@@ -400,6 +400,17 @@ uint8_t fn_clock_set_timezone(const char *tz);
  */
 uint8_t fn_clock_set_timezone_save(const char *tz);
 
+/**
+ * @brief Synchronize time from network (NTP).
+ * 
+ * Requests the FujiNet device to fetch the current time from NTP servers.
+ * Useful after setting time manually to restore correct network time.
+ * 
+ * @param time       Pointer to receive the new Unix timestamp after sync (8 bytes)
+ * @return FN_OK on success, error code on failure
+ */
+uint8_t fn_clock_sync_network_time(FN_TIME_T *time);
+
 /* ============================================================================
  * Utility Functions
  * ============================================================================ */

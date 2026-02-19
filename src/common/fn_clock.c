@@ -508,3 +508,84 @@ uint8_t fn_clock_set_timezone_save(const char *tz)
     
     return status;
 }
+
+/**
+ * @brief Synchronize time from network (NTP).
+ * 
+ * Request payload format:
+ *   u8  version
+ * 
+ * Response payload format (same as GetTime):
+ *   u8  version
+ *   u8  flags
+ *   u16 reserved
+ *   u64 unix_seconds
+ */
+uint8_t fn_clock_sync_network_time(FN_TIME_T *time)
+{
+    uint16_t req_len;
+    uint16_t resp_len;
+    uint8_t result;
+    uint8_t status;
+    uint16_t data_offset;
+    uint16_t data_len;
+    uint8_t version;
+    uint8_t i;
+    
+    if (time == NULL) {
+        return FN_ERR_INVALID;
+    }
+    
+    /* Build request packet: version(1) = 1 byte payload */
+    req_len = fn_build_header(_clock_req_buf, FN_DEVICE_CLOCK, FN_CMD_CLOCK_SYNC_NETWORK_TIME, FN_HEADER_SIZE + 1);
+    if (req_len == 0) {
+        return FN_ERR_INTERNAL;
+    }
+    
+    /* Add payload */
+    _clock_req_buf[req_len++] = FN_CLOCK_VERSION;
+    
+    /* Finalize checksum */
+    _clock_req_buf[4] = fn_calc_checksum(_clock_req_buf, req_len);
+    
+    /* Send request and receive response */
+    result = fn_transport_exchange(_clock_req_buf, req_len, _clock_resp_buf, FN_MAX_PACKET_SIZE, &resp_len);
+    if (result != FN_OK) {
+        return result;
+    }
+    
+    /* Parse response header */
+    result = fn_parse_response_header(_clock_resp_buf, resp_len, &status, &data_offset, &data_len);
+    if (result != FN_OK) {
+        return result;
+    }
+    
+    if (status != FN_OK) {
+        return status;
+    }
+    
+    /* Check minimum payload size: version(1) + flags(1) + reserved(2) + time(8) = 12 bytes */
+    if (data_len < 12) {
+        return FN_ERR_INVALID;
+    }
+    
+    /* Parse response */
+    version = _clock_resp_buf[data_offset];
+    if (version != FN_CLOCK_VERSION) {
+        return FN_ERR_UNSUPPORTED;
+    }
+    
+    /* Copy 8-byte timestamp to output (little-endian) */
+#ifdef __CC65__
+    for (i = 0; i < 8; i++) {
+        time->b[i] = _clock_resp_buf[data_offset + 4 + i];
+    }
+#else
+    *time = 0;
+    for (i = 0; i < 8; i++) {
+        *time |= ((uint64_t)_clock_resp_buf[data_offset + 4 + i]) << (8 * i);
+    }
+#endif
+    
+    return FN_OK;
+}

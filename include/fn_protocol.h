@@ -100,6 +100,9 @@ extern "C" {
 /** Set timezone and persist to config */
 #define FN_CMD_CLOCK_SET_TZ_SAVE 0x06
 
+/** Synchronize time from network (NTP) */
+#define FN_CMD_CLOCK_SYNC_NETWORK_TIME 0x07
+
 /** Clock protocol version */
 #define FN_CLOCK_VERSION    0x01
 
