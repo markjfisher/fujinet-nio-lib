@@ -303,6 +303,38 @@ uint8_t fn_close(fn_handle_t handle);
  * ============================================================================ */
 
 /**
+ * @brief Time format codes for fn_clock_get_format().
+ * 
+ * These codes match the server-side TimeFormat enum and the legacy
+ * fujinet-lib TimeFormat enum for compatibility.
+ */
+typedef enum {
+    /** 7 bytes: [century, year, month, day, hour, min, sec] */
+    FN_TIME_FORMAT_SIMPLE     = 0x00,
+    
+    /** 4 bytes: Apple ProDOS format */
+    FN_TIME_FORMAT_PRODOS     = 0x01,
+    
+    /** 6 bytes: [day, month, year, hour, min, sec] */
+    FN_TIME_FORMAT_APETIME    = 0x02,
+    
+    /** ISO string with TZ offset: "YYYY-MM-DDTHH:MM:SS+HHMM" */
+    FN_TIME_FORMAT_TZ_ISO     = 0x03,
+    
+    /** ISO string UTC: "YYYY-MM-DDTHH:MM:SS+0000" */
+    FN_TIME_FORMAT_UTC_ISO    = 0x04,
+    
+    /** 16 bytes: "YYYYMMDD0HHMMSS000" */
+    FN_TIME_FORMAT_APPLE3_SOS = 0x05,
+} FnTimeFormat;
+
+/** Maximum formatted time string length (for string formats) */
+#define FN_MAX_TIME_STRING  32
+
+/** Maximum timezone string length */
+#define FN_MAX_TIMEZONE_LEN 64
+
+/**
  * @brief Get the current time from the FujiNet device.
  * 
  * Returns the current Unix timestamp (seconds since 1970-01-01).
@@ -321,6 +353,52 @@ uint8_t fn_clock_get(FN_TIME_T *time);
  * @return FN_OK on success, error code on failure
  */
 uint8_t fn_clock_set(const FN_TIME_T *time);
+
+/**
+ * @brief Get the current time in a specific format.
+ * 
+ * Returns the time pre-formatted by the FujiNet device, offloading
+ * complex time conversion from the host.
+ * 
+ * @param time_data   Buffer to receive formatted time (size depends on format)
+ * @param format      Desired time format (FnTimeFormat enum)
+ * @return FN_OK on success, error code on failure
+ */
+uint8_t fn_clock_get_format(uint8_t *time_data, FnTimeFormat format);
+
+/**
+ * @brief Get the current time for a specific timezone without affecting system TZ.
+ * 
+ * @param time_data   Buffer to receive formatted time
+ * @param tz          Timezone string (POSIX format, e.g., "CET-1CEST,M3.5.0,M10.5.0/3")
+ * @param format      Desired time format
+ * @return FN_OK on success, error code on failure
+ */
+uint8_t fn_clock_get_tz(uint8_t *time_data, const char *tz, FnTimeFormat format);
+
+/**
+ * @brief Get the current timezone string.
+ * 
+ * @param tz          Buffer to receive timezone string (min FN_MAX_TIMEZONE_LEN bytes)
+ * @return FN_OK on success, error code on failure
+ */
+uint8_t fn_clock_get_timezone(char *tz);
+
+/**
+ * @brief Set the timezone (non-persistent, runtime only).
+ * 
+ * @param tz          Timezone string (POSIX format)
+ * @return FN_OK on success, error code on failure
+ */
+uint8_t fn_clock_set_timezone(const char *tz);
+
+/**
+ * @brief Set the timezone and persist to configuration.
+ * 
+ * @param tz          Timezone string (POSIX format)
+ * @return FN_OK on success, error code on failure
+ */
+uint8_t fn_clock_set_timezone_save(const char *tz);
 
 /* ============================================================================
  * Utility Functions

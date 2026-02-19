@@ -82,11 +82,23 @@ extern "C" {
  * Clock Device Commands
  * ============================================================================ */
 
-/** Get current time */
-#define FN_CMD_CLOCK_GET    0x01
+/** Get current time (raw Unix timestamp) */
+#define FN_CMD_CLOCK_GET         0x01
 
-/** Set current time */
-#define FN_CMD_CLOCK_SET    0x02
+/** Set current time (raw Unix timestamp) */
+#define FN_CMD_CLOCK_SET         0x02
+
+/** Get time in specified format */
+#define FN_CMD_CLOCK_GET_FORMAT  0x03
+
+/** Get current timezone string */
+#define FN_CMD_CLOCK_GET_TZ      0x04
+
+/** Set timezone (non-persistent) */
+#define FN_CMD_CLOCK_SET_TZ      0x05
+
+/** Set timezone and persist to config */
+#define FN_CMD_CLOCK_SET_TZ_SAVE 0x06
 
 /** Clock protocol version */
 #define FN_CLOCK_VERSION    0x01
