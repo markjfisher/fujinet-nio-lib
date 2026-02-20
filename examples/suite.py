@@ -185,6 +185,19 @@ class TestSuite:
             timeout=15
         )
 
+    def run_tcp_stream(self, target: str, port: str, tcp_host: str) -> TestResult:
+        """Run TCP streaming example."""
+        env = {
+            "FN_PORT": port,
+            "FN_TCP_HOST": tcp_host,
+            "FN_TCP_PORT": "7777"
+        }
+        return self.run_example(
+            "tcp_stream", target, env,
+            expect_contains=["TCP Streaming", "Connected", "Statistics"],
+            timeout=15
+        )
+
     def run_target_tests(self, target: str, port: str, host_ip: str) -> List[TestResult]:
         """Run all tests for a specific target."""
         results = []
@@ -201,6 +214,7 @@ class TestSuite:
             ("HTTPS", lambda: self.run_https_get(target, port, host_ip)),
             ("TCP", lambda: self.run_tcp_get(target, port, host_ip)),
             ("TLS", lambda: self.run_tls_get(target, port, host_ip)),
+            ("TCP Stream", lambda: self.run_tcp_stream(target, port, host_ip)),
         ]
 
         for test_name, test_func in tests:

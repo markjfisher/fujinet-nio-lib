@@ -4,19 +4,20 @@
  * 
  * Demonstrates how to use the fujinet-nio-lib to perform an HTTP GET request.
  * 
- * Usage:
- *   Set environment variables to configure (Linux only):
- *     FN_TEST_URL - URL to fetch (default: http://localhost:8080/get)
- *     FN_PORT     - Serial port device (default: /dev/ttyUSB0)
+ * Configuration via environment variables (all platforms):
+ *   FN_TEST_URL - URL to fetch (default: http://localhost:8080/get)
+ *   FN_PORT     - Serial port device (default: /dev/ttyUSB0)
  * 
- *   For Atari, modify FN_DEFAULT_TEST_URL at compile time:
- *     make TARGET=atari CFLAGS="-DFN_DEFAULT_TEST_URL=\\\"http://your-server/path\\\""
+ * For cc65 targets (Atari, Apple, etc.), environment variables are populated
+ * from compile-time defines since there's no shell environment:
+ *   FN_TEST_URL - Compile with -DFN_DEFAULT_TEST_URL=\"http://your-server/path\"
  * 
  * Build for Linux:
  *   make TARGET=linux
  * 
  * Build for Atari:
  *   make TARGET=atari
+ *   make TARGET=atari FN_DEFAULT_TEST_URL=\"http://your-server/path\"
  */
 
 #include <stdio.h>
@@ -24,7 +25,10 @@
 #include <string.h>
 #include "fujinet-nio.h"
 
-/* Default test URL - can be overridden via build define */
+/* ============================================================================
+ * Compile-time Configuration (can be overridden via CFLAGS)
+ * ============================================================================ */
+
 #ifndef FN_DEFAULT_TEST_URL
 #define FN_DEFAULT_TEST_URL "http://localhost:8080/get"
 #endif
@@ -32,6 +36,29 @@
 /* Buffer for reading data */
 #define BUFFER_SIZE 512
 static uint8_t buffer[BUFFER_SIZE];
+
+/* ============================================================================
+ * cc65 Environment Setup
+ * ============================================================================ */
+
+#ifdef __CC65__
+
+/* Static storage for environment strings (putenv doesn't copy!) */
+static char env_fn_test_url[] = "FN_TEST_URL=" FN_DEFAULT_TEST_URL;
+
+/**
+ * @brief Set up environment variables from compile-time defines for cc65.
+ */
+static void setup_env(void)
+{
+    putenv(env_fn_test_url);
+}
+
+#endif /* __CC65__ */
+
+/* ============================================================================
+ * Main Application
+ * ============================================================================ */
 
 int main(void)
 {
@@ -45,19 +72,19 @@ int main(void)
     uint32_t total_read;
     const char *url;
     
+#ifdef __CC65__
+    /* Set up environment from compile-time defines for cc65 */
+    setup_env();
+#endif
+    
     printf("FujiNet-NIO HTTP GET Example\n");
     printf("============================\n\n");
     
     /* Get URL from environment or use default */
-    /* Note: getenv() not available on Atari, use compile-time default */
-#ifdef __ATARI__
-    url = FN_DEFAULT_TEST_URL;
-#else
     url = getenv("FN_TEST_URL");
     if (url == NULL || url[0] == '\0') {
         url = FN_DEFAULT_TEST_URL;
     }
-#endif
     
     /* Initialize the library */
     printf("Initializing...\n");

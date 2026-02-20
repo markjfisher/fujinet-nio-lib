@@ -13,22 +13,26 @@ examples/
       network/               # Network examples
         http_get.o
         tcp_get.o
+        tcp_stream.o
       clock/                 # Clock examples
         clock_test.o
     atari/                   # Atari target
       network/
         http_get.o
         tcp_get.o
+        tcp_stream.o
       clock/
         clock_test.o
   bin/                       # Final executables
     linux/
       http_get
       tcp_get
+      tcp_stream
       clock_test
     atari/
       http_get.xex
       tcp_get.xex
+      tcp_stream.xex
       clock_test.xex
 ```
 
@@ -44,6 +48,7 @@ make TARGET=atari    # Build for Atari 8-bit
 ```bash
 make http_get TARGET=linux
 make tcp_get TARGET=linux
+make tcp_stream TARGET=linux
 make clock_test TARGET=linux
 ```
 
@@ -89,6 +94,9 @@ FN_TCP_HOST=127.0.0.1 FN_TCP_PORT=7778 FN_TCP_TLS=1 ./bin/linux/tcp_get
 # Run with full URL override
 FN_TEST_URL="tls://echo.fujinet.online:6001?testca=1" ./bin/linux/tcp_get
 
+# Run TCP streaming example
+./bin/linux/tcp_stream
+
 # Run clock example
 ./bin/linux/clock_test
 ```
@@ -130,6 +138,12 @@ The clock example works without any configuration - it simply reads and displays
   - Reading response data
   - Connection state monitoring
 
+- **tcp_stream** - TCP streaming example demonstrating:
+  - Non-blocking reads for real-time applications
+  - Frame-based data reception
+  - Pattern suitable for games and interactive applications
+  - Statistics tracking (frames received, bytes, timing)
+
 ### Clock Examples (`clock/`)
 
 - **clock_test** - Clock device demonstration showing:
@@ -145,9 +159,9 @@ Examples for disk device operations.
 
 ## Configuration
 
-### Linux (Runtime Environment Variables)
+### Environment Variables (All Platforms)
 
-Examples can be configured via environment variables at runtime:
+All examples use `getenv()` to read configuration. On Linux, these come from the shell environment. On cc65 targets (Atari, Apple, etc.), the library uses `putenv()` to populate environment variables from compile-time defines at startup.
 
 #### HTTP Get Example
 - `FN_TEST_URL` - URL to fetch (default: `http://localhost:8080/get`)
@@ -159,12 +173,17 @@ Examples can be configured via environment variables at runtime:
 - `FN_TCP_TLS` - Set to `1` to enable TLS (default: disabled)
 - `FN_TCP_REQUEST` - Custom request string to send
 
+#### TCP Stream Example
+- `FN_TEST_URL` - Full URL (e.g., `tcp://host:port`)
+- `FN_TCP_HOST` - Host to connect to (default: `localhost`)
+- `FN_TCP_PORT` - Port to connect to (default: `7777`)
+
 #### Common
 - `FN_PORT` - Serial port device (default: `/dev/ttyUSB0`)
 
-### Atari (Compile-Time Defines)
+### Compile-Time Defines (cc65 Targets)
 
-Atari examples are configured at compile time via Makefile variables:
+For cc65 targets, environment variables are populated from compile-time defines. This allows the same code to work on both Linux and 8-bit platforms:
 
 ```bash
 make TARGET=atari FN_TCP_HOST=192.168.1.100 FN_TCP_PORT=7778 FN_TCP_TLS=1
@@ -175,13 +194,41 @@ make TARGET=atari FN_TCP_HOST=192.168.1.100 FN_TCP_PORT=7778 FN_TCP_TLS=1
 | `FN_TCP_HOST` | `localhost` | Target host |
 | `FN_TCP_PORT` | `7777` | Target port |
 | `FN_TCP_TLS` | `0` | Enable TLS (0=disabled, 1=enabled) |
+| `FN_TCP_REQUEST` | `Hello from FujiNet-NIO!\r\n` | Request string to send |
+| `FN_DEFAULT_TEST_URL` | `http://localhost:8080/get` | Default HTTP URL |
+
+### How It Works
+
+The examples use a `setup_env()` function (guarded by `#ifdef __CC65__`) that calls `putenv()` to populate the environment from compile-time defines. This allows the rest of the code to use `getenv()` uniformly:
+
+```c
+#ifdef __CC65__
+static char env_fn_tcp_host[] = "FN_TCP_HOST=" FN_TCP_HOST;
+
+static void setup_env(void)
+{
+    putenv(env_fn_tcp_host);
+}
+#endif
+
+int main(void)
+{
+#ifdef __CC65__
+    setup_env();
+#endif
+    
+    // Now getenv() works the same on all platforms
+    const char *host = getenv("FN_TCP_HOST");
+    // ...
+}
+```
 
 ## Adding New Examples
 
 1. Create a new `.c` file in the appropriate category folder (e.g., `network/my_example.c`)
 2. Add the example name to the appropriate list in the `Makefile`:
    ```makefile
-   NETWORK_EXAMPLES := http_get tcp_get my_example
+   NETWORK_EXAMPLES := http_get tcp_get tcp_stream my_example
    ```
 3. Build with `make my_example TARGET=<target>`
 
@@ -214,3 +261,22 @@ For testing the TCP/TLS examples locally, you can use the test services from the
 FN_TCP_HOST=localhost FN_TCP_PORT=7777 ./bin/linux/tcp_get
 FN_TCP_HOST=localhost FN_TCP_PORT=7778 FN_TCP_TLS=1 ./bin/linux/tcp_get
 ```
+
+## Test Suite
+
+The `suite.py` script runs all examples against both POSIX and ESP32 targets:
+
+```bash
+# Run against POSIX only
+python suite.py --posix-port /dev/pts/2
+
+# Run against ESP32 only  
+python suite.py --esp32-port /dev/ttyUSB0
+
+# Run against both with explicit services IP
+python suite.py --posix-port /dev/pts/2 --esp32-port /dev/ttyUSB0 --services-ip 192.168.1.101
+```
+
+Prerequisites:
+- Test services must be running: `./scripts/start_test_services.sh all`
+- ESP32 must be flashed with fujinet-nio firmware

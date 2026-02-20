@@ -5,18 +5,20 @@
  * Demonstrates TCP and TLS connections using fujinet-nio-lib.
  * Works identically on Linux and Atari platforms.
  * 
- * Configuration:
- *   Compile-time defines (all platforms):
- *     FN_TCP_HOST - Host to connect to (default: "localhost")
- *     FN_TCP_PORT - Port to connect to (default: "7777")
- *     FN_TCP_TLS  - Set to 1 to enable TLS (default: 0)
+ * Configuration via environment variables (all platforms):
+ *   FN_TEST_URL    - Full URL (e.g., tcp://host:port or tls://host:port?testca=1)
+ *   FN_TCP_HOST    - Host to connect to (default: "localhost")
+ *   FN_TCP_PORT    - Port to connect to (default: "7777")
+ *   FN_TCP_TLS     - Set to "1" to enable TLS (default: "0")
+ *   FN_TCP_REQUEST - Request string to send (default: "Hello from FujiNet-NIO!\r\n")
+ *   FN_PORT        - Serial port device (default: /dev/ttyUSB0)
  * 
- *   Runtime environment variables (Linux only):
- *     FN_TEST_URL    - Full URL (e.g., tcp://host:port or tls://host:port?testca=1)
- *     FN_TCP_HOST    - Overrides compile-time default
- *     FN_TCP_PORT    - Overrides compile-time default
- *     FN_TCP_TLS     - Overrides compile-time default ("1" to enable)
- *     FN_PORT        - Serial port device (default: /dev/ttyUSB0)
+ * For cc65 targets (Atari, Apple, etc.), environment variables are populated
+ * from compile-time defines since there's no shell environment:
+ *   FN_TCP_HOST    - Compile with -DFN_TCP_HOST=\"host\"
+ *   FN_TCP_PORT    - Compile with -DFN_TCP_PORT=\"port\"
+ *   FN_TCP_TLS     - Compile with -DFN_TCP_TLS=1
+ *   FN_TCP_REQUEST - Compile with -DFN_TCP_REQUEST=\"request\"
  * 
  * Build:
  *   make TARGET=linux tcp_get
@@ -58,6 +60,9 @@
 
 /* ============================================================================
  * Compile-time Configuration (can be overridden via CFLAGS)
+ * 
+ * These defaults are used on cc65 targets where there's no shell environment.
+ * On Linux, these serve as fallbacks if environment variables aren't set.
  * ============================================================================ */
 
 #ifndef FN_TCP_HOST
@@ -70,6 +75,10 @@
 
 #ifndef FN_TCP_TLS
 #define FN_TCP_TLS 0
+#endif
+
+#ifndef FN_TCP_REQUEST
+#define FN_TCP_REQUEST "Hello from FujiNet-NIO!\r\n"
 #endif
 
 #ifndef FN_IDLE_TIMEOUT_SECS
@@ -85,6 +94,40 @@
 
 static uint8_t g_buffer[BUFFER_SIZE];
 static char g_url[URL_MAX_LEN];
+
+/* ============================================================================
+ * cc65 Environment Setup
+ * 
+ * cc65 has getenv()/putenv() support, but no shell environment. We use
+ * putenv() to populate environment variables from compile-time defines,
+ * allowing the rest of the code to use getenv() uniformly.
+ * 
+ * Note: cc65's putenv() stores the string pointer directly (no copy),
+ * so we use static storage for the environment strings.
+ * ============================================================================ */
+
+#ifdef __CC65__
+
+/* Static storage for environment strings (putenv doesn't copy!) */
+static char env_fn_tcp_host[] = "FN_TCP_HOST=" FN_TCP_HOST;
+static char env_fn_tcp_port[] = "FN_TCP_PORT=" FN_TCP_PORT;
+static char env_fn_tcp_tls[]  = "FN_TCP_TLS="  FN_TCP_TLS;
+static char env_fn_tcp_request[] = "FN_TCP_REQUEST=" FN_TCP_REQUEST;
+
+/**
+ * @brief Set up environment variables from compile-time defines for cc65.
+ * 
+ * This must be called at program start before any getenv() calls.
+ */
+static void setup_env(void)
+{
+    putenv(env_fn_tcp_host);
+    putenv(env_fn_tcp_port);
+    putenv(env_fn_tcp_tls);
+    putenv(env_fn_tcp_request);
+}
+
+#endif /* __CC65__ */
 
 /* ============================================================================
  * Platform Abstraction: Time and Delay
@@ -166,24 +209,25 @@ static void sleep_brief(void)
 }
 
 /* ============================================================================
- * Platform Abstraction: Configuration
+ * Configuration Functions
+ * 
+ * All platforms use getenv() to retrieve configuration. On cc65 targets,
+ * setup_env() must be called first to populate the environment from
+ * compile-time defines.
  * ============================================================================ */
 
 /**
  * @brief Get configuration URL
  * 
- * Priority (POSIX only):
+ * Priority:
  *   1. FN_TEST_URL environment variable (full URL)
  *   2. FN_TCP_HOST/PORT/TLS environment variables
- *   3. Compile-time defines
- * 
- * For Atari, only compile-time defines are used.
+ *   3. Compile-time defines (via setup_env() on cc65)
  * 
  * @return URL string (points to g_url or environment variable)
  */
 static const char *get_config_url(void)
 {
-#ifndef __ATARI__
     const char *url;
     const char *host;
     const char *port_str;
@@ -199,7 +243,6 @@ static const char *get_config_url(void)
     /* Priority 2: Individual environment variables */
     host = getenv("FN_TCP_HOST");
     if (host == NULL || host[0] == '\0') {
-        /* Priority 3: Compile-time default */
         host = FN_TCP_HOST;
     }
     
@@ -223,15 +266,6 @@ static const char *get_config_url(void)
     }
     
     return g_url;
-#else
-    /* Atari: Use compile-time defines only */
-    #if FN_TCP_TLS
-    snprintf(g_url, URL_MAX_LEN, "tls://%s:%s?testca=1", FN_TCP_HOST, FN_TCP_PORT);
-    #else
-    snprintf(g_url, URL_MAX_LEN, "tcp://%s:%s", FN_TCP_HOST, FN_TCP_PORT);
-    #endif
-    return g_url;
-#endif
 }
 
 /**
@@ -240,13 +274,11 @@ static const char *get_config_url(void)
  */
 static const char *get_config_request(void)
 {
-#ifndef __ATARI__
     const char *req = getenv("FN_TCP_REQUEST");
     if (req != NULL && req[0] != '\0') {
         return req;
     }
-#endif
-    return "Hello from FujiNet-NIO!\r\n";
+    return FN_TCP_REQUEST;
 }
 
 /* ============================================================================
@@ -266,6 +298,11 @@ int main(void)
     const char *url;
     const char *request;
     idle_timer_t idle;
+    
+#ifdef __CC65__
+    /* Set up environment from compile-time defines for cc65 */
+    setup_env();
+#endif
     
     /* Print header */
     printf("FujiNet-NIO TCP/TLS Client Example\n");

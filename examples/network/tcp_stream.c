@@ -11,10 +11,16 @@
  *   - No application-level timeouts needed for real-time polling
  *   - Server responds immediately with available data or NotReady
  * 
- * Usage:
- *   Set environment variables to configure:
- *     FN_PORT       - Serial port device (default: /dev/ttyUSB0)
- *     FN_TEST_URL   - TCP URL (default: tcp://localhost:7777)
+ * Configuration via environment variables (all platforms):
+ *   FN_TEST_URL   - Full URL (e.g., tcp://host:port)
+ *   FN_TCP_HOST   - Host to connect to (default: "localhost")
+ *   FN_TCP_PORT   - Port to connect to (default: "7777")
+ *   FN_PORT       - Serial port device (default: /dev/ttyUSB0)
+ * 
+ * For cc65 targets (Atari, Apple, etc.), environment variables are populated
+ * from compile-time defines since there's no shell environment:
+ *   FN_TCP_HOST   - Compile with -DFN_TCP_HOST=\"host\"
+ *   FN_TCP_PORT   - Compile with -DFN_TCP_PORT=\"port\"
  * 
  * Build for Linux:
  *   make TARGET=linux
@@ -24,21 +30,26 @@
  */
 
 /* Feature test macros for POSIX functions - must be before any includes */
+#ifndef __ATARI__
 #define _POSIX_C_SOURCE 200112L
 #define _DEFAULT_SOURCE
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
-#ifdef __linux__
+#ifndef __ATARI__
+#include <time.h>
 #include <unistd.h>
 #endif
 
 #include "fujinet-nio.h"
 
-/* Default configuration */
+/* ============================================================================
+ * Compile-time Configuration (can be overridden via CFLAGS)
+ * ============================================================================ */
+
 #ifndef FN_TCP_HOST
 #define FN_TCP_HOST "localhost"
 #endif
@@ -58,12 +69,37 @@
 /* Minimum bytes we need for a valid frame */
 #define MIN_FRAME_SIZE 1
 
+/* URL buffer for building URLs */
+#define URL_MAX_LEN 256
+static char g_url[URL_MAX_LEN];
+
+/* ============================================================================
+ * cc65 Environment Setup
+ * ============================================================================ */
+
+#ifdef __CC65__
+
+/* Static storage for environment strings (putenv doesn't copy!) */
+static char env_fn_tcp_host[] = "FN_TCP_HOST=" FN_TCP_HOST;
+static char env_fn_tcp_port[] = "FN_TCP_PORT=" FN_TCP_PORT;
+
+/**
+ * @brief Set up environment variables from compile-time defines for cc65.
+ */
+static void setup_env(void)
+{
+    putenv(env_fn_tcp_host);
+    putenv(env_fn_tcp_port);
+}
+
+#endif /* __CC65__ */
+
 /**
  * Get current time in milliseconds (for timing stats)
  */
 static unsigned long get_time_ms(void)
 {
-#ifdef __linux__
+#ifndef __ATARI__
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (unsigned long)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
@@ -148,7 +184,7 @@ int main(void)
 {
     uint8_t result;
     fn_handle_t handle;
-    char url[256];
+    const char *url;
     uint8_t frame_buf[MAX_FRAME_SIZE];
     uint16_t bytes_read;
     uint8_t eof;
@@ -157,6 +193,11 @@ int main(void)
     unsigned int not_ready_count = 0;
     unsigned int total_bytes = 0;
     int i;
+    
+#ifdef __CC65__
+    /* Set up environment from compile-time defines for cc65 */
+    setup_env();
+#endif
     
     printf("FujiNet-NIO TCP Streaming Example\n");
     printf("=================================\n\n");
@@ -178,12 +219,22 @@ int main(void)
     printf("Device ready.\n\n");
     
     /* Build URL from environment or defaults */
-    const char *env_url = getenv("FN_TEST_URL");
-    if (env_url) {
-        strncpy(url, env_url, sizeof(url) - 1);
-        url[sizeof(url) - 1] = '\0';
+    url = getenv("FN_TEST_URL");
+    if (url != NULL && url[0] != '\0') {
+        /* Use the URL directly from environment */
     } else {
-        snprintf(url, sizeof(url), "tcp://%s:%s", FN_TCP_HOST, FN_TCP_PORT);
+        const char *host = getenv("FN_TCP_HOST");
+        const char *port = getenv("FN_TCP_PORT");
+        
+        if (host == NULL || host[0] == '\0') {
+            host = FN_TCP_HOST;
+        }
+        if (port == NULL || port[0] == '\0') {
+            port = FN_TCP_PORT;
+        }
+        
+        snprintf(g_url, URL_MAX_LEN, "tcp://%s:%s", host, port);
+        url = g_url;
     }
     
     printf("Connecting to: %s\n", url);
@@ -198,15 +249,17 @@ int main(void)
     printf("Connected. Handle: %u\n\n", handle);
     
     /* Send initial request to trigger server responses */
-    const char *request = "STREAM\n";
-    uint16_t written;
-    result = fn_write(handle, 0, (const uint8_t *)request, strlen(request), &written);
-    if (result != FN_OK) {
-        printf("Write failed: %s\n", fn_error_string(result));
-        fn_close(handle);
-        return 1;
+    {
+        const char *request = "STREAM\n";
+        uint16_t written;
+        result = fn_write(handle, 0, (const uint8_t *)request, strlen(request), &written);
+        if (result != FN_OK) {
+            printf("Write failed: %s\n", fn_error_string(result));
+            fn_close(handle);
+            return 1;
+        }
+        printf("Sent request: %s\n", request);
     }
-    printf("Sent request: %s\n", request);
     
     printf("\nStarting frame loop (%d iterations)...\n", FN_FRAME_COUNT);
     printf("Each read is non-blocking - no timeouts!\n\n");
@@ -231,12 +284,12 @@ int main(void)
             /* No data available - this is expected for non-blocking reads */
             not_ready_count++;
             /* In a real app, you'd do other work here (render, input, etc.) */
-            #ifdef __linux__
+#ifndef __ATARI__
             {
                 struct timespec ts = {0, 10000000}; /* 10ms */
                 nanosleep(&ts, NULL);
             }
-            #endif
+#endif
         } else {
             printf("Read error: %s\n", fn_error_string(result));
             break;
