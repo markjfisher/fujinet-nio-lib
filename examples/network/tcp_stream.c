@@ -118,14 +118,16 @@ static unsigned long get_time_ms(void)
  * - Return immediately with what's available
  * - No timeouts on each read call
  * 
- * @param handle     Session handle
- * @param buf        Buffer to receive data
- * @param max_bytes  Maximum bytes to read
- * @param bytes_read Output: bytes actually read
- * @param eof        Output: true if peer closed connection
+ * @param handle       Session handle
+ * @param offset       Read offset (cumulative bytes read so far)
+ * @param buf          Buffer to receive data
+ * @param max_bytes    Maximum bytes to read
+ * @param bytes_read   Output: bytes actually read
+ * @param eof          Output: true if peer closed connection
  * @return FN_OK on success, FN_ERR_NOT_READY if no data, error code on failure
  */
 static uint8_t read_frame(fn_handle_t handle,
+                          uint32_t offset,
                           uint8_t *buf,
                           uint16_t max_bytes,
                           uint16_t *bytes_read,
@@ -135,14 +137,11 @@ static uint8_t read_frame(fn_handle_t handle,
     uint8_t flags;
     uint16_t n;
     
-    (void)bytes_read;
-    (void)eof;
-    
     *bytes_read = 0;
     *eof = 0;
     
-    /* Try to read up to max_bytes */
-    result = fn_read(handle, 0, buf, max_bytes, &n, &flags);
+    /* Try to read up to max_bytes at the current offset */
+    result = fn_read(handle, offset, buf, max_bytes, &n, &flags);
     
     if (result == FN_ERR_NOT_READY) {
         /* No data available yet - this is normal for non-blocking reads */
@@ -248,27 +247,19 @@ int main(void)
     
     printf("Connected. Handle: %u\n\n", handle);
     
-    /* Send initial request to trigger server responses */
-    {
-        const char *request = "STREAM\n";
-        uint16_t written;
-        result = fn_write(handle, 0, (const uint8_t *)request, strlen(request), &written);
-        if (result != FN_OK) {
-            printf("Write failed: %s\n", fn_error_string(result));
-            fn_close(handle);
-            return 1;
-        }
-        printf("Sent request: %s\n", request);
-    }
+    /* Note: For streaming servers, data arrives automatically.
+     * For echo servers, you would send a request first to trigger responses.
+     * This example assumes a streaming server that pushes data continuously.
+     */
     
-    printf("\nStarting frame loop (%d iterations)...\n", FN_FRAME_COUNT);
+    printf("Starting frame loop (%d iterations)...\n", FN_FRAME_COUNT);
     printf("Each read is non-blocking - no timeouts!\n\n");
     
     start_time = get_time_ms();
     
     /* Main frame loop - demonstrate non-blocking reads */
     for (i = 0; i < FN_FRAME_COUNT; i++) {
-        result = read_frame(handle, frame_buf, MAX_FRAME_SIZE, &bytes_read, &eof);
+        result = read_frame(handle, total_bytes, frame_buf, MAX_FRAME_SIZE, &bytes_read, &eof);
         
         if (result == FN_OK) {
             if (bytes_read > 0) {

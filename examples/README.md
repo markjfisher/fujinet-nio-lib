@@ -257,10 +257,29 @@ For testing the TCP/TLS examples locally, you can use the test services from the
 # Start TLS echo server on port 7778
 ./scripts/start_test_services.sh tls
 
+# Start TCP streaming server on port 7779 (continuously sends frames)
+./scripts/start_test_services.sh stream
+
+# Start all services
+./scripts/start_test_services.sh all
+
 # Run the examples
 FN_TCP_HOST=localhost FN_TCP_PORT=7777 ./bin/linux/tcp_get
 FN_TCP_HOST=localhost FN_TCP_PORT=7778 FN_TCP_TLS=1 ./bin/linux/tcp_get
+FN_TCP_HOST=localhost FN_TCP_PORT=7779 ./bin/linux/tcp_stream
 ```
+
+### Streaming Server
+
+The streaming server (`./scripts/start_test_services.sh stream`) continuously sends frames of data in the format:
+```
+FRAME 0: 12:34:56.789
+FRAME 1: 12:34:56.889
+FRAME 2: 12:34:56.989
+...
+```
+
+This is useful for testing non-blocking read patterns in the `tcp_stream` example.
 
 ## Test Suite
 

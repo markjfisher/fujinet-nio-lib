@@ -190,7 +190,7 @@ class TestSuite:
         env = {
             "FN_PORT": port,
             "FN_TCP_HOST": tcp_host,
-            "FN_TCP_PORT": "7777"
+            "FN_TCP_PORT": "7779"  # Use streaming server port
         }
         return self.run_example(
             "tcp_stream", target, env,
