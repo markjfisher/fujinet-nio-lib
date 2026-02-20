@@ -95,7 +95,8 @@ uint8_t fn_parse_response_header(const uint8_t *response,
 uint8_t fn_parse_open_response(const uint8_t *response,
                                 uint16_t resp_len,
                                 fn_handle_t *handle,
-                                uint8_t *flags);
+                                uint8_t *flags,
+                                uint8_t *proto_flags);
 
 /**
  * Parse a Read response.

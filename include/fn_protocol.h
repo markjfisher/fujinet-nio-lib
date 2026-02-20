@@ -140,6 +140,19 @@ extern "C" {
 #define FN_OPEN_RESP_NEEDS_BODY    0x02
 
 /* ============================================================================
+ * Protocol Capability Flags (returned in Open response)
+ * ============================================================================ */
+
+/** Read operations must be sequential (streaming protocols like TCP) */
+#define FN_PROTO_FLAG_SEQUENTIAL_READ  0x01
+
+/** Write operations must be sequential (streaming protocols like TCP) */
+#define FN_PROTO_FLAG_SEQUENTIAL_WRITE 0x02
+
+/** Streaming protocol (no content-length, read until EOF) */
+#define FN_PROTO_FLAG_STREAMING        0x04
+
+/* ============================================================================
  * Read Response Flags (Wire Format)
  * ============================================================================ */
 
@@ -219,7 +232,7 @@ extern "C" {
  */
 typedef struct {
     uint8_t active;        /**< 1 if session is active */
-    uint8_t is_tcp;        /**< 1 if TCP session, 0 if HTTP */
+    uint8_t proto_flags;   /**< Protocol capability flags (FN_PROTO_FLAG_*) */
     uint8_t needs_body;    /**< 1 if body write required */
     uint8_t reserved;      /**< Padding */
     fn_handle_t handle;    /**< Device-assigned handle */

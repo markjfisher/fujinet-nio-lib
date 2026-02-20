@@ -35,6 +35,37 @@ uint8_t fn_is_ready(void);
 
 ## Network Operations
 
+### Protocol Behavior
+
+When you call `fn_open()`, the FujiNet device determines the protocol type from the URL scheme and returns **protocol capability flags**. The client library uses these flags internally to enforce correct offset behavior:
+
+| Protocol | Flags | Offset Behavior |
+|----------|-------|-----------------|
+| HTTP/HTTPS | `0x00` | Random-access reads allowed (can request any offset) |
+| TCP/TLS | `0x07` | Sequential offsets required (must track total bytes read/written) |
+
+**Why this matters:**
+
+- **HTTP**: You can request any offset (e.g., resume a download from byte 1000). The server may support range requests.
+- **TCP/TLS**: Offsets must be strictly sequential. The library tracks `read_offset` and `write_offset` internally and validates that your offset matches the expected cursor position.
+
+**Application code pattern:**
+
+For all protocols, the recommended pattern is to track total bytes read/written and pass that as the offset:
+
+```c
+uint32_t total_read = 0;
+do {
+    result = fn_read(handle, total_read, buffer, sizeof(buffer), &bytes_read, &flags);
+    if (result == FN_OK && bytes_read > 0) {
+        // Process data...
+        total_read += bytes_read;  // Track for next offset
+    }
+} while (result == FN_OK && !(flags & FN_READ_EOF));
+```
+
+This pattern works for both HTTP and TCP/TLS. For HTTP, the offset is informational; for TCP/TLS, it's enforced.
+
 ### `fn_open()`
 
 Open a network connection to a URL.
@@ -261,6 +292,20 @@ const char *fn_version(void);
 | `FN_MAX_URL_LEN` | 256 | Maximum URL length |
 | `FN_MAX_SESSIONS` | 4 | Maximum concurrent sessions |
 | `FN_MAX_CHUNK_SIZE` | 512 | Maximum read/write chunk size |
+
+## Protocol Capability Flags
+
+These flags are returned by the server in the `fn_open()` response and used internally by the library. Applications typically don't need to check these directly, but understanding them helps explain offset behavior:
+
+| Flag | Value | Description |
+|------|-------|-------------|
+| `FN_PROTO_FLAG_SEQUENTIAL_READ` | 0x01 | Reads must use sequential offsets (TCP/TLS) |
+| `FN_PROTO_FLAG_SEQUENTIAL_WRITE` | 0x02 | Writes must use sequential offsets (TCP/TLS) |
+| `FN_PROTO_FLAG_STREAMING` | 0x04 | Protocol is streaming, not request/response |
+
+**Protocol flag values:**
+- HTTP/HTTPS: `0x00` (random-access, no sequential requirement)
+- TCP/TLS: `0x07` (streaming, sequential read/write required)
 
 ## Types
 

@@ -503,12 +503,14 @@ uint8_t fn_parse_response_header(const uint8_t *response,
  * @param resp_len    Response length
  * @param handle      Pointer to receive handle
  * @param flags       Pointer to receive flags
+ * @param proto_flags Pointer to receive protocol capability flags
  * @return FN_OK on success, error code on failure
  */
 uint8_t fn_parse_open_response(const uint8_t *response,
                                 uint16_t resp_len,
                                 fn_handle_t *handle,
-                                uint8_t *flags)
+                                uint8_t *flags,
+                                uint8_t *proto_flags)
 {
     uint8_t status;
     uint16_t data_offset;
@@ -524,13 +526,14 @@ uint8_t fn_parse_open_response(const uint8_t *response,
         return status;
     }
     
-    /* Open response payload: version(1) + flags(1) + reserved(2) + handle(2) */
-    if (data_len < 6) {
+    /* Open response payload: version(1) + flags(1) + reserved(2) + handle(2) + proto_flags(1) = 7 bytes */
+    if (data_len < 7) {
         return FN_ERR_INVALID;
     }
     
     *flags = response[data_offset + 1];
     *handle = response[data_offset + 4] | (response[data_offset + 5] << 8);
+    *proto_flags = response[data_offset + 6];
     
     return FN_OK;
 }

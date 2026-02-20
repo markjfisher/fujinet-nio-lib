@@ -124,6 +124,7 @@ uint8_t fn_open(fn_handle_t *handle,
     int8_t slot;
     fn_handle_t resp_handle;
     uint8_t resp_flags;
+    uint8_t resp_proto_flags;
     
     if (!_initialized) {
         return FN_ERR_INVALID;
@@ -158,7 +159,7 @@ uint8_t fn_open(fn_handle_t *handle,
         return result;
     }
     
-    result = fn_parse_open_response(_resp_buf, resp_len, &resp_handle, &resp_flags);
+    result = fn_parse_open_response(_resp_buf, resp_len, &resp_handle, &resp_flags, &resp_proto_flags);
     if (result != FN_OK) {
         return result;
     }
@@ -175,17 +176,13 @@ uint8_t fn_open(fn_handle_t *handle,
     *handle = resp_handle;
     _sessions[slot].active = 1;
     _sessions[slot].handle = resp_handle;
-    _sessions[slot].is_tcp = 0;
+    _sessions[slot].proto_flags = resp_proto_flags;
     _sessions[slot].needs_body = 0;
     _sessions[slot].write_offset = 0;
     _sessions[slot].read_offset = 0;
     
     if (resp_flags & FN_OPEN_RESP_NEEDS_BODY) {
         _sessions[slot].needs_body = 1;
-    }
-    
-    if (strncmp(url, "tcp://", 6) == 0) {
-        _sessions[slot].is_tcp = 1;
     }
     
     return FN_OK;
@@ -338,7 +335,8 @@ uint8_t fn_read(fn_handle_t handle,
         return result;
     }
     
-    if (_sessions[slot].is_tcp && *bytes_read > 0) {
+    /* Update read offset for sequential protocols (TCP, TLS) */
+    if ((_sessions[slot].proto_flags & FN_PROTO_FLAG_SEQUENTIAL_READ) && *bytes_read > 0) {
         _sessions[slot].read_offset += *bytes_read;
     }
     
