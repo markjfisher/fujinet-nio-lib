@@ -214,7 +214,7 @@ uint8_t fn_transport_exchange(const uint8_t *request,
     
     /* Receive the SLIP-encoded response with timeout */
     raw_len = 0;
-    timeout_ms = 5000;  /* 5 second overall timeout */
+    timeout_ms = 2000;  /* 2 second overall timeout */
     
     while (raw_len < sizeof(raw_buf)) {
         /* Wait for data */

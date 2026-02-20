@@ -73,7 +73,7 @@
 #endif
 
 #ifndef FN_IDLE_TIMEOUT_SECS
-#define FN_IDLE_TIMEOUT_SECS 2
+#define FN_IDLE_TIMEOUT_SECS 1
 #endif
 
 /* ============================================================================

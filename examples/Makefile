@@ -108,7 +108,7 @@ CFLAGS += -I$(INCDIR)
 # ============================================================================
 
 # Network examples (TCP/HTTP/TLS)
-NETWORK_EXAMPLES := http_get tcp_get
+NETWORK_EXAMPLES := http_get tcp_get tcp_stream
 
 # Clock examples
 CLOCK_EXAMPLES := clock_test
@@ -207,6 +207,14 @@ $(BIN_DIR):
 # Pattern: build/TARGET/category/example.o from category/example.c
 # TCP examples get the TCP config defines
 $(BUILD_DIR)/network/tcp_get.o: network/tcp_get.c | $(BUILD_DIR)/network
+	@echo "Compiling $< for $(TARGET)..."
+ifeq ($(CC),cl65)
+	$(CC) -t $(TARGET) -c $(CFLAGS) $(TCP_DEFINES) -o $@ $<
+else
+	$(CC) $(CFLAGS) $(TCP_DEFINES) -c $< -o $@
+endif
+
+$(BUILD_DIR)/network/tcp_stream.o: network/tcp_stream.c | $(BUILD_DIR)/network
 	@echo "Compiling $< for $(TARGET)..."
 ifeq ($(CC),cl65)
 	$(CC) -t $(TARGET) -c $(CFLAGS) $(TCP_DEFINES) -o $@ $<
