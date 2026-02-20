@@ -81,10 +81,10 @@ class TestSuite:
         print(f"Building for {target.upper()}")
         print(f"{'='*60}")
 
-        # Build library first
+        # Build library first (use specific target like 'make linux', not 'make TARGET=linux')
         lib_dir = self.examples_dir.parent
         print(f"\n[1/2] Building library for {target}...")
-        code, out, _ = self.run_cmd(["make", f"TARGET={target}", "-C", str(lib_dir)], timeout=120)
+        code, out, _ = self.run_cmd(["make", target, "-C", str(lib_dir)], timeout=120)
         if code != 0:
             print(f"FAILED: Library build failed for {target}")
             if self.verbose:
@@ -169,7 +169,7 @@ class TestSuite:
         }
         return self.run_example(
             "tcp_get", target, env,
-            expect_contains=["TCP", "Connected", "Hello"],
+            expect_contains=["TCP", "Connection established", "Hello"],
             timeout=15
         )
 
@@ -181,7 +181,7 @@ class TestSuite:
         }
         return self.run_example(
             "tcp_get", target, env,
-            expect_contains=["Connected", "Hello"],
+            expect_contains=["Connection established", "Hello"],
             timeout=15
         )
 

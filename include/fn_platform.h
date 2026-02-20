@@ -100,14 +100,13 @@ const char *fn_platform_name(void);
     #define FN_PLATFORM_NAME     "atari"
 #endif
 
-#ifdef __APPLE2__
+/* Apple II targets - check ENH first since it also defines __APPLE2__ */
+#ifdef __APPLE2ENH__
+    #define FN_PLATFORM_APPLE2ENH 1
+    #define FN_PLATFORM_NAME     "apple2enh"
+#elif defined(__APPLE2__)
     #define FN_PLATFORM_APPLE2   1
     #define FN_PLATFORM_NAME     "apple2"
-#endif
-
-#ifdef __APPLE2ENH__
-    #define FN_PLATFORM_APPLE2   1
-    #define FN_PLATFORM_NAME     "apple2enh"
 #endif
 
 #ifdef __CBM__
