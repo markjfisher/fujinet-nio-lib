@@ -8,7 +8,7 @@
 PLATFORM_atari      := atari
 PLATFORM_apple2     := apple2
 PLATFORM_apple2enh  := apple2
-PLATFORM_bbc        := atari
+PLATFORM_bbc        := bbc
 PLATFORM_c64        := c64
 PLATFORM_coco       := coco
 PLATFORM_msdos      := msdos

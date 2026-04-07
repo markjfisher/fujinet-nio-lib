@@ -77,6 +77,10 @@ INCLUDES := -I$(INCDIR)
 # Compiler flags
 CFLAGS   += $(INCLUDES) $(TARGET_CFLAGS)
 ASFLAGS  += $(INCLUDES) $(TARGET_ASFLAGS)
+ifeq ($(TARGET),bbc)
+ASFLAGS  += --asm-include-dir /home/markf/dev/bbc/cc65/libsrc/bbc
+ASFLAGS  += --asm-include-dir /home/markf/dev/bbc/cc65/asminc
+endif
 
 # Phony targets
 .PHONY: lib clean-obj
