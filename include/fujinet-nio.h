@@ -41,13 +41,27 @@ extern "C" {
  * ============================================================================ */
 
 /** Maximum URL length supported */
+#ifndef FN_MAX_URL_LEN
+#ifdef __CC65__
+#define FN_MAX_URL_LEN      128
+#else
 #define FN_MAX_URL_LEN      256
+#endif
+#endif
 
 /** Maximum concurrent network sessions */
+#ifndef FN_MAX_SESSIONS
+#ifdef __CC65__
+#define FN_MAX_SESSIONS     2
+#else
 #define FN_MAX_SESSIONS     4
+#endif
+#endif
 
 /** Maximum read/write chunk size */
+#ifndef FN_MAX_CHUNK_SIZE
 #define FN_MAX_CHUNK_SIZE   512
+#endif
 
 /* ============================================================================
  * Error Codes
@@ -329,10 +343,18 @@ typedef enum {
 } FnTimeFormat;
 
 /** Maximum formatted time string length (for string formats) */
+#ifndef FN_MAX_TIME_STRING
 #define FN_MAX_TIME_STRING  32
+#endif
 
 /** Maximum timezone string length */
+#ifndef FN_MAX_TIMEZONE_LEN
+#ifdef __CC65__
+#define FN_MAX_TIMEZONE_LEN 32
+#else
 #define FN_MAX_TIMEZONE_LEN 64
+#endif
+#endif
 
 /**
  * @brief Get the current time from the FujiNet device.

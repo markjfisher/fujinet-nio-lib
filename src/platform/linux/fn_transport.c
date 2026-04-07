@@ -33,9 +33,78 @@
 #define DEFAULT_PORT    "/dev/ttyUSB0"
 #define DEFAULT_BAUD    115200
 
+#ifndef FN_TRANSPORT_WIRE_BUF_SIZE
+#define FN_TRANSPORT_WIRE_BUF_SIZE ((FN_MAX_PACKET_SIZE * 2) + 2)
+#endif
+
 /* Module state */
 static int _fd = -1;
 static struct termios _saved_termios;
+static uint8_t _wire_buf[FN_TRANSPORT_WIRE_BUF_SIZE];
+
+static uint8_t write_byte_with_timeout(uint8_t byte)
+{
+    ssize_t n;
+    fd_set write_fds;
+    struct timeval tv;
+
+    for (;;) {
+        n = write(_fd, &byte, 1);
+        if (n == 1) {
+            return FN_OK;
+        }
+        if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+            fprintf(stderr, "fn_transport: write error: %s\n", strerror(errno));
+            return FN_ERR_IO;
+        }
+
+        FD_ZERO(&write_fds);
+        FD_SET(_fd, &write_fds);
+        tv.tv_sec = 1;
+        tv.tv_usec = 0;
+        if (select(_fd + 1, NULL, &write_fds, NULL, &tv) <= 0) {
+            fprintf(stderr, "fn_transport: write timeout\n");
+            return FN_ERR_IO;
+        }
+    }
+}
+
+static uint8_t slip_write_frame(const uint8_t *request, uint16_t req_len)
+{
+    uint16_t i;
+    uint8_t result;
+    uint8_t byte;
+
+    result = write_byte_with_timeout(SLIP_END);
+    if (result != FN_OK) {
+        return result;
+    }
+
+    for (i = 0; i < req_len; ++i) {
+        byte = request[i];
+        if (byte == SLIP_END) {
+            result = write_byte_with_timeout(SLIP_ESCAPE);
+            if (result != FN_OK) {
+                return result;
+            }
+            result = write_byte_with_timeout(SLIP_ESC_END);
+        } else if (byte == SLIP_ESCAPE) {
+            result = write_byte_with_timeout(SLIP_ESCAPE);
+            if (result != FN_OK) {
+                return result;
+            }
+            result = write_byte_with_timeout(SLIP_ESC_ESC);
+        } else {
+            result = write_byte_with_timeout(byte);
+        }
+
+        if (result != FN_OK) {
+            return result;
+        }
+    }
+
+    return write_byte_with_timeout(SLIP_END);
+}
 
 /* Baud rate lookup */
 static speed_t _get_baud(int baud) {
@@ -148,18 +217,11 @@ uint8_t fn_transport_exchange(const uint8_t *request,
                                uint16_t resp_max,
                                uint16_t *resp_len) {
     ssize_t n;
-    uint16_t total;
+    uint16_t raw_len;
     uint16_t timeout_ms;
     fd_set read_fds;
-    fd_set write_fds;
     struct timeval tv;
     int ret;
-    uint8_t slip_buf[1024];
-    uint16_t slip_len;
-    uint8_t raw_buf[1024];
-    uint16_t raw_len;
-    
-    (void)resp_max;  /* Suppress unused parameter warning */
     
     if (_fd < 0) {
         return FN_ERR_NOT_FOUND;
@@ -169,33 +231,13 @@ uint8_t fn_transport_exchange(const uint8_t *request,
         return FN_ERR_INVALID;
     }
     
-    /* SLIP-encode the request */
-    slip_len = fn_slip_encode(request, req_len, slip_buf);
-    if (slip_len == 0) {
-        return FN_ERR_IO;
+    if (resp_max > FN_TRANSPORT_WIRE_BUF_SIZE) {
+        resp_max = FN_TRANSPORT_WIRE_BUF_SIZE;
     }
-    
-    /* Send the SLIP-encoded request */
-    total = 0;
-    while (total < slip_len) {
-        n = write(_fd, slip_buf + total, slip_len - total);
-        if (n < 0) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                /* Wait for write ready */
-                FD_ZERO(&write_fds);
-                FD_SET(_fd, &write_fds);
-                tv.tv_sec = 1;
-                tv.tv_usec = 0;
-                if (select(_fd + 1, NULL, &write_fds, NULL, &tv) <= 0) {
-                    fprintf(stderr, "fn_transport: write timeout\n");
-                    return FN_ERR_IO;
-                }
-                continue;
-            }
-            fprintf(stderr, "fn_transport: write error: %s\n", strerror(errno));
-            return FN_ERR_IO;
-        }
-        total += (uint16_t)n;
+
+    ret = slip_write_frame(request, req_len);
+    if (ret != FN_OK) {
+        return (uint8_t)ret;
     }
     
     /* Make sure data is sent */
@@ -216,7 +258,7 @@ uint8_t fn_transport_exchange(const uint8_t *request,
     raw_len = 0;
     timeout_ms = 2000;  /* 2 second overall timeout */
     
-    while (raw_len < sizeof(raw_buf)) {
+    while (raw_len < resp_max) {
         /* Wait for data */
         FD_ZERO(&read_fds);
         FD_SET(_fd, &read_fds);
@@ -231,7 +273,7 @@ uint8_t fn_transport_exchange(const uint8_t *request,
         if (ret == 0) {
             /* Timeout - check if we have a complete SLIP frame */
             /* A valid frame needs at least 2 END markers: C0 ... C0 */
-            if (raw_len >= 2 && raw_buf[0] == SLIP_END && raw_buf[raw_len - 1] == SLIP_END) {
+            if (raw_len >= 2 && _wire_buf[0] == SLIP_END && _wire_buf[raw_len - 1] == SLIP_END) {
                 /* We have a complete frame */
                 break;
             }
@@ -245,7 +287,7 @@ uint8_t fn_transport_exchange(const uint8_t *request,
         }
         
         /* Read available data */
-        n = read(_fd, raw_buf + raw_len, sizeof(raw_buf) - raw_len);
+        n = read(_fd, _wire_buf + raw_len, resp_max - raw_len);
         if (n < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 continue;
@@ -262,13 +304,13 @@ uint8_t fn_transport_exchange(const uint8_t *request,
         raw_len += (uint16_t)n;
         
         /* Check for end of SLIP frame - need at least 2 bytes (C0 ... C0) */
-        if (raw_len >= 2 && raw_buf[raw_len - 1] == SLIP_END && raw_buf[0] == SLIP_END) {
+        if (raw_len >= 2 && _wire_buf[raw_len - 1] == SLIP_END && _wire_buf[0] == SLIP_END) {
             break;
         }
     }
     
     /* SLIP-decode the response */
-    *resp_len = fn_slip_decode(raw_buf, raw_len, response);
+    *resp_len = fn_slip_decode(_wire_buf, raw_len, response);
     if (*resp_len == 0) {
         fprintf(stderr, "fn_transport: SLIP decode failed\n");
         return FN_ERR_IO;

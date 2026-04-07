@@ -22,6 +22,27 @@ extern "C" {
 #endif
 
 #include "fujinet-nio.h"
+#include "fn_protocol.h"
+
+/* Shared library state */
+extern fn_session_t _fn_sessions[FN_MAX_SESSIONS];
+extern uint8_t _fn_initialized;
+extern uint8_t _fn_req_buf[FN_MAX_PACKET_SIZE];
+extern uint8_t _fn_resp_buf[FN_MAX_PACKET_SIZE];
+extern char _fn_tcp_url[FN_MAX_URL_LEN];
+
+int8_t fn_find_free_slot(void);
+int8_t fn_find_session(fn_handle_t handle);
+void fn_free_handle(fn_handle_t handle);
+
+#define FN_READ_LE16(buf, offset) \
+    ((uint16_t)(buf)[(offset)] | ((uint16_t)(buf)[(offset) + 1] << 8))
+
+#define FN_READ_LE32(buf, offset) \
+    ((uint32_t)(buf)[(offset)] | \
+     ((uint32_t)(buf)[(offset) + 1] << 8) | \
+     ((uint32_t)(buf)[(offset) + 2] << 16) | \
+     ((uint32_t)(buf)[(offset) + 3] << 24))
 
 /* ============================================================================
  * SLIP Functions
@@ -114,11 +135,18 @@ uint8_t fn_parse_read_response(const uint8_t *response,
  * Parse an Info response.
  */
 uint8_t fn_parse_info_response(const uint8_t *response,
-                                uint16_t resp_len,
-                                fn_handle_t *handle,
-                                uint16_t *http_status,
-                                uint32_t *content_length,
-                                uint8_t *flags);
+                                 uint16_t resp_len,
+                                 fn_handle_t *handle,
+                                 uint16_t *http_status,
+                                 uint32_t *content_length,
+                                 uint8_t *flags);
+
+uint8_t fn_clock_exchange(uint8_t command,
+                          const uint8_t *payload,
+                          uint16_t payload_len,
+                          uint8_t *status,
+                          uint16_t *data_offset,
+                          uint16_t *data_len);
 
 #ifdef __cplusplus
 }

@@ -192,7 +192,13 @@ extern "C" {
  */
 
 /** Maximum FujiBus packet size */
+#ifndef FN_MAX_PACKET_SIZE
+#ifdef __CC65__
+#define FN_MAX_PACKET_SIZE   512
+#else
 #define FN_MAX_PACKET_SIZE   1024
+#endif
+#endif
 
 /** Maximum parameters per packet */
 #define FN_MAX_PARAMS        4

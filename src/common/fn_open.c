@@ -1,0 +1,118 @@
+#include <string.h>
+
+#include "fn_internal.h"
+#include "fn_platform.h"
+
+uint8_t fn_open(fn_handle_t *handle,
+                uint8_t method,
+                const char *url,
+                uint8_t flags)
+{
+    uint16_t req_len;
+    uint16_t resp_len;
+    uint8_t result;
+    uint8_t open_flags;
+    int8_t slot;
+    fn_handle_t resp_handle;
+    uint8_t resp_flags;
+    uint8_t resp_proto_flags;
+
+    if (!_fn_initialized) {
+        return FN_ERR_INVALID;
+    }
+
+    if (handle == NULL || url == NULL) {
+        return FN_ERR_INVALID;
+    }
+
+    if (strlen(url) > FN_MAX_URL_LEN) {
+        return FN_ERR_URL_TOO_LONG;
+    }
+
+    open_flags = 0;
+    if (flags & FN_OPEN_TLS) {
+        open_flags |= FN_OPEN_FLAG_TLS;
+    }
+    if (flags & FN_OPEN_FOLLOW_REDIR) {
+        open_flags |= FN_OPEN_FLAG_FOLLOW_REDIR;
+    }
+    if (flags & FN_OPEN_ALLOW_EVICT) {
+        open_flags |= FN_OPEN_FLAG_ALLOW_EVICT;
+    }
+
+    req_len = fn_build_open_packet(_fn_req_buf, method, open_flags, url);
+    if (req_len == 0) {
+        return FN_ERR_INVALID;
+    }
+
+    result = fn_transport_exchange(_fn_req_buf, req_len, _fn_resp_buf, FN_MAX_PACKET_SIZE, &resp_len);
+    if (result != FN_OK) {
+        return result;
+    }
+
+    result = fn_parse_open_response(_fn_resp_buf, resp_len, &resp_handle, &resp_flags, &resp_proto_flags);
+    if (result != FN_OK) {
+        return result;
+    }
+
+    slot = fn_find_free_slot();
+    if (slot < 0) {
+        *handle = resp_handle;
+        return FN_OK;
+    }
+
+    *handle = resp_handle;
+    _fn_sessions[slot].active = 1;
+    _fn_sessions[slot].handle = resp_handle;
+    _fn_sessions[slot].proto_flags = resp_proto_flags;
+    _fn_sessions[slot].needs_body = 0;
+    _fn_sessions[slot].write_offset = 0;
+    _fn_sessions[slot].read_offset = 0;
+
+    if (resp_flags & FN_OPEN_RESP_NEEDS_BODY) {
+        _fn_sessions[slot].needs_body = 1;
+    }
+
+    return FN_OK;
+}
+
+uint8_t fn_tcp_open(fn_handle_t *handle,
+                    const char *host,
+                    uint16_t port)
+{
+    uint8_t offset;
+    uint16_t p;
+
+    strcpy(_fn_tcp_url, "tcp://");
+    offset = 6;
+
+    if (offset + strlen(host) > FN_MAX_URL_LEN - 10) {
+        return FN_ERR_URL_TOO_LONG;
+    }
+    strcpy(_fn_tcp_url + offset, host);
+    offset += (uint8_t)strlen(host);
+
+    _fn_tcp_url[offset++] = ':';
+
+    p = port;
+    if (p >= 10000) {
+        _fn_tcp_url[offset++] = (char)('0' + (p / 10000));
+        p %= 10000;
+    }
+    if (p >= 1000) {
+        _fn_tcp_url[offset++] = (char)('0' + (p / 1000));
+        p %= 1000;
+    }
+    if (p >= 100) {
+        _fn_tcp_url[offset++] = (char)('0' + (p / 100));
+        p %= 100;
+    }
+    if (p >= 10) {
+        _fn_tcp_url[offset++] = (char)('0' + (p / 10));
+        p %= 10;
+    }
+    _fn_tcp_url[offset++] = (char)('0' + p);
+    _fn_tcp_url[offset] = '\0';
+
+    return fn_open(handle, 0, _fn_tcp_url, 0);
+}
