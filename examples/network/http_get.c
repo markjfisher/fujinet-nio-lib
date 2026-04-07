@@ -3,6 +3,7 @@
  * @brief Simple HTTP GET Example
  * 
  * Demonstrates how to use the fujinet-nio-lib to perform an HTTP GET request.
+ * Sequential response bodies require the caller to keep a matching read cursor.
  * 
  * Configuration via environment variables (all platforms):
  *   FN_TEST_URL - URL to fetch (default: http://localhost:8080/get)

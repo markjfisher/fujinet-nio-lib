@@ -11,10 +11,10 @@
 #   make help       - Show this help
 
 # Supported targets
-TARGETS = atari apple2 apple2enh c64 coco msdos linux
+TARGETS = atari apple2 apple2enh bbc c64 coco msdos linux
 
 # Output library name
-PROGRAM := fujinet-nio
+override PROGRAM := fujinet-nio
 
 # Phony targets
 .PHONY: all clean help $(TARGETS)
@@ -60,6 +60,7 @@ help:
 	@echo "  atari       - Atari 8-bit (cc65)"
 	@echo "  apple2      - Apple II (cc65)"
 	@echo "  apple2enh   - Apple II enhanced (cc65)"
+	@echo "  bbc         - BBC Micro (cc65)"
 	@echo "  c64         - Commodore 64 (cc65)"
 	@echo "  coco        - Tandy CoCo (CMOC)"
 	@echo "  msdos       - MS-DOS (Watcom)"

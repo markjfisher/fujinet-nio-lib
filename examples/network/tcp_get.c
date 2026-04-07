@@ -363,7 +363,7 @@ int main(void)
     idle_init(&idle);
     
     for (;;) {
-        result = fn_read(handle, total_read, g_buffer, BUFFER_SIZE - 1, 
+        result = fn_read(handle, total_read, g_buffer, BUFFER_SIZE - 1,
                          &bytes_read, &flags);
         
         if (result == FN_ERR_NOT_READY || result == FN_ERR_BUSY) {
@@ -408,7 +408,7 @@ int main(void)
         idle_reset(&idle);
         g_buffer[bytes_read < BUFFER_SIZE ? bytes_read : BUFFER_SIZE - 1] = '\0';
         printf("%s", (char *)g_buffer);
-        total_read += bytes_read;
+        total_read += (uint32_t)bytes_read;
         
         if (flags & FN_READ_EOF) {
             printf("\n[EOF reached]\n");

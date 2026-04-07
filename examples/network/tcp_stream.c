@@ -8,6 +8,7 @@
  * 
  * Key concepts:
  *   - fn_read() returns FN_ERR_NOT_READY when no data is available
+ *   - Sequential streams require the caller to track the exact 32-bit read cursor
  *   - No application-level timeouts needed for real-time polling
  *   - Server responds immediately with available data or NotReady
  * 
@@ -140,7 +141,7 @@ static uint8_t read_frame(fn_handle_t handle,
     *bytes_read = 0;
     *eof = 0;
     
-    /* Try to read up to max_bytes at the current offset */
+    /* Try to read up to max_bytes at the current sequential read cursor */
     result = fn_read(handle, offset, buf, max_bytes, &n, &flags);
     
     if (result == FN_ERR_NOT_READY) {

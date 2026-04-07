@@ -319,6 +319,11 @@ uint8_t fn_read(fn_handle_t handle,
     if (slot < 0) {
         return FN_ERR_NOT_FOUND;
     }
+
+    if ((_sessions[slot].proto_flags & FN_PROTO_FLAG_SEQUENTIAL_READ) &&
+        offset != _sessions[slot].read_offset) {
+        return FN_ERR_INVALID;
+    }
     
     req_len = fn_build_read_packet(_req_buf, handle, offset, max_len);
     if (req_len == 0) {
