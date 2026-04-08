@@ -31,6 +31,33 @@ extern uint8_t _fn_req_buf[FN_MAX_PACKET_SIZE];
 extern uint8_t _fn_resp_buf[FN_MAX_PACKET_SIZE];
 extern char _fn_tcp_url[FN_MAX_URL_LEN];
 
+typedef struct {
+    const uint8_t *request;
+    uint8_t *response;
+    uint16_t req_len;
+    uint16_t resp_max;
+    uint16_t resp_len;
+} fn_transport_ctx_t;
+
+typedef struct {
+    const uint8_t *response;
+    uint8_t *data;
+    uint16_t resp_len;
+    uint16_t data_max;
+    uint16_t data_offset;
+    uint16_t data_len;
+    fn_handle_t handle;
+    uint32_t offset_echo;
+    uint16_t http_status;
+    uint32_t content_length;
+    uint8_t status;
+    uint8_t flags;
+    uint8_t proto_flags;
+} fn_parse_ctx_t;
+
+extern fn_transport_ctx_t _fn_transport_ctx;
+extern fn_parse_ctx_t _fn_parse_ctx;
+
 int8_t fn_find_free_slot(void);
 int8_t fn_find_session(fn_handle_t handle);
 void fn_free_handle(fn_handle_t handle);
@@ -104,42 +131,22 @@ uint16_t fn_build_info_packet(uint8_t *buffer, fn_handle_t handle);
 /**
  * Parse a response packet header.
  */
-uint8_t fn_parse_response_header(const uint8_t *response,
-                                  uint16_t resp_len,
-                                  uint8_t *status,
-                                  uint16_t *data_offset,
-                                  uint16_t *data_len);
+uint8_t fn_parse_response_header(void);
 
 /**
  * Parse an Open response.
  */
-uint8_t fn_parse_open_response(const uint8_t *response,
-                                uint16_t resp_len,
-                                fn_handle_t *handle,
-                                uint8_t *flags,
-                                uint8_t *proto_flags);
+uint8_t fn_parse_open_response(void);
 
 /**
  * Parse a Read response.
  */
-uint8_t fn_parse_read_response(const uint8_t *response,
-                                uint16_t resp_len,
-                                fn_handle_t *handle,
-                                uint32_t *offset_echo,
-                                uint8_t *flags,
-                                uint8_t *data,
-                                uint16_t data_max,
-                                uint16_t *data_len);
+uint8_t fn_parse_read_response(void);
 
 /**
  * Parse an Info response.
  */
-uint8_t fn_parse_info_response(const uint8_t *response,
-                                 uint16_t resp_len,
-                                 fn_handle_t *handle,
-                                 uint16_t *http_status,
-                                 uint32_t *content_length,
-                                 uint8_t *flags);
+uint8_t fn_parse_info_response(void);
 
 uint8_t fn_clock_exchange(uint8_t command,
                           const uint8_t *payload,

@@ -12,6 +12,7 @@
         .export _fn_transport_exchange
         .export _fn_platform_name
         
+        .import __fn_transport_ctx
         .import _fn_slip_encode
         .import _fn_slip_decode
         
@@ -104,46 +105,29 @@ _fn_transport_ready:
 ; Returns: FN_OK on success, error code on failure
 ;-----------------------------------------------------------------------------
 _fn_transport_exchange:
-        ; Save parameters from stack
-        ; Stack layout after jsr:
-        ;   return address (2 bytes)
-        ;   request ptr (2 bytes)
-        ;   req_len (2 bytes)
-        ;   response ptr (2 bytes)
-        ;   resp_max (2 bytes)
-        ;   resp_len ptr (2 bytes)
-        
-        ; Get request pointer (at stack+2)
-        ldy #2
-        lda (c_sp),y
+        ; request pointer from transport context
+        ldy #0
+        lda __fn_transport_ctx,y
         sta ptr1
         iny
-        lda (c_sp),y
+        lda __fn_transport_ctx,y
         sta ptr1+1
         
-        ; Get req_len (at stack+4)
+        ; request length from transport context
         ldy #4
-        lda (c_sp),y
+        lda __fn_transport_ctx,y
         sta tmp1
         iny
-        lda (c_sp),y
+        lda __fn_transport_ctx,y
         sta tmp2
         
-        ; Get response pointer (at stack+6)
-        ldy #6
-        lda (c_sp),y
+        ; response pointer from transport context
+        ldy #2
+        lda __fn_transport_ctx,y
         sta ptr2
         iny
-        lda (c_sp),y
+        lda __fn_transport_ctx,y
         sta ptr2+1
-        
-        ; Get resp_len pointer (at stack+10)
-        ldy #10
-        lda (c_sp),y
-        sta ptr3
-        iny
-        lda (c_sp),y
-        sta ptr3+1
         
         ; SLIP encode the request
         ; fn_slip_encode(request, req_len, slip_buffer)
@@ -246,12 +230,12 @@ _fn_transport_exchange:
         jsr _fn_slip_decode
         ; Result in A:X is decoded length
         
-        ; Store response length
-        ldy #0
-        sta (ptr3),y
+        ; Store response length into transport context
+        ldy #8
+        sta __fn_transport_ctx,y
         iny
         txa
-        sta (ptr3),y
+        sta __fn_transport_ctx,y
         
         ; Return success
         lda #$00           ; FN_OK

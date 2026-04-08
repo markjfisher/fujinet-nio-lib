@@ -5,6 +5,8 @@ uint8_t _fn_initialized = 0;
 uint8_t _fn_req_buf[FN_MAX_PACKET_SIZE];
 uint8_t _fn_resp_buf[FN_MAX_PACKET_SIZE];
 char _fn_tcp_url[FN_MAX_URL_LEN];
+fn_transport_ctx_t _fn_transport_ctx;
+fn_parse_ctx_t _fn_parse_ctx;
 
 int8_t fn_find_free_slot(void)
 {

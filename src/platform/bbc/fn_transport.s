@@ -10,6 +10,7 @@
         .export _fn_transport_exchange
         .export _fn_platform_name
 
+        .import __fn_transport_ctx
         .importzp c_sp, ptr1, ptr2, ptr3, ptr4, tmp1, tmp2, tmp3, tmp4
 
         .include "oslib/os.inc"
@@ -137,47 +138,39 @@ _fn_transport_ready:
         rts
 
 _fn_transport_exchange:
-        ; request pointer
-        ldy     #$02
-        lda     (c_sp),y
+        ; request pointer from _fn_transport_ctx + 0
+        ldy     #$00
+        lda     __fn_transport_ctx,y
         sta     ptr1
         iny
-        lda     (c_sp),y
+        lda     __fn_transport_ctx,y
         sta     ptr1+1
 
-        ; request length
+        ; request length from _fn_transport_ctx + 4
         ldy     #$04
-        lda     (c_sp),y
+        lda     __fn_transport_ctx,y
         sta     tmp1
         iny
-        lda     (c_sp),y
+        lda     __fn_transport_ctx,y
         sta     tmp2
 
-        ; response pointer/current pointer
-        ldy     #$06
-        lda     (c_sp),y
+        ; response pointer/current pointer from _fn_transport_ctx + 2
+        ldy     #$02
+        lda     __fn_transport_ctx,y
         sta     ptr2
         sta     ptr4
         iny
-        lda     (c_sp),y
+        lda     __fn_transport_ctx,y
         sta     ptr2+1
         sta     ptr4+1
 
-        ; resp_max remaining capacity
-        ldy     #$08
-        lda     (c_sp),y
+        ; resp_max remaining capacity from _fn_transport_ctx + 6
+        ldy     #$06
+        lda     __fn_transport_ctx,y
         sta     tmp3
         iny
-        lda     (c_sp),y
+        lda     __fn_transport_ctx,y
         sta     tmp4
-
-        ; resp_len pointer
-        ldy     #$0A
-        lda     (c_sp),y
-        sta     ptr3
-        iny
-        lda     (c_sp),y
-        sta     ptr3+1
 
         jsr     setup_serial_19200
 
@@ -332,12 +325,12 @@ _fn_transport_exchange:
         lda     ptr2
         sec
         sbc     ptr4
-        ldy     #$00
-        sta     (ptr3),y
+        ldy     #$08
+        sta     __fn_transport_ctx,y
         lda     ptr2+1
         sbc     ptr4+1
         iny
-        sta     (ptr3),y
+        sta     __fn_transport_ctx,y
         lda     #FN_OK
         rts
 

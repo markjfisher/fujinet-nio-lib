@@ -8,12 +8,8 @@ uint8_t fn_write(fn_handle_t handle,
                  uint16_t *written)
 {
     uint16_t req_len;
-    uint16_t resp_len;
     uint8_t result;
     int8_t slot;
-    uint8_t status;
-    uint16_t data_offset;
-    uint16_t data_len;
 
     if (!_fn_initialized) {
         return FN_ERR_INVALID;
@@ -37,22 +33,29 @@ uint8_t fn_write(fn_handle_t handle,
         return FN_ERR_INVALID;
     }
 
-    result = fn_transport_exchange(_fn_req_buf, req_len, _fn_resp_buf, FN_MAX_PACKET_SIZE, &resp_len);
+    _fn_transport_ctx.request = _fn_req_buf;
+    _fn_transport_ctx.req_len = req_len;
+    _fn_transport_ctx.response = _fn_resp_buf;
+    _fn_transport_ctx.resp_max = FN_MAX_PACKET_SIZE;
+
+    result = fn_transport_exchange();
     if (result != FN_OK) {
         return result;
     }
 
-    result = fn_parse_response_header(_fn_resp_buf, resp_len, &status, &data_offset, &data_len);
+    _fn_parse_ctx.response = _fn_resp_buf;
+    _fn_parse_ctx.resp_len = _fn_transport_ctx.resp_len;
+    result = fn_parse_response_header();
     if (result != FN_OK) {
         return result;
     }
 
-    if (status != FN_OK) {
-        return status;
+    if (_fn_parse_ctx.status != FN_OK) {
+        return _fn_parse_ctx.status;
     }
 
-    if (data_len >= 12 && written != NULL) {
-        *written = FN_READ_LE16(_fn_resp_buf, data_offset + 10);
+    if (_fn_parse_ctx.data_len >= 12 && written != NULL) {
+        *written = FN_READ_LE16(_fn_resp_buf, _fn_parse_ctx.data_offset + 10);
         _fn_sessions[slot].write_offset += *written;
     } else if (written != NULL) {
         *written = 0;
@@ -69,11 +72,8 @@ uint8_t fn_read(fn_handle_t handle,
                 uint8_t *flags)
 {
     uint16_t req_len;
-    uint16_t resp_len;
     uint8_t result;
     int8_t slot;
-    fn_handle_t resp_handle;
-    uint32_t offset_echo;
 
     if (!_fn_initialized) {
         return FN_ERR_INVALID;
@@ -98,18 +98,32 @@ uint8_t fn_read(fn_handle_t handle,
         return FN_ERR_INVALID;
     }
 
-    result = fn_transport_exchange(_fn_req_buf, req_len, _fn_resp_buf, FN_MAX_PACKET_SIZE, &resp_len);
+    _fn_transport_ctx.request = _fn_req_buf;
+    _fn_transport_ctx.req_len = req_len;
+    _fn_transport_ctx.response = _fn_resp_buf;
+    _fn_transport_ctx.resp_max = FN_MAX_PACKET_SIZE;
+
+    result = fn_transport_exchange();
     if (result != FN_OK) {
         return result;
     }
 
-    result = fn_parse_read_response(_fn_resp_buf, resp_len, &resp_handle, &offset_echo, flags, buf, max_len, bytes_read);
+    _fn_parse_ctx.response = _fn_resp_buf;
+    _fn_parse_ctx.resp_len = _fn_transport_ctx.resp_len;
+    _fn_parse_ctx.data = buf;
+    _fn_parse_ctx.data_max = max_len;
+    result = fn_parse_read_response();
     if (result != FN_OK) {
         return result;
     }
 
-    if ((_fn_sessions[slot].proto_flags & FN_PROTO_FLAG_SEQUENTIAL_READ) && *bytes_read > 0) {
-        _fn_sessions[slot].read_offset += *bytes_read;
+    if (flags != NULL) {
+        *flags = _fn_parse_ctx.flags;
+    }
+    *bytes_read = _fn_parse_ctx.data_len;
+
+    if ((_fn_sessions[slot].proto_flags & FN_PROTO_FLAG_SEQUENTIAL_READ) && _fn_parse_ctx.data_len > 0) {
+        _fn_sessions[slot].read_offset += _fn_parse_ctx.data_len;
     }
 
     return FN_OK;

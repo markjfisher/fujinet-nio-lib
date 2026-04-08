@@ -211,23 +211,23 @@ uint8_t fn_transport_ready(void) {
  *
  * Returns: FN_OK on success, error code on failure
  */
-uint8_t fn_transport_exchange(const uint8_t *request,
-                               uint16_t req_len,
-                               uint8_t *response,
-                               uint16_t resp_max,
-                               uint16_t *resp_len) {
+uint8_t fn_transport_exchange(void) {
     ssize_t n;
     uint16_t raw_len;
     uint16_t timeout_ms;
     fd_set read_fds;
     struct timeval tv;
     int ret;
+    const uint8_t *request = _fn_transport_ctx.request;
+    uint16_t req_len = _fn_transport_ctx.req_len;
+    uint8_t *response = _fn_transport_ctx.response;
+    uint16_t resp_max = _fn_transport_ctx.resp_max;
     
     if (_fd < 0) {
         return FN_ERR_NOT_FOUND;
     }
     
-    if (request == NULL || req_len == 0 || response == NULL || resp_len == NULL) {
+    if (request == NULL || req_len == 0 || response == NULL) {
         return FN_ERR_INVALID;
     }
     
@@ -310,8 +310,8 @@ uint8_t fn_transport_exchange(const uint8_t *request,
     }
     
     /* SLIP-decode the response */
-    *resp_len = fn_slip_decode(_wire_buf, raw_len, response);
-    if (*resp_len == 0) {
+    _fn_transport_ctx.resp_len = fn_slip_decode(_wire_buf, raw_len, response);
+    if (_fn_transport_ctx.resp_len == 0) {
         fprintf(stderr, "fn_transport: SLIP decode failed\n");
         return FN_ERR_IO;
     }

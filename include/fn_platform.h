@@ -61,11 +61,7 @@ uint8_t fn_transport_ready(void);
  * @param resp_len     Pointer to receive actual response length
  * @return FN_OK on success, error code on failure
  */
-uint8_t fn_transport_exchange(const uint8_t *request,
-                               uint16_t req_len,
-                               uint8_t *response,
-                               uint16_t resp_max,
-                               uint16_t *resp_len);
+uint8_t fn_transport_exchange(void);
 
 /**
  * @brief Get the platform name string.

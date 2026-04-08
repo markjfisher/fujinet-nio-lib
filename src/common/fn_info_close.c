@@ -7,10 +7,8 @@ uint8_t fn_info(fn_handle_t handle,
                 uint8_t *flags)
 {
     uint16_t req_len;
-    uint16_t resp_len;
     uint8_t result;
     int8_t slot;
-    fn_handle_t resp_handle;
 
     if (!_fn_initialized) {
         return FN_ERR_INVALID;
@@ -30,18 +28,39 @@ uint8_t fn_info(fn_handle_t handle,
         return FN_ERR_INVALID;
     }
 
-    result = fn_transport_exchange(_fn_req_buf, req_len, _fn_resp_buf, FN_MAX_PACKET_SIZE, &resp_len);
+    _fn_transport_ctx.request = _fn_req_buf;
+    _fn_transport_ctx.req_len = req_len;
+    _fn_transport_ctx.response = _fn_resp_buf;
+    _fn_transport_ctx.resp_max = FN_MAX_PACKET_SIZE;
+
+    result = fn_transport_exchange();
     if (result != FN_OK) {
         return result;
     }
 
-    return fn_parse_info_response(_fn_resp_buf, resp_len, &resp_handle, http_status, content_length, flags);
+    _fn_parse_ctx.response = _fn_resp_buf;
+    _fn_parse_ctx.resp_len = _fn_transport_ctx.resp_len;
+    result = fn_parse_info_response();
+    if (result != FN_OK) {
+        return result;
+    }
+
+    if (http_status != NULL) {
+        *http_status = _fn_parse_ctx.http_status;
+    }
+    if (content_length != NULL) {
+        *content_length = _fn_parse_ctx.content_length;
+    }
+    if (flags != NULL) {
+        *flags = _fn_parse_ctx.flags;
+    }
+
+    return FN_OK;
 }
 
 uint8_t fn_close(fn_handle_t handle)
 {
     uint16_t req_len;
-    uint16_t resp_len;
     uint8_t result;
 
     if (!_fn_initialized) {
@@ -57,7 +76,12 @@ uint8_t fn_close(fn_handle_t handle)
         return FN_ERR_INVALID;
     }
 
-    result = fn_transport_exchange(_fn_req_buf, req_len, _fn_resp_buf, FN_MAX_PACKET_SIZE, &resp_len);
+    _fn_transport_ctx.request = _fn_req_buf;
+    _fn_transport_ctx.req_len = req_len;
+    _fn_transport_ctx.response = _fn_resp_buf;
+    _fn_transport_ctx.resp_max = FN_MAX_PACKET_SIZE;
+
+    result = fn_transport_exchange();
 
     fn_free_handle(handle);
 

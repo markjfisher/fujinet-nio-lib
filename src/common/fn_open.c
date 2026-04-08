@@ -9,13 +9,9 @@ uint8_t fn_open(fn_handle_t *handle,
                 uint8_t flags)
 {
     uint16_t req_len;
-    uint16_t resp_len;
     uint8_t result;
     uint8_t open_flags;
     int8_t slot;
-    fn_handle_t resp_handle;
-    uint8_t resp_flags;
-    uint8_t resp_proto_flags;
 
     if (!_fn_initialized) {
         return FN_ERR_INVALID;
@@ -45,31 +41,38 @@ uint8_t fn_open(fn_handle_t *handle,
         return FN_ERR_INVALID;
     }
 
-    result = fn_transport_exchange(_fn_req_buf, req_len, _fn_resp_buf, FN_MAX_PACKET_SIZE, &resp_len);
+    _fn_transport_ctx.request = _fn_req_buf;
+    _fn_transport_ctx.req_len = req_len;
+    _fn_transport_ctx.response = _fn_resp_buf;
+    _fn_transport_ctx.resp_max = FN_MAX_PACKET_SIZE;
+
+    result = fn_transport_exchange();
     if (result != FN_OK) {
         return result;
     }
 
-    result = fn_parse_open_response(_fn_resp_buf, resp_len, &resp_handle, &resp_flags, &resp_proto_flags);
+    _fn_parse_ctx.response = _fn_resp_buf;
+    _fn_parse_ctx.resp_len = _fn_transport_ctx.resp_len;
+    result = fn_parse_open_response();
     if (result != FN_OK) {
         return result;
     }
 
     slot = fn_find_free_slot();
     if (slot < 0) {
-        *handle = resp_handle;
+        *handle = _fn_parse_ctx.handle;
         return FN_OK;
     }
 
-    *handle = resp_handle;
+    *handle = _fn_parse_ctx.handle;
     _fn_sessions[slot].active = 1;
-    _fn_sessions[slot].handle = resp_handle;
-    _fn_sessions[slot].proto_flags = resp_proto_flags;
+    _fn_sessions[slot].handle = _fn_parse_ctx.handle;
+    _fn_sessions[slot].proto_flags = _fn_parse_ctx.proto_flags;
     _fn_sessions[slot].needs_body = 0;
     _fn_sessions[slot].write_offset = 0;
     _fn_sessions[slot].read_offset = 0;
 
-    if (resp_flags & FN_OPEN_RESP_NEEDS_BODY) {
+    if (_fn_parse_ctx.flags & FN_OPEN_RESP_NEEDS_BODY) {
         _fn_sessions[slot].needs_body = 1;
     }
 
