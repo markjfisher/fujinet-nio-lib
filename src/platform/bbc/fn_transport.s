@@ -17,8 +17,8 @@
         .include "oslib/osbyte.inc"
         .include "fn_protocol.inc"
 
-WAIT_FIRST_MAX := $1E00
-WAIT_NEXT_MAX  := $0800
+WAIT_FIRST_MAX := $8000
+WAIT_NEXT_MAX  := $1000
 
 OSBYTE_SERIAL_RX_RATE       = $07
 OSBYTE_SERIAL_TX_RATE       = $08
@@ -340,7 +340,7 @@ _fn_transport_exchange:
         rts
 
 @read_error:
-        jmp     @error_transport
+        ; jmp     @error_transport
 
 @error_transport:
         jsr     restore_output_to_screen
