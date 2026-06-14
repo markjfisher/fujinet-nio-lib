@@ -91,6 +91,11 @@ uint8_t fn_open(fn_handle_t *handle,
 - `tcp://` - Raw TCP connection
 - `tls://` - Raw TLS connection
 
+**BBC target notes:**
+- The BBC implementation is backed by `fn-rom` and BBC MOS channel semantics.
+- URLs longer than the cc65 BBC open-path limit are automatically routed through `OSWORD &78` reason `&04` and the `"://"` sentinel open path.
+- `FN_METHOD_HEAD` and `FN_METHOD_DELETE` currently return `FN_ERR_UNSUPPORTED` on BBC because the current `fn-rom` MOS-facing open ABI maps cleanly to GET, PUT, POST, and raw stream opens only.
+
 **Example:**
 ```c
 fn_handle_t handle;
@@ -184,6 +189,8 @@ uint8_t fn_write(fn_handle_t handle,
 fn_write(handle, total_written, NULL, 0, &dummy);
 ```
 
+**BBC target note:** zero-length writes are treated as a no-op. The current BBC `fn-rom` backed path does not expose a true half-close signal through this library API.
+
 ### `fn_info()`
 
 Get information about an open connection.
@@ -219,6 +226,44 @@ uint8_t fn_close(fn_handle_t handle);
 - `handle` - Session handle to close
 
 **Returns:** `FN_OK` on success, error code on failure.
+
+### `fn_set_body_length()`
+
+Set the one-shot body length for the next network open on BBC.
+
+```c
+uint8_t fn_set_body_length(uint16_t len);
+```
+
+**Returns:** `FN_OK` on BBC when accepted by `fn-rom`, `FN_ERR_UNSUPPORTED` on other targets.
+
+### `fn_set_content_profile()`
+
+Set the one-shot request content profile for the next network open on BBC.
+
+```c
+uint8_t fn_set_content_profile(uint8_t profile);
+```
+
+**Profiles:**
+- `FN_CONTENT_PROFILE_NONE`
+- `FN_CONTENT_PROFILE_JSON`
+- `FN_CONTENT_PROFILE_FORM`
+- `FN_CONTENT_PROFILE_TEXT`
+
+**Returns:** `FN_OK` on BBC when accepted by `fn-rom`, `FN_ERR_UNSUPPORTED` on other targets.
+
+### `fn_json_query()`
+
+Configure JSON translation on an already-open BBC network channel.
+
+```c
+uint8_t fn_json_query(fn_handle_t handle, const char *path);
+```
+
+After a successful call, subsequent `fn_read()` calls return the translated JSON match rather than the raw body bytes, mirroring the `fn-rom` `*FJSON` / `OSWORD &78` behavior.
+
+**Returns:** `FN_OK` on BBC when accepted by `fn-rom`, `FN_ERR_UNSUPPORTED` on other targets.
 
 ## Utilities
 

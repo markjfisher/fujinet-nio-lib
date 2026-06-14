@@ -33,27 +33,37 @@ endif
 LIBRARY     := $(BUILDDIR)/$(PROGRAM)-$(TARGET)$(LIBEXT)
 
 # Common sources (shared across all platforms)
-COMMON_SRCS := $(SRCDIR)/common/fn_slip.c \
-               $(SRCDIR)/common/fn_packet.c \
-               $(SRCDIR)/common/fn_packet_checksum.c \
-               $(SRCDIR)/common/fn_packet_header.c \
-               $(SRCDIR)/common/fn_packet_build_open.c \
-               $(SRCDIR)/common/fn_packet_build_rw.c \
-               $(SRCDIR)/common/fn_packet_build_misc.c \
-               $(SRCDIR)/common/fn_packet_parse_common.c \
-               $(SRCDIR)/common/fn_packet_parse_open.c \
-               $(SRCDIR)/common/fn_packet_parse_read.c \
-               $(SRCDIR)/common/fn_packet_parse_info.c \
-               $(SRCDIR)/common/fn_state.c \
-               $(SRCDIR)/common/fn_init.c \
-               $(SRCDIR)/common/fn_open.c \
-               $(SRCDIR)/common/fn_rw.c \
-               $(SRCDIR)/common/fn_info_close.c \
-               $(SRCDIR)/common/fn_util.c \
-               $(SRCDIR)/common/fn_clock_common.c \
-               $(SRCDIR)/common/fn_clock_core.c \
-               $(SRCDIR)/common/fn_clock_format.c \
-               $(SRCDIR)/common/fn_clock_timezone.c
+COMMON_SRCS_DEFAULT := $(SRCDIR)/common/fn_slip.c \
+                       $(SRCDIR)/common/fn_packet.c \
+                       $(SRCDIR)/common/fn_packet_checksum.c \
+                       $(SRCDIR)/common/fn_packet_header.c \
+                       $(SRCDIR)/common/fn_packet_build_open.c \
+                       $(SRCDIR)/common/fn_packet_build_rw.c \
+                       $(SRCDIR)/common/fn_packet_build_misc.c \
+                       $(SRCDIR)/common/fn_packet_parse_common.c \
+                       $(SRCDIR)/common/fn_packet_parse_open.c \
+                       $(SRCDIR)/common/fn_packet_parse_read.c \
+                       $(SRCDIR)/common/fn_packet_parse_info.c \
+                       $(SRCDIR)/common/fn_state.c \
+                       $(SRCDIR)/common/fn_init.c \
+                       $(SRCDIR)/common/fn_open.c \
+                       $(SRCDIR)/common/fn_rw.c \
+                       $(SRCDIR)/common/fn_info_close.c \
+                       $(SRCDIR)/common/fn_util.c \
+                       $(SRCDIR)/common/fn_ext.c \
+                       $(SRCDIR)/common/fn_clock_common.c \
+                       $(SRCDIR)/common/fn_clock_core.c \
+                       $(SRCDIR)/common/fn_clock_format.c \
+                       $(SRCDIR)/common/fn_clock_timezone.c
+
+COMMON_SRCS_BBC := $(SRCDIR)/common/fn_util.c \
+                   $(SRCDIR)/common/fn_ext.c
+
+ifeq ($(TARGET),bbc)
+COMMON_SRCS := $(COMMON_SRCS_BBC)
+else
+COMMON_SRCS := $(COMMON_SRCS_DEFAULT)
+endif
 
 # Platform-specific sources
 PLATFORM_SRCS := $(wildcard $(PLATFORM_DIR)/*.c)
@@ -139,6 +149,7 @@ $(LIBRARY): $(OBJECTS) | $(BUILDDIR)
 else
 $(LIBRARY): $(OBJECTS) | $(BUILDDIR)
 	@echo "  AR $@"
+	rm -f $@
 	$(AR) a $@ $(OBJECTS)
 	@echo "  Created $@"
 endif

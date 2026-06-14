@@ -96,6 +96,15 @@ else ifeq ($(TARGET),atari)
     COMPILE = $(CC) -t $(TARGET) -c $(CFLAGS) -o $@ $<
     # Link command for cc65
     LINK = $(CC) -t $(TARGET) $(CFLAGS) $< $(LIB_FILE) $(LDFLAGS) -o $@
+else ifeq ($(TARGET),bbc)
+    LIB_FILE := $(LIB_DIR)/build/fujinet-nio-bbc.lib
+    BBC_EXTRA_OBJS := $(LIB_DIR)/obj/bbc/platform/bbc/initenv.o
+    CC := cl65
+    CFLAGS := -Osir -O
+    LDFLAGS := 
+    EXEEXT :=
+    COMPILE = $(CC) -t $(TARGET) -c $(CFLAGS) -o $@ $<
+    LINK = $(CC) -t $(TARGET) $(CFLAGS) $< $(LIB_FILE) $(BBC_EXTRA_OBJS) $(LDFLAGS) -o $@
 else
     $(error Unsupported target: $(TARGET))
 endif
@@ -112,6 +121,11 @@ NETWORK_EXAMPLES := http_get tcp_get tcp_stream
 
 # Clock examples
 CLOCK_EXAMPLES := clock_test
+
+ifeq ($(TARGET),bbc)
+NETWORK_EXAMPLES := http_get
+CLOCK_EXAMPLES :=
+endif
 
 # Disk examples (future)
 # DISK_EXAMPLES := disk_info

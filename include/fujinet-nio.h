@@ -42,7 +42,9 @@ extern "C" {
 
 /** Maximum URL length supported */
 #ifndef FN_MAX_URL_LEN
-#ifdef __CC65__
+#ifdef __BBC__
+#define FN_MAX_URL_LEN      512
+#elif defined(__CC65__)
 #define FN_MAX_URL_LEN      128
 #else
 #define FN_MAX_URL_LEN      256
@@ -163,6 +165,22 @@ extern "C" {
 
 /** TCP: Peer has closed the connection */
 #define FN_INFO_PEER_CLOSED 0x20
+
+/* ============================================================================
+ * BBC / fn-rom Network Extensions
+ * ============================================================================ */
+
+/** No explicit content profile */
+#define FN_CONTENT_PROFILE_NONE 0x00
+
+/** Send request body as application/json */
+#define FN_CONTENT_PROFILE_JSON 0x01
+
+/** Send request body as application/x-www-form-urlencoded */
+#define FN_CONTENT_PROFILE_FORM 0x02
+
+/** Send request body as text/plain */
+#define FN_CONTENT_PROFILE_TEXT 0x03
 
 /* ============================================================================
  * Types
@@ -311,6 +329,30 @@ uint8_t fn_info(fn_handle_t handle,
  * @return FN_OK on success, error code on failure
  */
 uint8_t fn_close(fn_handle_t handle);
+
+/**
+ * @brief Set the one-shot request body length for the next BBC fn-rom network open.
+ *
+ * This maps to `OSWORD &78` reason `&01` on BBC and returns
+ * `FN_ERR_UNSUPPORTED` on platforms that do not expose an equivalent API.
+ */
+uint8_t fn_set_body_length(uint16_t len);
+
+/**
+ * @brief Set the one-shot request content profile for the next BBC fn-rom network open.
+ *
+ * This maps to `OSWORD &78` reason `&03` on BBC and returns
+ * `FN_ERR_UNSUPPORTED` on platforms that do not expose an equivalent API.
+ */
+uint8_t fn_set_content_profile(uint8_t profile);
+
+/**
+ * @brief Configure JSON translation for an already-open BBC fn-rom network channel.
+ *
+ * This maps to `OSWORD &78` reason `&00` on BBC and returns
+ * `FN_ERR_UNSUPPORTED` on platforms that do not expose an equivalent API.
+ */
+uint8_t fn_json_query(fn_handle_t handle, const char *path);
 
 /* ============================================================================
  * Clock Operations
