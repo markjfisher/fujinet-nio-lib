@@ -103,10 +103,31 @@ The library uses the CC65 compiler's `-t atari` target. Key considerations:
 
 Platform-specific transport code is located in:
 - `src/platform/atari/` - Atari SIO transport
+- `src/platform/bbc/` - BBC Micro `fn-rom` backed MOS/OSWORD wrappers
 - `src/platform/apple2/` - Apple II SmartPort (planned)
 - `src/platform/coco/` - CoCo Drivewire (planned)
 - `src/platform/msdos/` - MS-DOS TCP/serial (planned)
 - `src/platform/posix/` - Linux/POSIX transport
+
+### BBC target specifics
+
+The BBC target now assumes the `fn-rom` network ROM is installed on the machine. The library no longer owns raw RS423 setup, SLIP framing, or FujiBus packet construction on BBC. Instead it:
+
+- opens network sessions through BBC MOS channel opens
+- uses `OSWORD &78` for long URLs, JSON translation, and request-body helpers
+- links a much smaller BBC-specific implementation instead of the common direct-transport stack
+
+Current BBC limitations:
+
+- `fn_info()` only reports basic connectivity state
+- `HEAD` and `DELETE` are not yet supported on BBC
+- clock APIs currently return `FN_ERR_UNSUPPORTED` on BBC
+
+Current BBC example-build workaround:
+
+- the cc65 BBC runtime currently leaves `initenv` unresolved in a default app link
+- the bundled example build injects a tiny no-op `initenv` shim object from `src/platform/bbc/initenv.s`
+- this is a toolchain/runtime integration workaround, not part of the FujiNet API surface
 
 ## Directory Structure
 

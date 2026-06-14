@@ -107,6 +107,7 @@ int main(void) {
 - HTTP operations tested and working
 - TCP/TLS operations tested and working
 - Linux native target for PC-based testing
+- BBC target now uses the installed `fn-rom` network ROM through MOS channel opens and `OSWORD &78`
 - FujiBus protocol with SLIP framing
 - Handle-based session management
 
@@ -115,13 +116,16 @@ int main(void) {
 - Additional platform transports (Apple II, CoCo, etc.)
 
 **Known Issues:**
-None known at the moment. Atari hardware needs testing with a build of fujinet-nio for Atari SIO.
+- BBC `fn_info()` currently reports connectivity only and does not expose HTTP status/content length yet.
+- BBC currently supports GET, PUT, POST, and raw TCP/TLS opens. HEAD and DELETE are not yet mapped through the `fn-rom` MOS-facing open ABI.
+- Atari hardware needs testing with a build of fujinet-nio for Atari SIO.
 
 ## Platform Support
 
 | Platform | Transport | Compiler | Status |
 |----------|-----------|----------|--------|
 | Atari 8-bit | SIO | CC65 | ✅ Implemented |
+| BBC Micro | `fn-rom` MOS + `OSWORD &78` | CC65 | ✅ Implemented |
 | Apple II | SmartPort | CC65 | 🚧 Planned |
 | Commodore 64 | IEC | CC65 | 🚧 Planned |
 | Tandy CoCo | Drivewire | CMOC | 🚧 Planned |
