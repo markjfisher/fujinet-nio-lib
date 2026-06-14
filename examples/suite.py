@@ -152,7 +152,7 @@ class TestSuite:
         """Run HTTPS GET example with test CA."""
         env = {
             "FN_PORT": port,
-            "FN_TEST_URL": f"https://{http_host}:8443/get?testca=1"
+            "FN_TEST_URL": f"https://{http_host}:8443/get"
         }
         return self.run_example(
             "http_get", target, env,
@@ -177,7 +177,7 @@ class TestSuite:
         """Run TLS GET example with test CA."""
         env = {
             "FN_PORT": port,
-            "FN_TEST_URL": f"tls://{tcp_host}:7778?testca=1"
+            "FN_TEST_URL": f"tls://{tcp_host}:7778"
         }
         return self.run_example(
             "tcp_get", target, env,

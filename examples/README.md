@@ -92,7 +92,7 @@ export FN_PORT=/dev/pts/2
 FN_TCP_HOST=127.0.0.1 FN_TCP_PORT=7778 FN_TCP_TLS=1 ./bin/linux/tcp_get
 
 # Run with full URL override
-FN_TEST_URL="tls://echo.fujinet.online:6001?testca=1" ./bin/linux/tcp_get
+FN_TEST_URL="tls://echo.fujinet.online:6001" ./bin/linux/tcp_get
 
 # Run TCP streaming example
 ./bin/linux/tcp_stream
@@ -167,7 +167,7 @@ All examples use `getenv()` to read configuration. On Linux, these come from the
 - `FN_TEST_URL` - URL to fetch (default: `http://localhost:8080/get`)
 
 #### TCP Get Example
-- `FN_TEST_URL` - Full URL (e.g., `tcp://host:port` or `tls://host:port?testca=1`)
+- `FN_TEST_URL` - Full URL (e.g., `tcp://host:port` or `tls://host:port`)
 - `FN_TCP_HOST` - Host to connect to (default: `localhost`)
 - `FN_TCP_PORT` - Port to connect to (default: `7777`)
 - `FN_TCP_TLS` - Set to `1` to enable TLS (default: disabled)

@@ -91,10 +91,6 @@ uint8_t fn_open(fn_handle_t *handle,
 - `tcp://` - Raw TCP connection
 - `tls://` - Raw TLS connection
 
-**TLS Options (query parameters):**
-- `?testca=1` - Use FujiNet Test CA for local testing
-- `?insecure=1` - Skip certificate verification (not recommended)
-
 **Example:**
 ```c
 fn_handle_t handle;

@@ -6,7 +6,7 @@
  * Works identically on Linux and Atari platforms.
  * 
  * Configuration via environment variables (all platforms):
- *   FN_TEST_URL    - Full URL (e.g., tcp://host:port or tls://host:port?testca=1)
+ *   FN_TEST_URL    - Full URL (e.g., tcp://host:port or tls://host:port)
  *   FN_TCP_HOST    - Host to connect to (default: "localhost")
  *   FN_TCP_PORT    - Port to connect to (default: "7777")
  *   FN_TCP_TLS     - Set to "1" to enable TLS (default: "0")
@@ -33,7 +33,7 @@
  *   FN_TCP_HOST=127.0.0.1 FN_TCP_PORT=7778 FN_TCP_TLS=1 ./bin/linux/tcp_get
  * 
  *   # Full URL (runtime override)
- *   FN_TEST_URL="tls://echo.fujinet.online:6001?testca=1" ./bin/linux/tcp_get
+ *   FN_TEST_URL="tls://echo.fujinet.online:6001" ./bin/linux/tcp_get
  */
 
 /* Feature test macros MUST come before any includes */
@@ -260,7 +260,7 @@ static const char *get_config_url(void)
     
     /* Build URL */
     if (use_tls) {
-        snprintf(g_url, URL_MAX_LEN, "tls://%s:%s?testca=1", host, port_str);
+        snprintf(g_url, URL_MAX_LEN, "tls://%s:%s", host, port_str);
     } else {
         snprintf(g_url, URL_MAX_LEN, "tcp://%s:%s", host, port_str);
     }

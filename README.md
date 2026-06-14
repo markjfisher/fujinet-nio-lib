@@ -87,7 +87,7 @@ int main(void) {
     fn_init();
     
     // Connect using URL scheme (tcp:// or tls://)
-    fn_open(&handle, 0, "tls://example.com:443?testca=1", 0);
+    fn_open(&handle, 0, "tls://example.com:443", 0);
     
     // Send data
     const char *request = "HELLO\n";
