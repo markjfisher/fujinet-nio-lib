@@ -2,39 +2,7 @@
 
 #include "fn_bbc_internal.h"
 
-static char _fn_bbc_tls_url[FN_MAX_URL_LEN];
 static char _fn_bbc_open_name[FN_BBC_DIRECT_URL_MAX + 1];
-
-static const char *fn_bbc_apply_tls_flag(const char *url, uint8_t flags)
-{
-    uint16_t len;
-
-    if ((flags & FN_OPEN_TLS) == 0 || url == 0) {
-        return url;
-    }
-
-    if (strncmp(url, "http://", 7) == 0) {
-        len = (uint16_t)strlen(url + 7);
-        if ((uint16_t)(len + 8) > FN_MAX_URL_LEN) {
-            return 0;
-        }
-        memcpy(_fn_bbc_tls_url, "https://", 8);
-        memcpy(_fn_bbc_tls_url + 8, url + 7, len + 1);
-        return _fn_bbc_tls_url;
-    }
-
-    if (strncmp(url, "tcp://", 6) == 0) {
-        len = (uint16_t)strlen(url + 6);
-        if ((uint16_t)(len + 6) > FN_MAX_URL_LEN) {
-            return 0;
-        }
-        memcpy(_fn_bbc_tls_url, "tls://", 6);
-        memcpy(_fn_bbc_tls_url + 6, url + 6, len + 1);
-        return _fn_bbc_tls_url;
-    }
-
-    return url;
-}
 
 static const char *fn_bbc_make_osfind_name(const char *src, uint16_t len)
 {
@@ -47,6 +15,41 @@ static const char *fn_bbc_make_osfind_name(const char *src, uint16_t len)
     return _fn_bbc_open_name;
 }
 
+static const char *fn_bbc_prepare_open_name(const char *url,
+                                            uint16_t url_len,
+                                            uint8_t flags)
+{
+    uint16_t tail_len;
+
+    if ((flags & FN_OPEN_TLS) == 0) {
+        return fn_bbc_make_osfind_name(url, url_len);
+    }
+
+    if (strncmp(url, "http://", 7) == 0) {
+        tail_len = (uint16_t)(url_len - 7);
+        if ((uint16_t)(tail_len + 8) >= sizeof(_fn_bbc_open_name)) {
+            return 0;
+        }
+        memcpy(_fn_bbc_open_name, "https://", 8);
+        memcpy(_fn_bbc_open_name + 8, url + 7, tail_len);
+        _fn_bbc_open_name[tail_len + 8] = '\r';
+        return _fn_bbc_open_name;
+    }
+
+    if (strncmp(url, "tcp://", 6) == 0) {
+        tail_len = (uint16_t)(url_len - 6);
+        if ((uint16_t)(tail_len + 6) >= sizeof(_fn_bbc_open_name)) {
+            return 0;
+        }
+        memcpy(_fn_bbc_open_name, "tls://", 6);
+        memcpy(_fn_bbc_open_name + 6, url + 6, tail_len);
+        _fn_bbc_open_name[tail_len + 6] = '\r';
+        return _fn_bbc_open_name;
+    }
+
+    return fn_bbc_make_osfind_name(url, url_len);
+}
+
 uint8_t fn_open(fn_handle_t *handle,
                 uint8_t method,
                 const char *url,
@@ -56,7 +59,6 @@ uint8_t fn_open(fn_handle_t *handle,
     int mode;
     int8_t slot;
     uint16_t url_len;
-    const char *open_url;
     const char *osfind_name;
 
     if (!_fn_initialized) {
@@ -72,23 +74,23 @@ uint8_t fn_open(fn_handle_t *handle,
         return FN_ERR_UNSUPPORTED;
     }
 
-    open_url = fn_bbc_apply_tls_flag(url, flags);
-    if (open_url == 0) {
-        return FN_ERR_URL_TOO_LONG;
-    }
-
-    url_len = (uint16_t)strlen(open_url);
+    url_len = (uint16_t)strlen(url);
     if (url_len > FN_MAX_URL_LEN) {
         return FN_ERR_URL_TOO_LONG;
     }
 
     if (url_len > FN_BBC_DIRECT_URL_MAX) {
-        if (fn_bbc_arm_open_url(open_url, url_len) != FN_OK) {
+        if ((flags & FN_OPEN_TLS) != 0 &&
+            (strncmp(url, "http://", 7) == 0 || strncmp(url, "tcp://", 6) == 0)) {
+            return FN_ERR_URL_TOO_LONG;
+        }
+
+        if (fn_bbc_arm_open_url(url, url_len) != FN_OK) {
             return FN_ERR_INVALID;
         }
         osfind_name = fn_bbc_make_osfind_name("://", 3);
     } else {
-        osfind_name = fn_bbc_make_osfind_name(open_url, url_len);
+        osfind_name = fn_bbc_prepare_open_name(url, url_len, flags);
     }
 
     if (osfind_name == 0) {
