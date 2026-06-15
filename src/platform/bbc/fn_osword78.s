@@ -11,8 +11,8 @@
         sta     ptr1
         stx     ptr1+1
 
-        ldx     ptr1
-        ldy     ptr1+1
+        tax                     ; put low pointer into X
+        ldy     ptr1+1          ; and high into y
         lda     #$78
         jsr     OSWORD
 

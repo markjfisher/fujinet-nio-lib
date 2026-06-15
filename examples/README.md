@@ -42,6 +42,7 @@ examples/
 ```bash
 make TARGET=linux    # Build for Linux (native testing)
 make TARGET=atari    # Build for Atari 8-bit
+make TARGET=bbc      # Build BBC-supported examples
 ```
 
 ### Build a specific example:
@@ -56,6 +57,12 @@ make clock_test TARGET=linux
 ```bash
 # Build with TLS enabled and custom host/port
 make TARGET=atari FN_TCP_HOST=example.com FN_TCP_PORT=443 FN_TCP_TLS=1
+```
+
+### Build BBC examples with custom configuration:
+```bash
+make TARGET=bbc FN_DEFAULT_TEST_URL="http://127.0.0.1:8080/get"
+make TARGET=bbc FN_TCP_HOST=127.0.0.1 FN_TCP_PORT=7777 tcp_get
 ```
 
 ### Debug the build configuration:
@@ -117,6 +124,21 @@ make TARGET=atari FN_TCP_HOST=example.com FN_TCP_PORT=443 FN_TCP_TLS=1
 
 The clock example works without any configuration - it simply reads and displays the current time from the FujiNet device.
 
+### BBC Examples
+
+BBC examples assume the `fn-rom` network ROM is installed in the target machine or emulator.
+
+Currently supported BBC example set:
+
+- `http_get`
+- `tcp_get`
+
+Current BBC notes:
+
+- `tcp_stream` is not yet enabled for BBC
+- `clock_test` is not yet enabled for BBC because the BBC library path currently returns `FN_ERR_UNSUPPORTED` for clock APIs
+- the example link path currently injects a tiny `initenv` shim object as a cc65 BBC runtime workaround
+
 ## Example Categories
 
 ### Network Examples (`network/`)
@@ -161,7 +183,7 @@ Examples for disk device operations.
 
 ### Environment Variables (All Platforms)
 
-All examples use `getenv()` to read configuration. On Linux, these come from the shell environment. On cc65 targets (Atari, Apple, etc.), the library uses `putenv()` to populate environment variables from compile-time defines at startup.
+All examples use `getenv()` to read configuration. On Linux, these come from the shell environment. On cc65 targets (Atari, BBC, Apple, etc.), the library uses `putenv()` to populate environment variables from compile-time defines at startup.
 
 #### HTTP Get Example
 - `FN_TEST_URL` - URL to fetch (default: `http://localhost:8080/get`)
@@ -183,7 +205,7 @@ All examples use `getenv()` to read configuration. On Linux, these come from the
 
 ### Compile-Time Defines (cc65 Targets)
 
-For cc65 targets, environment variables are populated from compile-time defines. This allows the same code to work on both Linux and 8-bit platforms:
+For cc65 targets, environment variables are populated from compile-time defines. This allows the same code to work on both Linux and 8-bit platforms, including BBC:
 
 ```bash
 make TARGET=atari FN_TCP_HOST=192.168.1.100 FN_TCP_PORT=7778 FN_TCP_TLS=1

@@ -3,7 +3,7 @@
  * @brief TCP/TLS Client Example
  * 
  * Demonstrates TCP and TLS connections using fujinet-nio-lib.
- * Works identically on Linux and Atari platforms.
+ * Works on Linux and cc65 targets including Atari and BBC.
  * 
  * Configuration via environment variables (all platforms):
  *   FN_TEST_URL    - Full URL (e.g., tcp://host:port or tls://host:port)
@@ -37,7 +37,7 @@
  */
 
 /* Feature test macros MUST come before any includes */
-#ifndef __ATARI__
+#ifndef __CC65__
 #ifndef _DEFAULT_SOURCE
 #define _DEFAULT_SOURCE
 #endif
@@ -49,7 +49,7 @@
 #include <string.h>
 
 /* Platform-specific includes */
-#ifndef __ATARI__
+#ifndef __CC65__
 /* POSIX includes for Linux */
 #include <time.h>
 #include <unistd.h>
@@ -90,7 +90,7 @@
  * ============================================================================ */
 
 #define BUFFER_SIZE 512
-#define URL_MAX_LEN 256
+#define URL_MAX_LEN FN_MAX_URL_LEN
 
 static uint8_t g_buffer[BUFFER_SIZE];
 static char g_url[URL_MAX_LEN];
@@ -108,10 +108,13 @@ static char g_url[URL_MAX_LEN];
 
 #ifdef __CC65__
 
+#define FN_STRINGIFY_INNER(x) #x
+#define FN_STRINGIFY(x) FN_STRINGIFY_INNER(x)
+
 /* Static storage for environment strings (putenv doesn't copy!) */
 static char env_fn_tcp_host[] = "FN_TCP_HOST=" FN_TCP_HOST;
 static char env_fn_tcp_port[] = "FN_TCP_PORT=" FN_TCP_PORT;
-static char env_fn_tcp_tls[]  = "FN_TCP_TLS="  FN_TCP_TLS;
+static char env_fn_tcp_tls[]  = "FN_TCP_TLS=" FN_STRINGIFY(FN_TCP_TLS);
 static char env_fn_tcp_request[] = "FN_TCP_REQUEST=" FN_TCP_REQUEST;
 
 /**
@@ -138,7 +141,7 @@ static void setup_env(void)
  */
 typedef struct {
     int count;          /* Iteration count (all platforms) */
-#ifndef __ATARI__
+#ifndef __CC65__
     long deadline_ms;   /* Deadline in milliseconds (POSIX only) */
 #endif
 } idle_timer_t;
@@ -149,7 +152,7 @@ typedef struct {
 static void idle_init(idle_timer_t *t)
 {
     t->count = 0;
-#ifndef __ATARI__
+#ifndef __CC65__
     {
         struct timespec ts;
         clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -167,7 +170,7 @@ static int idle_expired(idle_timer_t *t)
 {
     t->count++;
     
-#ifndef __ATARI__
+#ifndef __CC65__
     {
         struct timespec ts;
         long now_ms;
@@ -176,7 +179,7 @@ static int idle_expired(idle_timer_t *t)
         return (now_ms >= t->deadline_ms) ? 1 : 0;
     }
 #else
-    /* Atari: count-based timeout (~100 iterations = ~2 seconds) */
+    /* cc65 targets: count-based timeout (~100 iterations = a short grace period) */
     return (t->count >= 100) ? 1 : 0;
 #endif
 }
@@ -187,7 +190,7 @@ static int idle_expired(idle_timer_t *t)
 static void idle_reset(idle_timer_t *t)
 {
     t->count = 0;
-#ifndef __ATARI__
+#ifndef __CC65__
     {
         struct timespec ts;
         clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -202,10 +205,10 @@ static void idle_reset(idle_timer_t *t)
  */
 static void sleep_brief(void)
 {
-#ifndef __ATARI__
+#ifndef __CC65__
     usleep(20000);  /* 20ms */
 #endif
-    /* Atari: no sleep, just retry */
+    /* cc65 targets: no sleep, just retry */
 }
 
 /* ============================================================================

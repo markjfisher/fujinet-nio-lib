@@ -123,7 +123,7 @@ NETWORK_EXAMPLES := http_get tcp_get tcp_stream
 CLOCK_EXAMPLES := clock_test
 
 ifeq ($(TARGET),bbc)
-NETWORK_EXAMPLES := http_get
+NETWORK_EXAMPLES := http_get tcp_get
 CLOCK_EXAMPLES :=
 endif
 

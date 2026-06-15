@@ -5,8 +5,8 @@
 # Usage:
 #   make            - Build all targets
 #   make atari      - Build for Atari
-#   make apple2     - Build for Apple II
-#   make coco       - Build for CoCo
+#   make bbc        - Build for BBC B
+#   make linux      - build for linux/posix environment
 #   make clean      - Remove build artifacts
 #   make help       - Show this help
 
@@ -18,7 +18,7 @@ TARGETS = atari bbc linux
 override PROGRAM := fujinet-nio
 
 # Phony targets
-.PHONY: all clean help $(TARGETS)
+.PHONY: all clean help test-bbc test-bbc-scripted test-bbc-real $(TARGETS)
 
 # Default target: build all
 all:
@@ -47,6 +47,38 @@ clean:
 	rm -rf build/ obj/ dist/
 	@echo "Done."
 
+test-bbc:
+	@echo "========================================="
+	@echo "BBC test scaffold"
+	@echo "========================================="
+	$(MAKE) bbc
+	$(MAKE) -C examples TARGET=bbc compile
+	@echo ""
+	@echo "Built BBC library and supported BBC examples."
+	@echo "See integration-tests/beebium/README.md for scripted and real E2E setup."
+
+test-bbc-scripted:
+	@echo "Running scripted BBC test scaffold..."
+	$(MAKE) bbc
+	$(MAKE) -C examples TARGET=bbc compile
+	@if [ -d integration-tests/beebium ]; then \
+		cd integration-tests/beebium && uv run pytest -q scripted; \
+	else \
+		echo "integration-tests/beebium not present"; \
+		exit 1; \
+	fi
+
+test-bbc-real:
+	@echo "Running real BBC test scaffold..."
+	$(MAKE) bbc
+	$(MAKE) -C examples TARGET=bbc compile
+	@if [ -d integration-tests/beebium ]; then \
+		cd integration-tests/beebium && uv run pytest -q real; \
+	else \
+		echo "integration-tests/beebium not present"; \
+		exit 1; \
+	fi
+
 # Help
 help:
 	@echo "FujiNet-NIO Library Build System"
@@ -59,12 +91,8 @@ help:
 	@echo ""
 	@echo "Supported targets:"
 	@echo "  atari       - Atari 8-bit (cc65)"
-	@echo "  apple2      - Apple II (cc65)"
-	@echo "  apple2enh   - Apple II enhanced (cc65)"
 	@echo "  bbc         - BBC Micro (cc65)"
-	@echo "  c64         - Commodore 64 (cc65)"
-	@echo "  coco        - Tandy CoCo (CMOC)"
-	@echo "  msdos       - MS-DOS (Watcom)"
+	@echo "  linux       - Linux/Posix (gcc)"
 	@echo ""
 	@echo "Output:"
 	@echo "  Libraries are placed in build/"
