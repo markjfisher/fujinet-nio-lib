@@ -66,6 +66,17 @@ make disk TARGET=bbc
 make TARGET=bbc http_get && make TARGET=bbc disk
 ```
 
+From the project root:
+
+```bash
+make disk-bbc
+make FN_DEFAULT_TEST_URL="http://192.168.1.101:8080/get" \
+     FN_TCP_HOST="192.168.1.101" \
+     FN_TCP_PORT="7777" \
+     FN_TCP_TLS=0 \
+     disk-bbc
+```
+
 The BBC disk output is grouped by example category. At present, the BBC build emits
 `disk-images/bbc/network.ssd` containing the supported BBC network examples.
 
@@ -80,6 +91,9 @@ make TARGET=atari FN_TCP_HOST=example.com FN_TCP_PORT=443 FN_TCP_TLS=1
 make TARGET=bbc FN_DEFAULT_TEST_URL="http://127.0.0.1:8080/get"
 make TARGET=bbc FN_TCP_HOST=127.0.0.1 FN_TCP_PORT=7777 tcp_get
 ```
+
+Changing these values now forces the relevant BBC example objects to rebuild, so
+the generated binaries and `network.ssd` pick up the new settings.
 
 ### Debug the build configuration:
 ```bash

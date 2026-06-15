@@ -69,11 +69,14 @@ DISK_IMAGE_DIR := disk-images/$(TARGET)
 FN_TCP_HOST ?= localhost
 FN_TCP_PORT ?= 7777
 FN_TCP_TLS ?= 0
+FN_DEFAULT_TEST_URL ?= http://localhost:8080/get
 
 # Pass to compiler as defines (with quotes for C strings)
 TCP_DEFINES = -DFN_TCP_HOST=\"$(FN_TCP_HOST)\" \
               -DFN_TCP_PORT=\"$(FN_TCP_PORT)\" \
               -DFN_TCP_TLS=$(FN_TCP_TLS)
+
+HTTP_DEFINES = -DFN_DEFAULT_TEST_URL=\"$(FN_DEFAULT_TEST_URL)\"
 
 # ============================================================================
 # Compiler configuration per target
@@ -183,7 +186,7 @@ DISK_ARTIFACTS :=
 # Build targets
 # ============================================================================
 
-.PHONY: all clean clean-all lib disk $(ALL_EXAMPLES) info compile
+.PHONY: all clean clean-all lib disk FORCE $(ALL_EXAMPLES) info compile
 
 # Default: build all examples (requires library)
 all: $(BINARIES) $(DISK_ARTIFACTS)
@@ -222,6 +225,8 @@ info:
 	@echo "  FN_TCP_HOST: $(FN_TCP_HOST)"
 	@echo "  FN_TCP_PORT: $(FN_TCP_PORT)"
 	@echo "  FN_TCP_TLS: $(FN_TCP_TLS)"
+	@echo "HTTP Config:"
+	@echo "  FN_DEFAULT_TEST_URL: $(FN_DEFAULT_TEST_URL)"
 
 # ============================================================================
 # Pattern rules for building examples
@@ -237,6 +242,19 @@ $(BUILD_DIR)/clock:
 $(BUILD_DIR)/diskimg:
 	@mkdir -p $@
 
+$(BUILD_DIR)/config:
+	@mkdir -p $@
+
+$(BUILD_DIR)/config/tcp_get.cfg: FORCE | $(BUILD_DIR)/config
+	@tmp="$@.tmp"; \
+	printf 'FN_TCP_HOST=%s\nFN_TCP_PORT=%s\nFN_TCP_TLS=%s\n' "$(FN_TCP_HOST)" "$(FN_TCP_PORT)" "$(FN_TCP_TLS)" > "$$tmp"; \
+	if [ ! -f "$@" ] || ! cmp -s "$$tmp" "$@"; then mv "$$tmp" "$@"; else rm -f "$$tmp"; fi
+
+$(BUILD_DIR)/config/http_get.cfg: FORCE | $(BUILD_DIR)/config
+	@tmp="$@.tmp"; \
+	printf 'FN_DEFAULT_TEST_URL=%s\n' "$(FN_DEFAULT_TEST_URL)" > "$$tmp"; \
+	if [ ! -f "$@" ] || ! cmp -s "$$tmp" "$@"; then mv "$$tmp" "$@"; else rm -f "$$tmp"; fi
+
 # Create bin directory
 $(BIN_DIR):
 	@mkdir -p $@
@@ -250,7 +268,7 @@ $(BUILD_DIR)/disk:
 # Compile source to object file
 # Pattern: build/TARGET/category/example.o from category/example.c
 # TCP examples get the TCP config defines
-$(BUILD_DIR)/network/tcp_get.o: network/tcp_get.c | $(BUILD_DIR)/network
+$(BUILD_DIR)/network/tcp_get.o: network/tcp_get.c $(BUILD_DIR)/config/tcp_get.cfg | $(BUILD_DIR)/network
 	@echo "Compiling $< for $(TARGET)..."
 ifeq ($(CC),cl65)
 	$(CC) -t $(TARGET) -c $(CFLAGS) $(TCP_DEFINES) -o $@ $<
@@ -266,9 +284,13 @@ else
 	$(CC) $(CFLAGS) $(TCP_DEFINES) -c $< -o $@
 endif
 
-$(BUILD_DIR)/network/http_get.o: network/http_get.c | $(BUILD_DIR)/network
+$(BUILD_DIR)/network/http_get.o: network/http_get.c $(BUILD_DIR)/config/http_get.cfg | $(BUILD_DIR)/network
 	@echo "Compiling $< for $(TARGET)..."
-	$(COMPILE)
+ifeq ($(CC),cl65)
+	$(CC) -t $(TARGET) -c $(CFLAGS) $(HTTP_DEFINES) -o $@ $<
+else
+	$(CC) $(CFLAGS) $(HTTP_DEFINES) -c $< -o $@
+endif
 
 $(BUILD_DIR)/network/%.o: network/%.c | $(BUILD_DIR)/network
 	@echo "Compiling $< for $(TARGET)..."

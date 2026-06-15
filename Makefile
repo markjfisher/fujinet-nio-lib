@@ -18,7 +18,7 @@ TARGETS = atari bbc linux
 override PROGRAM := fujinet-nio
 
 # Phony targets
-.PHONY: all clean help test-bbc test-bbc-scripted test-bbc-real $(TARGETS)
+.PHONY: all clean help disk-bbc test-bbc test-bbc-scripted test-bbc-real $(TARGETS)
 
 # Default target: build all
 all:
@@ -45,7 +45,13 @@ $(TARGETS):
 clean:
 	@echo "Cleaning build artifacts..."
 	rm -rf build/ obj/ dist/
+	$(MAKE) -C examples clean-all
+	rm -rf examples/ssd
 	@echo "Done."
+
+disk-bbc:
+	$(MAKE) bbc
+	$(MAKE) -C examples TARGET=bbc disk
 
 test-bbc:
 	@echo "========================================="
@@ -86,6 +92,7 @@ help:
 	@echo "Usage:"
 	@echo "  make            - Build all targets"
 	@echo "  make <target>   - Build specific target (atari, apple2, coco, etc.)"
+	@echo "  make disk-bbc   - Build BBC example disk image(s)"
 	@echo "  make clean      - Remove all build artifacts"
 	@echo "  make help       - Show this help message"
 	@echo ""
