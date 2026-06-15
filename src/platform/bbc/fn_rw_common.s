@@ -1,6 +1,7 @@
         .export _fn_bbc_rw_setup_read
         .export _fn_bbc_rw_setup_write
         .export invalid_with_stack_fix
+        .export session_offsets
 
         .import _fn_find_session
         .import addysp

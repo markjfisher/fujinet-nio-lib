@@ -5,32 +5,18 @@
         .import _fn_find_free_slot
         .import popax
         .import return0
+        .import session_offsets
 
         .importzp ptr1
         .importzp tmp1
+
+        .include "fn_protocol.inc"
 
 ; uint8_t fn_bbc_claim_channel(fn_handle_t *handle, unsigned char channel)
 ;   A    = channel
 ;   stack: handle pointer
 
-FN_ERR_NO_HANDLES                 := $12
-FN_PROTO_FLAG_SEQUENTIAL_BOTH     := $03
-FN_MAX_SESSIONS                   := 3
-FN_SESSION_ACTIVE                 := 0
-FN_SESSION_PROTO_FLAGS            := 1
-FN_SESSION_NEEDS_BODY             := 2
-FN_SESSION_RESERVED               := 3
-FN_SESSION_HANDLE                 := 4
-FN_SESSION_WRITE_OFFSET           := 6
-FN_SESSION_READ_OFFSET            := 10
-FN_SESSION_SIZE                   := 14
-
-session_offsets:
-        .repeat FN_MAX_SESSIONS, I
-        .byte   I * FN_SESSION_SIZE
-        .endrepeat
-
-.proc _fn_bbc_claim_channel
+_fn_bbc_claim_channel:
         sta     tmp1                ; save channel
 
         jsr     popax               ; handle pointer
@@ -78,4 +64,3 @@ no_handles:
         lda     #FN_ERR_NO_HANDLES
         ldx     #$00
         rts
-.endproc
