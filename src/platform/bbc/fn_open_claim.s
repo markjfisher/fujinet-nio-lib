@@ -24,6 +24,11 @@ FN_SESSION_WRITE_OFFSET           := 6
 FN_SESSION_READ_OFFSET            := 10
 FN_SESSION_SIZE                   := 14
 
+session_offsets:
+        .repeat 5, I
+        .byte   I * FN_SESSION_SIZE
+        .endrepeat
+
 .proc _fn_bbc_claim_channel
         sta     tmp1                ; save channel
 
@@ -42,13 +47,8 @@ FN_SESSION_SIZE                   := 14
         cmp     #$FF
         beq     no_handles
 
-        asl     a                   ; 2 * slot
-        sta     ptr1                ; temp = 2 * slot
-        asl     a                   ; 4 * slot
-        asl     a                   ; 8 * slot
-        asl     a                   ; 16 * slot
-        sec
-        sbc     ptr1                ; 14 * slot
+        tay
+        lda     session_offsets,y
         tay
 
         lda     #$01

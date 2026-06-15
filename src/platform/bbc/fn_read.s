@@ -9,12 +9,18 @@ FN_ERR_INVALID                    := $02
 FN_READ_EOF                       := $01
 FN_SESSION_READ_OFFSET            := 10
 FN_READ_STACK_BYTES               := 12
+FN_SESSION_SIZE                   := 14
 
 STACK_BYTES_READ_PTR              := 0
 STACK_MAX_LEN                     := 2
 STACK_BUF_PTR                     := 4
 STACK_OFFSET                      := 6
 STACK_HANDLE                      := 10
+
+session_offsets:
+        .repeat 5, I
+        .byte   I * FN_SESSION_SIZE
+        .endrepeat
 
 ; uint8_t fn_read(fn_handle_t handle,
 ;                 uint32_t offset,
@@ -68,10 +74,8 @@ _fn_read:
         pla
         sta     ptr3
 
-        cmp     #$00
-        beq     @slot_set
-        lda     #14
-@slot_set:
+        tay
+        lda     session_offsets,y
         sta     tmp4
 
         ldy     #STACK_BYTES_READ_PTR

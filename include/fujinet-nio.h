@@ -53,7 +53,9 @@ extern "C" {
 
 /** Maximum concurrent network sessions */
 #ifndef FN_MAX_SESSIONS
-#ifdef __CC65__
+#ifdef __BBC__
+#define FN_MAX_SESSIONS     5
+#elif defined(__CC65__)
 #define FN_MAX_SESSIONS     2
 #else
 #define FN_MAX_SESSIONS     4
