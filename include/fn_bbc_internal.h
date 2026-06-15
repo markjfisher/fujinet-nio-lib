@@ -29,5 +29,8 @@ uint8_t fn_bbc_status_to_result(uint8_t status);
 uint8_t fn_bbc_probe_rom(void);
 int fn_bbc_open_flags(uint8_t method);
 uint8_t fn_bbc_arm_open_url(const char *url, uint16_t len);
+uint8_t fn_bbc_is_tls_rewrite(const char *url, uint16_t url_len, uint8_t flags);
+const char *fn_bbc_prepare_short_open_name(const char *url, uint16_t url_len, uint8_t flags);
+const char *fn_bbc_prepare_long_open_name(const char *url, uint16_t url_len, uint8_t flags, uint8_t *result);
 
 #endif
