@@ -131,7 +131,13 @@ extern "C" {
  * Open Flags
  * ============================================================================ */
 
-/** Use TLS/HTTPS for the connection */
+/**
+ * Legacy TLS hint.
+ *
+ * URL schemes are authoritative across the library: use `https://` or `tls://`
+ * in the URL itself. This flag is retained for compatibility but should not be
+ * relied on for new code.
+ */
 #define FN_OPEN_TLS         0x01
 
 /** Follow HTTP redirects automatically */
@@ -245,6 +251,24 @@ uint8_t fn_open(fn_handle_t *handle,
                 uint8_t method,
                 const char *url,
                 uint8_t flags);
+
+/**
+ * @brief Open a network session using an explicit long-URL path.
+ *
+ * This is intended for platforms where the common open path should stay small and
+ * long URL support is an opt-in feature. On platforms without a special long-URL
+ * path, this reduces to `fn_open()`.
+ *
+ * @param handle     Pointer to receive the session handle
+ * @param method     HTTP method (FN_METHOD_*) or 0 for TCP
+ * @param url        URL string (null-terminated)
+ * @param flags      Open flags (FN_OPEN_*)
+ * @return FN_OK on success, error code on failure
+ */
+uint8_t fn_open_long(fn_handle_t *handle,
+                     uint8_t method,
+                     const char *url,
+                     uint8_t flags);
 
 /**
  * @brief Open a TCP connection (convenience wrapper).

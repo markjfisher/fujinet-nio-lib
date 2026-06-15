@@ -26,9 +26,6 @@ uint8_t fn_open(fn_handle_t *handle,
     }
 
     open_flags = 0;
-    if (flags & FN_OPEN_TLS) {
-        open_flags |= FN_OPEN_FLAG_TLS;
-    }
     if (flags & FN_OPEN_FOLLOW_REDIR) {
         open_flags |= FN_OPEN_FLAG_FOLLOW_REDIR;
     }

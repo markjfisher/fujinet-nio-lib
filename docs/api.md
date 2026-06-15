@@ -81,7 +81,7 @@ uint8_t fn_open(fn_handle_t *handle,
 - `handle` - Output pointer for the session handle
 - `method` - HTTP method (`FN_METHOD_GET`, `FN_METHOD_POST`, etc.) or 0 for raw TCP/TLS
 - `url` - URL to connect to (e.g., `http://example.com`, `tcp://host:port`, `tls://host:port`)
-- `flags` - Optional flags (`FN_OPEN_TLS`, `FN_OPEN_FOLLOW_REDIR`)
+- `flags` - Optional flags (`FN_OPEN_FOLLOW_REDIR`, `FN_OPEN_ALLOW_EVICT`)
 
 **Returns:** `FN_OK` on success, error code on failure.
 
@@ -91,9 +91,14 @@ uint8_t fn_open(fn_handle_t *handle,
 - `tcp://` - Raw TCP connection
 - `tls://` - Raw TLS connection
 
+**Scheme authority:**
+- The URL scheme is authoritative. Use `https://` and `tls://` explicitly when secure transport is required.
+- `FN_OPEN_TLS` is a legacy compatibility flag and should not be used for new code.
+
 **BBC target notes:**
 - The BBC implementation is backed by `fn-rom` and BBC MOS channel semantics.
-- URLs longer than the cc65 BBC open-path limit are automatically routed through `OSWORD &78` reason `&04` and the `"://"` sentinel open path.
+- `fn_open()` on BBC is the small/common short-URL path.
+- URLs longer than the cc65 BBC open-path limit must use `fn_open_long()`, which routes through `OSWORD &78` reason `&04` and the `"://"` sentinel open path.
 - `FN_METHOD_HEAD` and `FN_METHOD_DELETE` currently return `FN_ERR_UNSUPPORTED` on BBC because the current `fn-rom` MOS-facing open ABI maps cleanly to GET, PUT, POST, and raw stream opens only.
 
 **Example:**
@@ -118,6 +123,21 @@ uint8_t fn_tcp_open(fn_handle_t *handle,
 - `port` - Port number
 
 **Returns:** `FN_OK` on success, error code on failure.
+
+### `fn_open_long()`
+
+Open a network connection using the explicit long-URL path.
+
+```c
+uint8_t fn_open_long(fn_handle_t *handle,
+                     uint8_t method,
+                     const char *url,
+                     uint8_t flags);
+```
+
+Use this when an application intentionally needs long URLs and wants to opt in to
+the larger/open-specialized path on BBC. On other platforms this reduces to
+`fn_open()`.
 
 ### `fn_read()`
 

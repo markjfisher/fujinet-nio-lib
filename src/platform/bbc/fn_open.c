@@ -12,8 +12,6 @@ uint8_t fn_open(fn_handle_t *handle,
     int8_t slot;
     uint16_t url_len;
     const char *osfind_name;
-    uint8_t result;
-
     if (!_fn_initialized) {
         return FN_ERR_INVALID;
     }
@@ -33,13 +31,11 @@ uint8_t fn_open(fn_handle_t *handle,
     }
 
     if (url_len > FN_BBC_DIRECT_URL_MAX) {
-        osfind_name = fn_bbc_prepare_long_open_name(url, url_len, flags, &result);
-        if (osfind_name == 0) {
-            return result;
-        }
-    } else {
-        osfind_name = fn_bbc_prepare_short_open_name(url, url_len, flags);
+        return FN_ERR_URL_TOO_LONG;
     }
+
+    (void)flags;
+    osfind_name = fn_bbc_prepare_short_open_name(url, url_len);
 
     if (osfind_name == 0) {
         return FN_ERR_URL_TOO_LONG;

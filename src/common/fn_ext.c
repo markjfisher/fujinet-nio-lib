@@ -1,6 +1,14 @@
 #include "fujinet-nio.h"
 
 #ifndef __BBC__
+uint8_t fn_open_long(fn_handle_t *handle,
+                     uint8_t method,
+                     const char *url,
+                     uint8_t flags)
+{
+    return fn_open(handle, method, url, flags);
+}
+
 uint8_t fn_set_body_length(uint16_t len)
 {
     (void)len;
