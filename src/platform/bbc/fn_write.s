@@ -1,132 +1,91 @@
         .export _fn_write
 
         .import __fn_initialized, __fn_sessions
-        .import _fn_find_session, _fn_bbc_osword78, addysp, return0
+        .import invalid_with_stack_fix
+        .import _fn_bbc_rw_setup_write, _fn_bbc_osword78, addysp, return0
         .importzp c_sp, ptr1, ptr2, ptr3, ptr4, tmp1, tmp2, tmp3, tmp4
 
-FN_ERR_NOT_FOUND                  := $01
-FN_ERR_INVALID                    := $02
-FN_ERR_IO                         := $05
+        .include "fn_protocol.inc"
+
 FN_WRITE_STACK_BYTES              := 10
-FN_SESSION_SIZE                   := 14
-FN_SESSION_WRITE_OFFSET           := 6
-FN_BBC_REASON_WRITE_DATA          := $02
 
 STACK_LEN                         := 0
 STACK_DATA_PTR                    := 2
 STACK_OFFSET                      := 4
-STACK_HANDLE                      := 8
-
-session_offsets:
-        .repeat 3, I
-        .byte   I * FN_SESSION_SIZE
-        .endrepeat
 
         .bss
 write_block:
         .res    16
+
         .code
 
+; uint8_t fn_write(fn_handle_t handle,
+;                  uint32_t offset,
+;                  const uint8_t *data,
+;                  uint16_t len,
+;                  uint16_t *written)
 _fn_write:
-        pha                         ; save written ptr low
-        txa
-        pha                         ; save written ptr high
-
-        lda     __fn_initialized
+        ldy     __fn_initialized
         bne     @check_args
-        pla
-        pla
-        jsr     fix_stack
-        ldx     #$00
-        lda     #FN_ERR_INVALID
-        rts
+        ldy     #FN_WRITE_STACK_BYTES
+        jmp     invalid_with_stack_fix
 
 @check_args:
-        ldy     #STACK_HANDLE + 1
-        lda     (c_sp),y
-        tax
-        dey
-        lda     (c_sp),y
-        sta     tmp3                ; handle low
-        txa
-        ora     tmp3
-        beq     @invalid_preserved
-
-        lda     tmp3
-        jsr     _fn_find_session
-        cpx     #$FF
-        bne     @found
+        jsr     _fn_bbc_rw_setup_write
+        bcc     @have_session
+        cmp     #FN_ERR_NOT_FOUND
+        bne     @invalid
 
 @not_found:
-        pla
-        pla
         jsr     fix_stack
         ldx     #$00
         lda     #FN_ERR_NOT_FOUND
         rts
 
-@invalid_preserved:
-        pla
-        pla
+@invalid:
         jsr     fix_stack
         ldx     #$00
         lda     #FN_ERR_INVALID
         rts
 
-@found:
-        tay
-        lda     session_offsets,y
-        sta     tmp4                ; session offset
-
-        pla
-        sta     ptr3+1
-        pla
-        sta     ptr3                ; written ptr
-
+@have_session:
         ldy     #STACK_OFFSET
         lda     (c_sp),y
         ldy     tmp4
         cmp     __fn_sessions + FN_SESSION_WRITE_OFFSET,y
-        beq     :+
-        jmp     @invalid
-: 
+        bne     @invalid
         ldy     #STACK_OFFSET + 1
         lda     (c_sp),y
         ldy     tmp4
         cmp     __fn_sessions + FN_SESSION_WRITE_OFFSET + 1,y
-        beq     :+
-        jmp     @invalid
-: 
+        bne     @invalid
         ldy     #STACK_OFFSET + 2
         lda     (c_sp),y
         ldy     tmp4
         cmp     __fn_sessions + FN_SESSION_WRITE_OFFSET + 2,y
-        beq     :+
-        jmp     @invalid
-: 
+        bne     @invalid
         ldy     #STACK_OFFSET + 3
         lda     (c_sp),y
         ldy     tmp4
         cmp     __fn_sessions + FN_SESSION_WRITE_OFFSET + 3,y
-        beq     :+
-        jmp     @invalid
-: 
+        bne     @invalid
 
         lda     ptr3
         ora     ptr3+1
-        beq     :+
+        beq     @get_len
         ldy     #$00
         tya
         sta     (ptr3),y
         iny
         sta     (ptr3),y
-:
+
+@get_len:
         ldy     #STACK_LEN
         lda     (c_sp),y
         sta     ptr4
         iny
         lda     (c_sp),y
-        sta     ptr4+1              ; len total
+        sta     ptr4+1
         lda     ptr4
         ora     ptr4+1
         bne     :+
@@ -138,16 +97,14 @@ _fn_write:
         sta     ptr2
         iny
         lda     (c_sp),y
-        sta     ptr2+1              ; current data pointer
+        sta     ptr2+1
         lda     ptr2
         ora     ptr2+1
-        bne     :+
-        jmp     @invalid
-: 
+        beq     @invalid
 
         lda     #$00
         sta     tmp1
-        sta     tmp2                ; total written
+        sta     tmp2
 
         ldy     #15
         tya
@@ -167,7 +124,7 @@ _fn_write:
         sta     ptr1
         lda     ptr4+1
         sbc     tmp2
-        tax                         ; X = remaining high
+        tax
         cpx     #$02
         bcc     @use_remaining
         lda     #$00
@@ -194,21 +151,12 @@ _fn_write:
         beq     @advance
         cmp     #$03
         bne     :+
-        jmp     @write_not_found
+        jmp     @not_found
 : 
         cmp     #$01
         bne     :+
         jmp     @invalid
 : 
-        jmp     @io_error
-
-@write_not_found:
-        jsr     fix_stack
-        ldx     #$00
-        lda     #FN_ERR_NOT_FOUND
-        rts
-
-@io_error:
         jsr     fix_stack
         ldx     #$00
         lda     #FN_ERR_IO
@@ -267,12 +215,6 @@ _fn_write:
 @success:
         jsr     fix_stack
         jmp     return0
-
-@invalid:
-        jsr     fix_stack
-        ldx     #$00
-        lda     #FN_ERR_INVALID
-        rts
 
 fix_stack:
         ldy     #FN_WRITE_STACK_BYTES
