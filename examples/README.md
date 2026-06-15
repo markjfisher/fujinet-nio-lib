@@ -70,15 +70,23 @@ From the project root:
 
 ```bash
 make disk-bbc
+make disk-bbc-clib
 make FN_DEFAULT_TEST_URL="http://192.168.1.101:8080/get" \
      FN_TCP_HOST="192.168.1.101" \
      FN_TCP_PORT="7777" \
      FN_TCP_TLS=0 \
      disk-bbc
+make FN_DEFAULT_TEST_URL="http://192.168.1.101:8080/get" \
+     FN_TCP_HOST="192.168.1.101" \
+     FN_TCP_PORT="7777" \
+     FN_TCP_TLS=0 \
+     disk-bbc-clib
 ```
 
 The BBC disk output is grouped by example category. At present, the BBC build emits
 `disk-images/bbc/network.ssd` containing the supported BBC network examples.
+The BBC CLIB build emits the equivalent grouped image under:
+`disk-images/bbc-clib/network.ssd`.
 
 ### Build Atari examples with custom configuration:
 ```bash
