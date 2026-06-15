@@ -34,6 +34,11 @@ examples/
       tcp_get.xex
       tcp_stream.xex
       clock_test.xex
+  disk-images/
+    bbc/
+      network.ssd
+      clock.ssd           # when BBC clock examples are enabled
+      disk.ssd            # when BBC disk examples are added
 ```
 
 ## Building Examples
@@ -45,6 +50,8 @@ make TARGET=atari    # Build for Atari 8-bit
 make TARGET=bbc      # Build BBC-supported examples
 ```
 
+For `TARGET=bbc`, `make` now builds both the linked binaries and grouped disk images.
+
 ### Build a specific example:
 ```bash
 make http_get TARGET=linux
@@ -52,6 +59,15 @@ make tcp_get TARGET=linux
 make tcp_stream TARGET=linux
 make clock_test TARGET=linux
 ```
+
+### Build BBC disk images:
+```bash
+make disk TARGET=bbc
+make TARGET=bbc http_get && make TARGET=bbc disk
+```
+
+The BBC disk output is grouped by example category. At present, the BBC build emits
+`disk-images/bbc/network.ssd` containing the supported BBC network examples.
 
 ### Build Atari examples with custom configuration:
 ```bash
@@ -138,6 +154,9 @@ Current BBC notes:
 - `tcp_stream` is not yet enabled for BBC
 - `clock_test` is not yet enabled for BBC because the BBC library path currently returns `FN_ERR_UNSUPPORTED` for clock APIs
 - the example link path currently injects a tiny `initenv` shim object as a cc65 BBC runtime workaround
+- BBC example binaries are linked at `$1900` so they can be safely `*RUN` from disk images without colliding with DFS workspace
+- BBC disk images are built with the bundled `scripts/create_ssd.py` and per-file `.inf` metadata
+- BBC disk images are grouped by example category, so the current BBC output is a single `network.ssd` containing `HTTPGET` and `TCPGET`
 
 ## Example Categories
 

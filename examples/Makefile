@@ -51,6 +51,9 @@ INCDIR := $(LIB_DIR)/include
 # Build directories
 BUILD_DIR := build/$(TARGET)
 BIN_DIR := bin/$(TARGET)
+# Generic disk image output directory. Named separately from the future
+# `examples/disk/` source category to avoid path collisions.
+DISK_IMAGE_DIR := disk-images/$(TARGET)
 
 # ============================================================================
 # TCP/TLS Example Configuration
@@ -104,7 +107,7 @@ else ifeq ($(TARGET),bbc)
     LDFLAGS := 
     EXEEXT :=
     COMPILE = $(CC) -t $(TARGET) -c $(CFLAGS) -o $@ $<
-    LINK = $(CC) -t $(TARGET) $(CFLAGS) $< $(LIB_FILE) $(BBC_EXTRA_OBJS) $(LDFLAGS) -o $@
+    LINK = $(CC) -t $(TARGET) $(CFLAGS) --start-addr 0x1900 $< $(LIB_FILE) $(BBC_EXTRA_OBJS) $(LDFLAGS) -o $@
 else
     $(error Unsupported target: $(TARGET))
 endif
@@ -160,18 +163,37 @@ OBJECTS := $(foreach ex,$(ALL_EXAMPLES),$(BUILD_DIR)/$(call GET_EXAMPLE_DIR,$(ex
 # Output binaries
 BINARIES := $(foreach ex,$(ALL_EXAMPLES),$(BIN_DIR)/$(ex)$(EXEEXT))
 
+# BBC SSD image names (7-char DFS leaf limit, explicit to keep them stable)
+DFS_NAME_http_get := HTTPGET
+DFS_NAME_tcp_get := TCPGET
+DFS_NAME_tcp_stream := TCPSTRM
+DFS_NAME_clock_test := CLOCK
+
+define GET_DFS_NAME
+$(DFS_NAME_$(1))
+endef
+
+DISK_ARTIFACTS :=
+
+# Platform-specific disk packaging rules can populate DISK_ARTIFACTS and add
+# targets using the shared variables from this file.
+-include $(LIB_DIR)/makefiles/example-disk-$(TARGET).mk
+
 # ============================================================================
 # Build targets
 # ============================================================================
 
-.PHONY: all clean clean-all lib $(ALL_EXAMPLES) info compile
+.PHONY: all clean clean-all lib disk $(ALL_EXAMPLES) info compile
 
 # Default: build all examples (requires library)
-all: $(BINARIES)
+all: $(BINARIES) $(DISK_ARTIFACTS)
 
 # Compile only (no linking) - useful for testing cc65 compatibility
 compile: $(OBJECTS)
 	@echo "Compilation complete for $(TARGET)"
+
+disk: $(DISK_ARTIFACTS)
+	@echo "Disk images complete for $(TARGET)"
 
 # Build the library first (only if library file doesn't exist)
 lib:
@@ -189,8 +211,10 @@ info:
 	@echo "Sources: $(SOURCES)"
 	@echo "Objects: $(OBJECTS)"
 	@echo "Binaries: $(BINARIES)"
+	@echo "Disk images: $(DISK_ARTIFACTS)"
 	@echo "Build dir: $(BUILD_DIR)"
 	@echo "Bin dir: $(BIN_DIR)"
+	@echo "Disk dir: $(DISK_IMAGE_DIR)"
 	@echo "Library: $(LIB_FILE)"
 	@echo "Library exists: $$(test -f $(LIB_FILE) && echo yes || echo no)"
 	@echo ""
@@ -210,11 +234,17 @@ $(BUILD_DIR)/network:
 $(BUILD_DIR)/clock:
 	@mkdir -p $@
 
-$(BUILD_DIR)/disk:
+$(BUILD_DIR)/diskimg:
 	@mkdir -p $@
 
 # Create bin directory
 $(BIN_DIR):
+	@mkdir -p $@
+
+$(DISK_IMAGE_DIR):
+	@mkdir -p $@
+
+$(BUILD_DIR)/disk:
 	@mkdir -p $@
 
 # Compile source to object file
@@ -275,11 +305,11 @@ $(ALL_EXAMPLES): %: $(BIN_DIR)/%$(EXEEXT)
 
 # Clean current target only
 clean:
-	rm -rf $(BUILD_DIR) $(BIN_DIR)
+	rm -rf $(BUILD_DIR) $(BIN_DIR) $(DISK_IMAGE_DIR)
 
 # Clean all targets
 clean-all:
-	rm -rf build bin
+	rm -rf build bin disk-images
 
 # ============================================================================
 # Dependencies

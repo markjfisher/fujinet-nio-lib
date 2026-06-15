@@ -89,7 +89,7 @@ def http_get_smoke_ssd(scaffold_info):
     if not cc65:
         pytest.skip("cl65 not available")
 
-    create_ssd = FN_ROM_ROOT / "scripts" / "create_ssd.py"
+    create_ssd = _LIB_ROOT / "scripts" / "create_ssd.py"
     if not create_ssd.is_file():
         pytest.skip(f"create_ssd.py not found at {create_ssd}")
 
@@ -133,7 +133,7 @@ def http_get_smoke_ssd(scaffold_info):
     subprocess.run(
         ["python3", str(create_ssd), "-i", str(stage), "-o", str(ssd), "-t", "HTGET"],
         check=True,
-        cwd=str(FN_ROM_ROOT),
+        cwd=str(_LIB_ROOT),
     )
 
     return ssd

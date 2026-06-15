@@ -52,15 +52,15 @@ test-bbc:
 	@echo "BBC test scaffold"
 	@echo "========================================="
 	$(MAKE) bbc
-	$(MAKE) -C examples TARGET=bbc compile
+	$(MAKE) -C examples TARGET=bbc all
 	@echo ""
-	@echo "Built BBC library and supported BBC examples."
+	@echo "Built BBC library, supported BBC examples, and BBC disk images."
 	@echo "See integration-tests/beebium/README.md for scripted and real E2E setup."
 
 test-bbc-scripted:
 	@echo "Running scripted BBC test scaffold..."
 	$(MAKE) bbc
-	$(MAKE) -C examples TARGET=bbc compile
+	$(MAKE) -C examples TARGET=bbc all
 	@if [ -d integration-tests/beebium ]; then \
 		cd integration-tests/beebium && uv run pytest -q scripted; \
 	else \
@@ -71,7 +71,7 @@ test-bbc-scripted:
 test-bbc-real:
 	@echo "Running real BBC test scaffold..."
 	$(MAKE) bbc
-	$(MAKE) -C examples TARGET=bbc compile
+	$(MAKE) -C examples TARGET=bbc all
 	@if [ -d integration-tests/beebium ]; then \
 		cd integration-tests/beebium && uv run pytest -q real; \
 	else \
