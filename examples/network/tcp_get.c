@@ -45,8 +45,13 @@
 
 /* Standard includes (all platforms) */
 #include <stdio.h>
+#ifndef __BBC__
 #include <stdlib.h>
+#endif
 #include <string.h>
+#ifdef __BBC__
+#include <conio.h>
+#endif
 
 /* Platform-specific includes */
 #ifndef __CC65__
@@ -89,7 +94,11 @@
  * Static Buffers (for cc65 compatibility - no large stack allocations)
  * ============================================================================ */
 
+#ifdef __BBC__
+#define BUFFER_SIZE 128
+#else
 #define BUFFER_SIZE 512
+#endif
 #define URL_MAX_LEN FN_MAX_URL_LEN
 
 static uint8_t g_buffer[BUFFER_SIZE];
@@ -111,6 +120,7 @@ static char g_url[URL_MAX_LEN];
 #define FN_STRINGIFY_INNER(x) #x
 #define FN_STRINGIFY(x) FN_STRINGIFY_INNER(x)
 
+#ifndef __BBC__
 /* Static storage for environment strings (putenv doesn't copy!) */
 static char env_fn_tcp_host[] = "FN_TCP_HOST=" FN_TCP_HOST;
 static char env_fn_tcp_port[] = "FN_TCP_PORT=" FN_TCP_PORT;
@@ -129,8 +139,28 @@ static void setup_env(void)
     putenv(env_fn_tcp_tls);
     putenv(env_fn_tcp_request);
 }
+#endif
 
 #endif /* __CC65__ */
+
+#ifdef __BBC__
+static void app_puts(const char *s)
+{
+    while (*s != '\0') {
+        if (*s == '\n') {
+            cputs("\r\n");
+        } else if (*s != '\r') {
+            cputc(*s);
+        }
+        ++s;
+    }
+}
+
+static void app_nl(void)
+{
+    cputs("\r\n");
+}
+#endif
 
 /* ============================================================================
  * Platform Abstraction: Time and Delay
@@ -231,6 +261,17 @@ static void sleep_brief(void)
  */
 static const char *get_config_url(void)
 {
+#ifdef __BBC__
+    if (FN_TCP_TLS) {
+        strcpy(g_url, "tls://");
+    } else {
+        strcpy(g_url, "tcp://");
+    }
+    strcat(g_url, FN_TCP_HOST);
+    strcat(g_url, ":");
+    strcat(g_url, FN_TCP_PORT);
+    return g_url;
+#else
     const char *url;
     const char *host;
     const char *port_str;
@@ -269,6 +310,7 @@ static const char *get_config_url(void)
     }
     
     return g_url;
+#endif
 }
 
 /**
@@ -277,11 +319,15 @@ static const char *get_config_url(void)
  */
 static const char *get_config_request(void)
 {
+#ifdef __BBC__
+    return FN_TCP_REQUEST;
+#else
     const char *req = getenv("FN_TCP_REQUEST");
     if (req != NULL && req[0] != '\0') {
         return req;
     }
     return FN_TCP_REQUEST;
+#endif
 }
 
 /* ============================================================================
@@ -302,66 +348,111 @@ int main(void)
     const char *request;
     idle_timer_t idle;
     
-#ifdef __CC65__
+#if defined(__CC65__) && !defined(__BBC__)
     /* Set up environment from compile-time defines for cc65 */
     setup_env();
 #endif
     
     /* Print header */
+#ifdef __BBC__
+    app_puts("TCP GET");
+    app_nl();
+#else
     printf("FujiNet-NIO TCP/TLS Client Example\n");
     printf("==================================\n\n");
+#endif
     
     /* Get configuration */
     url = get_config_url();
     request = get_config_request();
+#ifndef __BBC__
     printf("URL: %s\n\n", url);
+#endif
     
     /* Initialize library */
+#ifndef __BBC__
     printf("Initializing...\n");
+#endif
     result = fn_init();
     if (result != FN_OK) {
+#ifdef __BBC__
+        app_puts("Init fail");
+        app_nl();
+#else
         printf("Init failed: %s\n", fn_error_string(result));
+#endif
         return 1;
     }
     
     if (!fn_is_ready()) {
+#ifdef __BBC__
+        app_puts("Not ready");
+        app_nl();
+#else
         printf("FujiNet device not ready!\n");
+#endif
         return 1;
     }
+#ifndef __BBC__
     printf("Device ready.\n\n");
+#endif
     
     /* Open connection */
+#ifndef __BBC__
     printf("Opening connection...\n");
+#endif
     result = fn_open(&handle, 0, url, 0);
     if (result != FN_OK) {
+#ifdef __BBC__
+        app_puts("Open fail");
+        app_nl();
+#else
         printf("Connection failed: %s\n", fn_error_string(result));
+#endif
         return 1;
     }
+#ifndef __BBC__
     printf("Handle: %u\nConnection established.\n", handle);
+#endif
     
     /* Send data */
     request_len = (uint16_t)strlen(request);
+#ifndef __BBC__
     printf("\nSending data (%u bytes)...\n", request_len);
+#endif
     
     result = fn_write(handle, 0, (const uint8_t *)request, request_len, &bytes_written);
     if (result != FN_OK) {
+#ifdef __BBC__
+        app_puts("Write fail");
+        app_nl();
+#else
         printf("Write failed: %s\n", fn_error_string(result));
+#endif
         fn_close(handle);
         return 1;
     }
     total_written = bytes_written;
+#ifndef __BBC__
     printf("Sent %u bytes: \"%.*s\"\n", bytes_written, 
            bytes_written > 50 ? 50 : bytes_written, request);
+#endif
     
     /* Half-close write side (signals FIN to peer) */
+#ifndef __BBC__
     printf("Half-closing write side...\n");
+#endif
     result = fn_write(handle, total_written, NULL, 0, &bytes_written);
     if (result != FN_OK && result != FN_ERR_UNSUPPORTED) {
+#ifndef __BBC__
         printf("Half-close: %s (continuing)\n", fn_error_string(result));
+#endif
     }
     
     /* Read response with idle timeout */
+#ifndef __BBC__
     printf("\nReading response...\n");
+#endif
     total_read = 0;
     idle_init(&idle);
     
@@ -372,7 +463,11 @@ int main(void)
         if (result == FN_ERR_NOT_READY || result == FN_ERR_BUSY) {
             /* Data not ready - check idle timeout if we've received data */
             if (total_read > 0 && idle_expired(&idle)) {
+#ifdef __BBC__
+                app_nl();
+#else
                 printf("\n[Read complete - idle timeout]\n");
+#endif
                 break;
             }
             sleep_brief();
@@ -381,55 +476,105 @@ int main(void)
         
         if (result == FN_ERR_TIMEOUT) {
             if (total_read > 0) {
+#ifdef __BBC__
+                app_nl();
+#else
                 printf("\n[Read complete - timeout]\n");
+#endif
             } else {
+#ifdef __BBC__
+                app_puts("Read timeout");
+                app_nl();
+#else
                 printf("\nRead timeout (no data received)\n");
+#endif
             }
             break;
         }
         
         if (result == FN_ERR_IO) {
             if (total_read > 0) {
+#ifdef __BBC__
+                app_nl();
+#else
                 printf("\n[Read complete - peer closed]\n");
+#endif
             } else {
+#ifdef __BBC__
+                app_puts("Read fail");
+                app_nl();
+#else
                 printf("\nRead error: %s\n", fn_error_string(result));
+#endif
             }
             break;
         }
         
         if (result != FN_OK) {
+#ifdef __BBC__
+            app_puts("Read fail");
+            app_nl();
+#else
             printf("\nRead error: %s\n", fn_error_string(result));
+#endif
             break;
         }
         
         if (bytes_read == 0) {
+#ifdef __BBC__
+            app_nl();
+#else
             printf("\n[Read complete - no more data]\n");
+#endif
             break;
         }
         
         /* Got data - reset idle timer and print */
         idle_reset(&idle);
         g_buffer[bytes_read < BUFFER_SIZE ? bytes_read : BUFFER_SIZE - 1] = '\0';
+#ifdef __BBC__
+        app_puts((char *)g_buffer);
+#else
         printf("%s", (char *)g_buffer);
+#endif
         total_read += (uint32_t)bytes_read;
         
         if (flags & FN_READ_EOF) {
+#ifdef __BBC__
+            app_nl();
+#else
             printf("\n[EOF reached]\n");
+#endif
             break;
         }
     }
     
+#ifndef __BBC__
     printf("\n\nTotal bytes read: %lu\n", (unsigned long)total_read);
+#endif
     
     /* Close connection */
+#ifndef __BBC__
     printf("Closing connection...\n");
+#endif
     result = fn_close(handle);
     if (result != FN_OK) {
+#ifdef __BBC__
+        app_puts("Close fail");
+        app_nl();
+#else
         printf("Close result: %s\n", fn_error_string(result));
     } else {
         printf("Connection closed.\n");
+#endif
     }
     
+#ifdef __BBC__
+    app_nl();
+    app_puts("Done");
+    app_nl();
+#else
     printf("\nDone.\n");
+#endif
     return 0;
 }

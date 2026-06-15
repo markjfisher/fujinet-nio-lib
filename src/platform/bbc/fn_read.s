@@ -53,7 +53,7 @@ _fn_read:
         sta     tmp3               ; handle low byte
         txa
         ora     tmp3
-        beq     @invalid
+        beq     @invalid_preserved
 
         lda     tmp3
         jsr     _fn_find_session
@@ -68,15 +68,23 @@ _fn_read:
         lda     #FN_ERR_NOT_FOUND
         rts
 
+@invalid_preserved:
+        pla
+        pla
+        jsr     fix_stack
+        ldx     #$00
+        lda     #FN_ERR_INVALID
+        rts
+
 @found:
+        tay
+        lda     session_offsets,y
+        sta     tmp4
+
         pla
         sta     ptr3+1
         pla
         sta     ptr3
-
-        tay
-        lda     session_offsets,y
-        sta     tmp4
 
         ldy     #STACK_BYTES_READ_PTR
         lda     (c_sp),y
