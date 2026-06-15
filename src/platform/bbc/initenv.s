@@ -1,5 +1,4 @@
         .export initenv
 
-.proc initenv
+initenv:
         rts
-.endproc

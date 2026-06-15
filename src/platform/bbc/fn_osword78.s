@@ -7,7 +7,7 @@
 
 ; uint8_t __fastcall__ fn_bbc_osword78(uint8_t *block)
 ;   AX = pointer to 16-byte parameter block
-.proc _fn_bbc_osword78
+_fn_bbc_osword78:
         sta     ptr1
         stx     ptr1+1
 
@@ -20,4 +20,3 @@
         lda     (ptr1),y
         ldx     #$00
         rts
-.endproc
