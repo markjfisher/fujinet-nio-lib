@@ -1,6 +1,4 @@
-#include <fcntl.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "fn_internal.h"
 #include "fn_platform.h"
@@ -19,13 +17,17 @@
 
 #define FN_BBC_DIRECT_URL_MAX       127u
 #define FN_BBC_OSWORD_STR_MAX       512u
-#define FN_BBC_SEEK_SET             0
+#define FN_BBC_OPEN_READ            0x40
+#define FN_BBC_OPEN_WRITE           0x80
+#define FN_BBC_OPEN_UPDATE          0xC0
 
-static const char _fn_bbc_sentinel_url[] = "://";
 static const char _fn_bbc_platform_name[] = "bbc";
+static char _fn_bbc_open_name[FN_MAX_URL_LEN + 1];
 
 uint8_t __fastcall__ fn_bbc_osword78(uint8_t *block);
-unsigned char __fastcall__ fn_bbc_fd_getchannel(unsigned char fd);
+unsigned char __fastcall__ osfind(unsigned char mode, const char *name);
+int __fastcall__ close_file(unsigned char channel);
+int __fastcall__ fn_bbc_osbget(unsigned char channel);
 
 static uint8_t fn_bbc_status_to_result(uint8_t status)
 {
@@ -60,11 +62,11 @@ static int fn_bbc_open_flags(uint8_t method)
     switch (method) {
         case 0:
         case FN_METHOD_POST:
-            return O_RDWR;
+            return FN_BBC_OPEN_UPDATE;
         case FN_METHOD_GET:
-            return O_RDONLY;
+            return FN_BBC_OPEN_READ;
         case FN_METHOD_PUT:
-            return O_WRONLY;
+            return FN_BBC_OPEN_WRITE;
         default:
             return -1;
     }
@@ -101,6 +103,17 @@ static const char *fn_bbc_apply_tls_flag(const char *url, uint8_t flags)
     return url;
 }
 
+static const char *fn_bbc_make_osfind_name(const char *src, uint16_t len)
+{
+    if (len >= FN_MAX_URL_LEN) {
+        return 0;
+    }
+
+    memcpy(_fn_bbc_open_name, src, len);
+    _fn_bbc_open_name[len] = '\r';
+    return _fn_bbc_open_name;
+}
+
 static uint8_t fn_bbc_arm_open_url(const char *url, uint16_t len)
 {
     uint8_t block[16];
@@ -117,19 +130,6 @@ static uint8_t fn_bbc_arm_open_url(const char *url, uint16_t len)
     block[5] = (uint8_t)(len >> 8);
 
     return fn_bbc_status_to_result(fn_bbc_osword78(block));
-}
-
-static uint8_t fn_bbc_channel_from_handle(fn_handle_t handle, uint8_t *channel)
-{
-    int8_t slot;
-
-    slot = fn_find_session(handle);
-    if (slot < 0 || channel == 0) {
-        return FN_ERR_NOT_FOUND;
-    }
-
-    *channel = fn_bbc_fd_getchannel((unsigned char)handle);
-    return FN_OK;
 }
 
 uint8_t fn_init(void)
@@ -168,11 +168,12 @@ uint8_t fn_open(fn_handle_t *handle,
                 const char *url,
                 uint8_t flags)
 {
-    int fd;
+    unsigned char channel;
     int mode;
     int8_t slot;
     uint16_t url_len;
     const char *open_url;
+    const char *osfind_name;
 
     if (!_fn_initialized) {
         return FN_ERR_INVALID;
@@ -201,27 +202,33 @@ uint8_t fn_open(fn_handle_t *handle,
         if (fn_bbc_arm_open_url(open_url, url_len) != FN_OK) {
             return FN_ERR_INVALID;
         }
-        fd = open(_fn_bbc_sentinel_url, mode);
+        osfind_name = fn_bbc_make_osfind_name("://", 3);
     } else {
-        fd = open(open_url, mode);
+        osfind_name = fn_bbc_make_osfind_name(open_url, url_len);
     }
 
-    if (fd < 0) {
+    if (osfind_name == 0) {
+        return FN_ERR_URL_TOO_LONG;
+    }
+
+    channel = osfind((unsigned char)mode, osfind_name);
+
+    if (channel == 0) {
         return FN_ERR_IO;
     }
 
     slot = fn_find_free_slot();
     if (slot < 0) {
-        close(fd);
+        close_file(channel);
         return FN_ERR_NO_HANDLES;
     }
 
-    *handle = (fn_handle_t)fd;
+    *handle = (fn_handle_t)channel;
     _fn_sessions[slot].active = 1;
-    _fn_sessions[slot].handle = (fn_handle_t)fd;
+    _fn_sessions[slot].handle = (fn_handle_t)channel;
     _fn_sessions[slot].read_offset = 0;
     _fn_sessions[slot].write_offset = 0;
-    _fn_sessions[slot].proto_flags = 0;
+    _fn_sessions[slot].proto_flags = FN_PROTO_FLAG_SEQUENTIAL_READ | FN_PROTO_FLAG_SEQUENTIAL_WRITE;
     _fn_sessions[slot].needs_body = 0;
     _fn_sessions[slot].reserved = 0;
     return FN_OK;
@@ -281,6 +288,7 @@ uint8_t fn_read(fn_handle_t handle,
 {
     int8_t slot;
     int rc;
+    uint16_t count;
 
     if (!_fn_initialized) {
         return FN_ERR_INVALID;
@@ -295,24 +303,25 @@ uint8_t fn_read(fn_handle_t handle,
         return FN_ERR_NOT_FOUND;
     }
 
-    if (_fn_sessions[slot].read_offset != offset) {
-        if (lseek((int)handle, (long)offset, FN_BBC_SEEK_SET) < 0) {
-            return FN_ERR_INVALID;
+    if (offset != _fn_sessions[slot].read_offset) {
+        return FN_ERR_INVALID;
+    }
+
+    count = 0;
+    while (count < max_len) {
+        rc = fn_bbc_osbget((unsigned char)handle);
+        if (rc < 0) {
+            break;
         }
-        _fn_sessions[slot].read_offset = offset;
+        buf[count++] = (uint8_t)rc;
     }
 
-    rc = read((int)handle, buf, max_len);
-    if (rc < 0) {
-        return FN_ERR_IO;
-    }
-
-    *bytes_read = (uint16_t)rc;
+    *bytes_read = count;
     if (flags != 0) {
-        *flags = (rc == 0) ? FN_READ_EOF : 0;
+        *flags = (count < max_len) ? FN_READ_EOF : 0;
     }
 
-    _fn_sessions[slot].read_offset += (uint32_t)(uint16_t)rc;
+    _fn_sessions[slot].read_offset += count;
     return FN_OK;
 }
 
@@ -324,10 +333,8 @@ uint8_t fn_write(fn_handle_t handle,
 {
     int8_t slot;
     uint8_t block[16];
-    uint8_t channel;
     uint16_t chunk;
     uint16_t total;
-    uint8_t result;
 
     if (!_fn_initialized) {
         return FN_ERR_INVALID;
@@ -358,11 +365,6 @@ uint8_t fn_write(fn_handle_t handle,
         return FN_ERR_INVALID;
     }
 
-    result = fn_bbc_channel_from_handle(handle, &channel);
-    if (result != FN_OK) {
-        return result;
-    }
-
     total = 0;
     while (total < len) {
         chunk = (uint16_t)(len - total);
@@ -376,11 +378,15 @@ uint8_t fn_write(fn_handle_t handle,
         block[3] = (uint8_t)((((unsigned)(data + total)) >> 8) & 0xFFu);
         block[4] = (uint8_t)(chunk & 0xFFu);
         block[5] = (uint8_t)(chunk >> 8);
-        block[6] = channel;
+        block[6] = (uint8_t)handle;
 
-        result = fn_bbc_status_to_result(fn_bbc_osword78(block));
-        if (result != FN_OK) {
-            return result;
+        {
+            uint8_t result;
+
+            result = fn_bbc_status_to_result(fn_bbc_osword78(block));
+            if (result != FN_OK) {
+                return result;
+            }
         }
 
         total += chunk;
@@ -433,7 +439,7 @@ uint8_t fn_close(fn_handle_t handle)
         return FN_ERR_NOT_FOUND;
     }
 
-    if (close((int)handle) != 0) {
+    if (close_file((uint8_t)handle) != 0) {
         return FN_ERR_IO;
     }
 
@@ -475,9 +481,7 @@ uint8_t fn_set_content_profile(uint8_t profile)
 uint8_t fn_json_query(fn_handle_t handle, const char *path)
 {
     uint8_t block[16];
-    uint8_t channel;
     uint16_t len;
-    uint8_t result;
 
     if (!_fn_initialized) {
         return FN_ERR_INVALID;
@@ -492,9 +496,8 @@ uint8_t fn_json_query(fn_handle_t handle, const char *path)
         return FN_ERR_URL_TOO_LONG;
     }
 
-    result = fn_bbc_channel_from_handle(handle, &channel);
-    if (result != FN_OK) {
-        return result;
+    if (fn_find_session(handle) < 0) {
+        return FN_ERR_NOT_FOUND;
     }
 
     memset(block, 0, sizeof(block));
@@ -503,7 +506,7 @@ uint8_t fn_json_query(fn_handle_t handle, const char *path)
     block[3] = (uint8_t)(((unsigned)path >> 8) & 0xFFu);
     block[4] = (uint8_t)(len & 0xFFu);
     block[5] = (uint8_t)(len >> 8);
-    block[6] = channel;
+    block[6] = (uint8_t)handle;
 
     return fn_bbc_status_to_result(fn_bbc_osword78(block));
 }

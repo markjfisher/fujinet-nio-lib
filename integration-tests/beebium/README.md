@@ -14,7 +14,7 @@ This first cut is intentionally small:
 
 - the main repo `test-bbc` target builds the BBC library and BBC-supported examples
 - this directory provides the dependency and fixture skeleton for future pytest lanes
-- no full scripted or real tests are checked in yet
+- one real scripted smoke test is now checked in for a BBC library-linked C app run from SSD via `fn-rom`
 
 ## Reuse source
 
@@ -36,10 +36,13 @@ The design is based on these `fn-rom` assets:
 - Run a BBC C smoke app or existing example linked against `fujinet-nio-lib`
 - Assert emitted network `OPEN`, `READ`, `WRITE`, `CLOSE`, and translate packets
 
-Recommended first scripted tests:
+Current scripted coverage:
 
-- HTTP GET smoke using `examples/network/http_get.c`
-- TCP request/response smoke using `examples/network/tcp_get.c`
+- HTTP GET smoke using `apps/http_get_smoke.c`
+
+Recommended next scripted tests:
+
+- TCP request/response smoke
 - JSON query smoke once a compact BBC test app is added
 
 ### Real lane
