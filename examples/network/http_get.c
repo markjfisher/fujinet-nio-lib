@@ -50,7 +50,14 @@ static uint8_t buffer[BUFFER_SIZE];
 #ifdef __BBC__
 static void app_puts(const char *s)
 {
-    cputs(s);
+    while (*s != '\0') {
+        if (*s == '\n') {
+            cputs("\r\n");
+        } else if (*s != '\r') {
+            cputc(*s);
+        }
+        ++s;
+    }
 }
 
 static void app_nl(void)
