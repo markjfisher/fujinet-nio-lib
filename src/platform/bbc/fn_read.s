@@ -7,6 +7,7 @@
 FN_ERR_NOT_FOUND                  := $01
 FN_ERR_INVALID                    := $02
 FN_READ_EOF                       := $01
+FN_MAX_SESSIONS                   := 3
 FN_SESSION_READ_OFFSET            := 10
 FN_READ_STACK_BYTES               := 12
 FN_SESSION_SIZE                   := 14
@@ -18,7 +19,7 @@ STACK_OFFSET                      := 6
 STACK_HANDLE                      := 10
 
 session_offsets:
-        .repeat 5, I
+        .repeat FN_MAX_SESSIONS, I
         .byte   I * FN_SESSION_SIZE
         .endrepeat
 

@@ -15,6 +15,7 @@
 
 FN_ERR_NO_HANDLES                 := $12
 FN_PROTO_FLAG_SEQUENTIAL_BOTH     := $03
+FN_MAX_SESSIONS                   := 3
 FN_SESSION_ACTIVE                 := 0
 FN_SESSION_PROTO_FLAGS            := 1
 FN_SESSION_NEEDS_BODY             := 2
@@ -25,7 +26,7 @@ FN_SESSION_READ_OFFSET            := 10
 FN_SESSION_SIZE                   := 14
 
 session_offsets:
-        .repeat 5, I
+        .repeat FN_MAX_SESSIONS, I
         .byte   I * FN_SESSION_SIZE
         .endrepeat
 

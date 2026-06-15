@@ -351,7 +351,7 @@ const char *fn_version(void);
 | Constant | Value | Description |
 |----------|-------|-------------|
 | `FN_MAX_URL_LEN` | 256 | Maximum URL length |
-| `FN_MAX_SESSIONS` | 4 | Maximum concurrent sessions |
+| `FN_MAX_SESSIONS` | 3 on cc65, 4 otherwise | Maximum concurrent sessions |
 | `FN_MAX_CHUNK_SIZE` | 512 | Maximum read/write chunk size |
 
 ## Protocol Capability Flags

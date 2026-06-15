@@ -96,10 +96,11 @@
 
 #ifdef __BBC__
 #define BUFFER_SIZE 128
+#define URL_MAX_LEN 96
 #else
 #define BUFFER_SIZE 512
-#endif
 #define URL_MAX_LEN FN_MAX_URL_LEN
+#endif
 
 static uint8_t g_buffer[BUFFER_SIZE];
 static char g_url[URL_MAX_LEN];
