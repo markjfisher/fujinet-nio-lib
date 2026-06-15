@@ -117,6 +117,11 @@ $(OBJDIR)/$(TARGET)/platform/$(PLATFORM):
 $(BUILDDIR):
 	@mkdir -p $@
 
+# Assemble ASM files (CC65 only)
+$(OBJDIR)/$(TARGET)/platform/$(PLATFORM)/%.o: $(SRCDIR)/platform/$(PLATFORM)/%.s | $(OBJDIR)/$(TARGET)/platform/$(PLATFORM)
+	@echo "  AS $<"
+	$(CC) -t $(TARGET) -c $(ASFLAGS) --listing $(@:.o=.lst) -o $@ $<
+
 # Compile C files
 ifeq ($(COMPILER_FAMILY),gcc)
 # GCC compilation
@@ -137,11 +142,6 @@ $(OBJDIR)/$(TARGET)/platform/$(PLATFORM)/%.o: $(SRCDIR)/platform/$(PLATFORM)/%.c
 	@echo "  CC $<"
 	$(CC) -t $(TARGET) -c $(CFLAGS) --create-dep $(@:.o=.d) --listing $(@:.o=.lst) -o $@ $<
 endif
-
-# Assemble ASM files (CC65 only)
-$(OBJDIR)/$(TARGET)/platform/$(PLATFORM)/%.o: $(SRCDIR)/platform/$(PLATFORM)/%.s | $(OBJDIR)/$(TARGET)/platform/$(PLATFORM)
-	@echo "  AS $<"
-	$(CC) -t $(TARGET) -c $(ASFLAGS) --listing $(@:.o=.lst) -o $@ $<
 
 # Create library
 ifeq ($(COMPILER_FAMILY),gcc)
