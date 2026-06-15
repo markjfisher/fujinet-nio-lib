@@ -30,5 +30,6 @@ uint8_t fn_bbc_probe_rom(void);
 int fn_bbc_open_flags(uint8_t method);
 uint8_t fn_bbc_arm_open_url(const char *url, uint16_t len);
 const char *fn_bbc_prepare_short_open_name(const char *url, uint16_t url_len);
+uint8_t fn_bbc_claim_channel(fn_handle_t *handle, unsigned char channel);
 
 #endif
