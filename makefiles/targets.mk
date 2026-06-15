@@ -9,6 +9,7 @@ PLATFORM_atari      := atari
 PLATFORM_apple2     := apple2
 PLATFORM_apple2enh  := apple2
 PLATFORM_bbc        := bbc
+PLATFORM_bbc-clib   := bbc
 PLATFORM_c64        := c64
 PLATFORM_coco       := coco
 PLATFORM_msdos      := msdos
@@ -24,6 +25,7 @@ COMPILER_FAMILY_atari      := cc65
 COMPILER_FAMILY_apple2     := cc65
 COMPILER_FAMILY_apple2enh  := cc65
 COMPILER_FAMILY_bbc        := cc65
+COMPILER_FAMILY_bbc-clib   := cc65
 COMPILER_FAMILY_c64        := cc65
 COMPILER_FAMILY_coco       := cmoc
 COMPILER_FAMILY_msdos      := wcc
@@ -49,6 +51,10 @@ TARGET_ASFLAGS_apple2enh :=
 # BBC Micro
 TARGET_CFLAGS_bbc      :=
 TARGET_ASFLAGS_bbc     :=
+
+# BBC Micro CLIB target
+TARGET_CFLAGS_bbc-clib  :=
+TARGET_ASFLAGS_bbc-clib :=
 
 # Commodore 64
 TARGET_CFLAGS_c64       :=

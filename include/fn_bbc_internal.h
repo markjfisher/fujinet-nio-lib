@@ -1,0 +1,33 @@
+#ifndef FN_BBC_INTERNAL_H
+#define FN_BBC_INTERNAL_H
+
+#include "fn_internal.h"
+
+#define FN_BBC_REASON_JSON_QUERY    0x00
+#define FN_BBC_REASON_SET_BODY_LEN  0x01
+#define FN_BBC_REASON_WRITE_DATA    0x02
+#define FN_BBC_REASON_CONTENT_TYPE  0x03
+#define FN_BBC_REASON_SET_OPEN_URL  0x04
+
+#define FN_BBC_STATUS_OK            0x00
+#define FN_BBC_STATUS_BAD_CALL      0x01
+#define FN_BBC_STATUS_JSON_FAILED   0x02
+#define FN_BBC_STATUS_BAD_CHANNEL   0x03
+
+#define FN_BBC_DIRECT_URL_MAX       127u
+#define FN_BBC_OSWORD_STR_MAX       512u
+#define FN_BBC_OPEN_READ            0x40
+#define FN_BBC_OPEN_WRITE           0x80
+#define FN_BBC_OPEN_UPDATE          0xC0
+
+uint8_t __fastcall__ fn_bbc_osword78(uint8_t *block);
+unsigned char __fastcall__ osfind(unsigned char mode, const char *name);
+int __fastcall__ close_file(unsigned char channel);
+int __fastcall__ fn_bbc_osbget(unsigned char channel);
+
+uint8_t fn_bbc_status_to_result(uint8_t status);
+uint8_t fn_bbc_probe_rom(void);
+int fn_bbc_open_flags(uint8_t method);
+uint8_t fn_bbc_arm_open_url(const char *url, uint16_t len);
+
+#endif

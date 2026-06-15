@@ -55,6 +55,8 @@ BIN_DIR := bin/$(TARGET)
 # `examples/disk/` source category to avoid path collisions.
 DISK_IMAGE_DIR := disk-images/$(TARGET)
 
+CC65_HOME ?= $(abspath $(LIB_DIR)/../../bbc/cc65)
+
 # ============================================================================
 # TCP/TLS Example Configuration
 # ============================================================================
@@ -111,6 +113,15 @@ else ifeq ($(TARGET),bbc)
     EXEEXT :=
     COMPILE = $(CC) -t $(TARGET) -c $(CFLAGS) -o $@ $<
     LINK = $(CC) -t $(TARGET) $(CFLAGS) --start-addr 0x1900 $< $(LIB_FILE) $(BBC_EXTRA_OBJS) $(LDFLAGS) -o $@
+else ifeq ($(TARGET),bbc-clib)
+    LIB_FILE := $(LIB_DIR)/build/fujinet-nio-bbc-clib.lib
+    BBC_EXTRA_OBJS := $(LIB_DIR)/obj/bbc-clib/platform/bbc/initenv.o
+    CC := cl65
+    CFLAGS := -Osir -O
+    LDFLAGS := 
+    EXEEXT :=
+    COMPILE = $(CC) -t $(TARGET) -c $(CFLAGS) -o $@ $<
+    LINK = $(CC) -t $(TARGET) $(CFLAGS) --start-addr 0x1900 $< $(LIB_FILE) $(BBC_EXTRA_OBJS) $(LDFLAGS) -o $@
 else
     $(error Unsupported target: $(TARGET))
 endif
@@ -128,7 +139,7 @@ NETWORK_EXAMPLES := http_get tcp_get tcp_stream
 # Clock examples
 CLOCK_EXAMPLES := clock_test
 
-ifeq ($(TARGET),bbc)
+ifneq ($(filter $(TARGET),bbc bbc-clib),)
 NETWORK_EXAMPLES := http_get tcp_get
 CLOCK_EXAMPLES :=
 endif
@@ -259,6 +270,16 @@ $(BUILD_DIR)/config/http_get.cfg: FORCE | $(BUILD_DIR)/config
 $(BIN_DIR):
 	@mkdir -p $@
 
+ifneq ($(filter $(TARGET),bbc bbc-clib atari),)
+define LINK_CC65_WITH_MAP
+	$(LINK) -m $(basename $@).map -Ln $(basename $@).lbl
+endef
+else
+define LINK_CC65_WITH_MAP
+	$(LINK)
+endef
+endif
+
 $(DISK_IMAGE_DIR):
 	@mkdir -p $@
 
@@ -308,11 +329,11 @@ $(BUILD_DIR)/disk/%.o: disk/%.c | $(BUILD_DIR)/disk
 # Pattern: bin/TARGET/example from build/TARGET/category/example.o
 $(BIN_DIR)/%$(EXEEXT): $(BUILD_DIR)/network/%.o | $(BIN_DIR) lib
 	@echo "Linking $@ for $(TARGET)..."
-	$(LINK)
+	$(LINK_CC65_WITH_MAP)
 
 $(BIN_DIR)/%$(EXEEXT): $(BUILD_DIR)/clock/%.o | $(BIN_DIR) lib
 	@echo "Linking $@ for $(TARGET)..."
-	$(LINK)
+	$(LINK_CC65_WITH_MAP)
 
 # ============================================================================
 # Convenience targets for individual examples

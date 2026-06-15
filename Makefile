@@ -12,7 +12,7 @@
 
 # Supported targets
 # TARGETS = atari apple2 apple2enh bbc c64 coco msdos linux
-TARGETS = atari bbc linux
+TARGETS = atari bbc bbc-clib linux
 
 # Output library name
 override PROGRAM := fujinet-nio
@@ -99,6 +99,7 @@ help:
 	@echo "Supported targets:"
 	@echo "  atari       - Atari 8-bit (cc65)"
 	@echo "  bbc         - BBC Micro (cc65)"
+	@echo "  bbc-clib    - BBC Micro CLIB ROM target (cc65)"
 	@echo "  linux       - Linux/Posix (gcc)"
 	@echo ""
 	@echo "Output:"

@@ -29,7 +29,6 @@ extern fn_session_t _fn_sessions[FN_MAX_SESSIONS];
 extern uint8_t _fn_initialized;
 extern uint8_t _fn_req_buf[FN_MAX_PACKET_SIZE];
 extern uint8_t _fn_resp_buf[FN_MAX_PACKET_SIZE];
-extern char _fn_tcp_url[FN_MAX_URL_LEN];
 
 typedef struct {
     const uint8_t *request;

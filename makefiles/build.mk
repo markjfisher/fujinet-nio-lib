@@ -59,7 +59,7 @@ COMMON_SRCS_DEFAULT := $(SRCDIR)/common/fn_slip.c \
 COMMON_SRCS_BBC := $(SRCDIR)/common/fn_util.c \
                    $(SRCDIR)/common/fn_ext.c
 
-ifeq ($(TARGET),bbc)
+ifeq ($(PLATFORM),bbc)
 COMMON_SRCS := $(COMMON_SRCS_BBC)
 else
 COMMON_SRCS := $(COMMON_SRCS_DEFAULT)
@@ -90,7 +90,7 @@ CC65_HOME ?= $(abspath $(dir $(lastword $(MAKEFILE_LIST)))../../../bbc/cc65)
 # Compiler flags
 CFLAGS   += $(INCLUDES) $(TARGET_CFLAGS)
 ASFLAGS  += $(INCLUDES) $(TARGET_ASFLAGS)
-ifeq ($(TARGET),bbc)
+ifeq ($(PLATFORM),bbc)
 ASFLAGS  += --asm-include-dir $(CC65_HOME)/libsrc/bbc
 ASFLAGS  += --asm-include-dir $(CC65_HOME)/asminc
 endif

@@ -2,7 +2,6 @@
 
 fn_session_t _fn_sessions[FN_MAX_SESSIONS];
 uint8_t _fn_initialized = 0;
-char _fn_tcp_url[FN_MAX_URL_LEN];
 
 int8_t fn_find_free_slot(void)
 {
