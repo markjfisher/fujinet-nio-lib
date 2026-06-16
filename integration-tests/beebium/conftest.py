@@ -139,6 +139,62 @@ def http_get_smoke_ssd(scaffold_info):
     return ssd
 
 
+@pytest.fixture(scope="session")
+def tcp_stream_partial_ssd(scaffold_info):
+    cc65 = shutil.which("cl65")
+    if not cc65:
+        pytest.skip("cl65 not available")
+
+    create_ssd = _LIB_ROOT / "scripts" / "create_ssd.py"
+    if not create_ssd.is_file():
+        pytest.skip(f"create_ssd.py not found at {create_ssd}")
+
+    dfstool = shutil.which("dfstool")
+    if not dfstool:
+        pytest.skip("dfstool not available")
+
+    app_src = _HERE.parent / "apps" / "tcp_stream_partial.c"
+    lib_file = _LIB_ROOT / "build" / "fujinet-nio-bbc.lib"
+    initenv_obj = _LIB_ROOT / "obj" / "bbc" / "platform" / "bbc" / "initenv.o"
+    if not lib_file.is_file() or not initenv_obj.is_file():
+        pytest.skip("BBC library artifacts not built; run make bbc first")
+
+    tmp = Path(tempfile.mkdtemp(prefix="fnlib-bbc-tcp-stream-"))
+    stage = tmp / "stage"
+    stage.mkdir(parents=True, exist_ok=True)
+    binary = stage / "TPSTRM"
+    ssd = tmp / "tpstrm.ssd"
+
+    subprocess.run(
+        [
+            cc65,
+            "-t",
+            "bbc",
+            "--start-addr",
+            "0x1900",
+            "-I",
+            str(_LIB_ROOT / "include"),
+            "-o",
+            str(binary),
+            str(app_src),
+            str(lib_file),
+            str(initenv_obj),
+        ],
+        check=True,
+        cwd=str(_LIB_ROOT),
+    )
+
+    (stage / "TPSTRM.inf").write_text("$.TPSTRM 001900 001900\n")
+
+    subprocess.run(
+        ["python3", str(create_ssd), "-i", str(stage), "-o", str(ssd), "-t", "TPSTRM"],
+        check=True,
+        cwd=str(_LIB_ROOT),
+    )
+
+    return ssd
+
+
 @pytest.fixture()
 def beebium(beebium_paths):
     from beebium.client import Beebium

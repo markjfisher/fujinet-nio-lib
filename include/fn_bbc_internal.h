@@ -20,6 +20,9 @@
 #define FN_BBC_OPEN_WRITE           0x80
 #define FN_BBC_OPEN_UPDATE          0xC0
 
+/* fn-rom BBC extension: OSBGET carry-set with A=$FE means temporary NotReady. */
+#define FN_BBC_OSBGET_NOT_READY     0xFE
+
 uint8_t __fastcall__ fn_bbc_osword78(uint8_t *block);
 unsigned char __fastcall__ osfind(unsigned char mode, const char *name);
 int __fastcall__ close_file(unsigned char channel);

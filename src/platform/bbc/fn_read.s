@@ -103,21 +103,14 @@ _fn_read:
         cmp     ptr4
         lda     tmp2
         sbc     ptr4+1
-        bcs     @done
+        bcs     @done_full
 
         lda     tmp3
         jsr     _fn_bbc_osbget
+        cpx     #FN_BBC_OSBGET_NOT_READY
+        beq     @not_ready
         cpx     #$FF
-        bne     @store_byte
-
-        lda     tmp1
-        ora     tmp2
-        bne     @done
-
-        jsr     fix_stack
-        ldx     #$00
-        lda     #FN_ERR_NOT_READY
-        rts
+        beq     @eof
 
 @store_byte:
         ldy     #$00
@@ -129,6 +122,27 @@ _fn_read:
         bne     @loop
         inc     tmp2
         bne     @loop
+
+@not_ready:
+        lda     tmp1
+        ora     tmp2
+        bne     @done_partial
+
+        jsr     fix_stack
+        ldx     #$00
+        lda     #FN_ERR_NOT_READY
+        rts
+
+@eof:
+        ldx     #FN_READ_EOF
+        bne     @done
+
+@done_full:
+        ldx     #$00
+        beq     @done
+
+@done_partial:
+        ldx     #$00
 
 @done:
         ldy     #$00
@@ -143,7 +157,7 @@ _fn_read:
         beq     @update_offset
 
         ldy     #$00
-        tya
+        txa
         sta     (ptr3),y
 
 @update_offset:
