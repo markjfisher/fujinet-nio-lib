@@ -108,8 +108,18 @@ _fn_read:
         lda     tmp3
         jsr     _fn_bbc_osbget
         cpx     #$FF
-        beq     @done
+        bne     @store_byte
 
+        lda     tmp1
+        ora     tmp2
+        bne     @done
+
+        jsr     fix_stack
+        ldx     #$00
+        lda     #FN_ERR_NOT_READY
+        rts
+
+@store_byte:
         ldy     #$00
         sta     (ptr2),y
         inc     ptr2
@@ -132,17 +142,8 @@ _fn_read:
         ora     ptr3+1
         beq     @update_offset
 
-        lda     tmp1
-        cmp     ptr4
-        lda     tmp2
-        sbc     ptr4+1
         ldy     #$00
-        bcc     @set_eof
         tya
-        beq     @store_flag
-@set_eof:
-        lda     #FN_READ_EOF
-@store_flag:
         sta     (ptr3),y
 
 @update_offset:
