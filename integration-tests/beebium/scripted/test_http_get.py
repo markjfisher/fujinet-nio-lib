@@ -82,4 +82,4 @@ def test_http_get_smoke_app_runs_from_disk_and_emits_open_read_close(beebium, fu
     close_pkt = fuji_device.wait_for_command(netp.NETWORK_DEVICE_ID, netp.CMD_CLOSE, timeout=8.0)
     assert close_pkt is not None and close_pkt.checksum_ok
 
-    wait_for_screen_text(beebium, "OK OK", timeout=8.0)
+    wait_for_screen_text(beebium, "[ OK", timeout=8.0)
