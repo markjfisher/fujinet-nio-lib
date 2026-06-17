@@ -146,6 +146,9 @@ extern "C" {
 /** Allow handle eviction if no handles available */
 #define FN_OPEN_ALLOW_EVICT 0x08
 
+/** Streaming protocol is self-framed; avoid an extra probe read after each chunk */
+#define FN_OPEN_STREAM_NO_PROBE 0x10
+
 /* ============================================================================
  * Read Response Flags
  * ============================================================================ */
@@ -155,6 +158,9 @@ extern "C" {
 
 /** Response was truncated to fit buffer */
 #define FN_READ_TRUNCATED   0x02
+
+/** Additional bytes are already immediately available after this chunk */
+#define FN_READ_MORE_AVAILABLE 0x04
 
 /* ============================================================================
  * Info Flags

@@ -32,6 +32,9 @@ uint8_t fn_open(fn_handle_t *handle,
     if (flags & FN_OPEN_ALLOW_EVICT) {
         open_flags |= FN_OPEN_FLAG_ALLOW_EVICT;
     }
+    if (flags & FN_OPEN_STREAM_NO_PROBE) {
+        open_flags |= FN_OPEN_FLAG_STREAM_NO_PROBE;
+    }
 
     req_len = fn_build_open_packet(_fn_req_buf, method, open_flags, url);
     if (req_len == 0) {

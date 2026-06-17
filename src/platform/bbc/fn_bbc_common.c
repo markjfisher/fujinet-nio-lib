@@ -45,6 +45,17 @@ int fn_bbc_open_flags(uint8_t method)
     }
 }
 
+uint8_t fn_bbc_arm_open_flags(uint8_t flags)
+{
+    uint8_t block[16];
+
+    memset(block, 0, sizeof(block));
+    block[0] = FN_BBC_REASON_SET_OPEN_FLAGS;
+    block[2] = flags;
+
+    return fn_bbc_status_to_result(fn_bbc_osword78(block));
+}
+
 uint8_t fn_bbc_arm_open_url(const char *url, uint16_t len)
 {
     uint8_t block[16];

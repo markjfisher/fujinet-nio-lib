@@ -81,7 +81,7 @@ uint8_t fn_open(fn_handle_t *handle,
 - `handle` - Output pointer for the session handle
 - `method` - HTTP method (`FN_METHOD_GET`, `FN_METHOD_POST`, etc.) or 0 for raw TCP/TLS
 - `url` - URL to connect to (e.g., `http://example.com`, `tcp://host:port`, `tls://host:port`)
-- `flags` - Optional flags (`FN_OPEN_FOLLOW_REDIR`, `FN_OPEN_ALLOW_EVICT`)
+- `flags` - Optional flags (`FN_OPEN_FOLLOW_REDIR`, `FN_OPEN_ALLOW_EVICT`, `FN_OPEN_STREAM_NO_PROBE`)
 
 **Returns:** `FN_OK` on success, error code on failure.
 
@@ -164,6 +164,14 @@ uint8_t fn_read(fn_handle_t handle,
 
 **Read Flags:**
 - `FN_READ_EOF` - End of stream reached
+- `FN_READ_TRUNCATED` - Response filled the supplied caller buffer
+- `FN_READ_MORE_AVAILABLE` - Additional bytes are already immediately available after this chunk
+
+**Streaming no-probe mode:**
+- `FN_OPEN_STREAM_NO_PROBE` is an opt-in streaming policy for framed application protocols.
+- When enabled on a streaming session, `fn_read()` returns the current buffered chunk without forcing an extra probe read solely to determine whether more bytes are immediately available.
+- This is useful when the application protocol carries its own message length or framing and the caller prefers one read round trip per chunk.
+- Default behavior remains probe-compatible for existing callers.
 
 **Example:**
 ```c

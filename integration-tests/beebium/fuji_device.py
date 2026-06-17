@@ -220,8 +220,18 @@ def build_network_open_response(*, handle: int, proto_flags: int = 0x00, status:
     return fb.build_fuji_response_wire(netp.NETWORK_DEVICE_ID, netp.CMD_OPEN, status, body)
 
 
-def build_network_read_response(*, handle: int, offset: int, data: bytes, eof: bool = False, status: int = 0) -> bytes:
+def build_network_read_response(
+    *,
+    handle: int,
+    offset: int,
+    data: bytes,
+    eof: bool = False,
+    more_available: bool = False,
+    status: int = 0,
+) -> bytes:
     flags = 0x01 if eof else 0x00
+    if more_available:
+        flags |= 0x04
     body = (
         bytes([netp.NETPROTO_VERSION, flags])
         + struct.pack("<H", 0)

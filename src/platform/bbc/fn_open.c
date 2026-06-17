@@ -33,7 +33,13 @@ uint8_t fn_open(fn_handle_t *handle,
         return FN_ERR_URL_TOO_LONG;
     }
 
-    (void)flags;
+    if (flags & FN_OPEN_STREAM_NO_PROBE) {
+        uint8_t result = fn_bbc_arm_open_flags(FN_OPEN_FLAG_STREAM_NO_PROBE);
+        if (result != FN_OK) {
+            return result;
+        }
+    }
+
     osfind_name = fn_bbc_prepare_short_open_name(url, url_len);
 
     if (osfind_name == 0) {

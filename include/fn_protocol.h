@@ -129,6 +129,9 @@ extern "C" {
 /** Allow handle eviction */
 #define FN_OPEN_FLAG_ALLOW_EVICT   0x08
 
+/** Streaming read policy: return current chunk without an extra probe read */
+#define FN_OPEN_FLAG_STREAM_NO_PROBE 0x10
+
 /* ============================================================================
  * Open Response Flags (Wire Format)
  * ============================================================================ */
@@ -161,6 +164,9 @@ extern "C" {
 
 /** Response truncated */
 #define FN_READ_RESP_TRUNCATED     0x02
+
+/** Additional bytes are already immediately available after this chunk */
+#define FN_READ_RESP_MORE_AVAILABLE 0x04
 
 /* ============================================================================
  * Info Response Flags (Wire Format)
