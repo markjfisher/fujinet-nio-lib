@@ -11,9 +11,12 @@ AR := wlib
 
 # Common C flags
 # -0:   Generate 8086 code
+# -bt=dos: Target DOS runtime
 # -os:  Optimize for size
 # -ms:  Small memory model
-CFLAGS := -0 -os -ms
+# -s:   Remove stack overflow checks
+# -q:   Quiet compiler banner
+CFLAGS := -0 -bt=dos -os -ms -s -q
 
 # Assembler flags (wasm)
 ASFLAGS :=

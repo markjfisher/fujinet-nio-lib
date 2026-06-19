@@ -26,6 +26,7 @@ A clean, multi-platform 6502 library for communicating with FujiNet-NIO devices 
 
 - **[API Reference](docs/api.md)** - Complete API documentation
 - **[Building](docs/building.md)** - Build instructions for all platforms
+- **[Transport Backends](docs/transport-backends.md)** - How platform library targets map to NIO channels
 - **[Examples](examples/README.md)** - Example applications and usage
 
 ## Quick Start
@@ -35,6 +36,9 @@ A clean, multi-platform 6502 library for communicating with FujiNet-NIO devices 
 ```bash
 # Build for Linux (native testing)
 make linux
+
+# Build for MS-DOS
+make msdos
 
 # Build for Atari
 make atari
@@ -106,7 +110,8 @@ int main(void) {
 **Working:**
 - HTTP operations tested and working
 - TCP/TLS operations tested and working
-- Linux native target for PC-based testing
+- Linux native target for PC-based testing using the common FujiBus/NIO stream transport over a POSIX serial or PTY channel
+- MS-DOS target builds with Open Watcom and uses the common FujiBus/NIO stream transport over a COM serial channel
 - BBC target now uses the installed `fn-rom` network ROM through MOS channel opens and `OSWORD &78`
 - FujiBus protocol with SLIP framing
 - Handle-based session management
@@ -129,8 +134,8 @@ int main(void) {
 | Apple II | SmartPort | CC65 | 🚧 Planned |
 | Commodore 64 | IEC | CC65 | 🚧 Planned |
 | Tandy CoCo | Drivewire | CMOC | 🚧 Planned |
-| MS-DOS | TCP/Serial | Watcom | 🚧 Planned |
-| Linux | Serial/PTY | GCC | ✅ Working |
+| MS-DOS | COM serial | Watcom | ✅ Implemented |
+| Linux | stream over POSIX serial/PTY | GCC | ✅ Working |
 
 ## Differences from fujinet-lib
 

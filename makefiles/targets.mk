@@ -34,6 +34,15 @@ COMPILER_FAMILY_linux      := gcc
 # Get compiler family for current target
 COMPILER_FAMILY := $(COMPILER_FAMILY_$(TARGET))
 
+# Transport family mapping
+# stream targets provide only a byte-channel implementation and share the common
+# SLIP/FujiBus transport in src/common/fn_transport_stream.c.
+TRANSPORT_FAMILY_msdos     := stream
+TRANSPORT_FAMILY_linux      := stream
+
+# Get transport family for current target
+TRANSPORT_FAMILY := $(TRANSPORT_FAMILY_$(TARGET))
+
 # Target-specific flags
 
 # Atari

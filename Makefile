@@ -12,7 +12,7 @@
 
 # Supported targets
 # TARGETS = atari apple2 apple2enh bbc c64 coco msdos linux
-TARGETS = atari bbc bbc-clib linux
+TARGETS = atari bbc bbc-clib msdos linux
 
 # Output library name
 override PROGRAM := fujinet-nio
@@ -105,10 +105,12 @@ help:
 	@echo "  atari       - Atari 8-bit (cc65)"
 	@echo "  bbc         - BBC Micro (cc65)"
 	@echo "  bbc-clib    - BBC Micro CLIB ROM target (cc65)"
+	@echo "  msdos       - MS-DOS (Open Watcom)"
 	@echo "  linux       - Linux/Posix (gcc)"
 	@echo ""
 	@echo "Environment:"
 	@echo "  CC65_HOME   - cc65 checkout root (required for bbc/bbc-clib)"
+	@echo "  CC65_BASE   - accepted as an alias for CC65_HOME"
 	@echo ""
 	@echo "Output:"
 	@echo "  Libraries are placed in build/"

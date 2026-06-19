@@ -65,6 +65,10 @@ else
 COMMON_SRCS := $(COMMON_SRCS_DEFAULT)
 endif
 
+ifeq ($(TRANSPORT_FAMILY),stream)
+COMMON_SRCS += $(SRCDIR)/common/fn_transport_stream.c
+endif
+
 # Platform-specific sources
 PLATFORM_SRCS := $(wildcard $(PLATFORM_DIR)/*.c)
 PLATFORM_ASMS := $(wildcard $(PLATFORM_DIR)/*.s)
@@ -130,6 +134,15 @@ $(OBJDIR)/$(TARGET)/common/%.o: $(SRCDIR)/common/%.c | $(OBJDIR)/$(TARGET)/commo
 $(OBJDIR)/$(TARGET)/platform/$(PLATFORM)/%.o: $(SRCDIR)/platform/$(PLATFORM)/%.c | $(OBJDIR)/$(TARGET)/platform/$(PLATFORM)
 	@echo "  CC $<"
 	$(CC) -c $(CFLAGS) -MMD -MF $(@:.o=.d) -o $@ $<
+else ifeq ($(COMPILER_FAMILY),wcc)
+# Open Watcom compilation
+$(OBJDIR)/$(TARGET)/common/%.o: $(SRCDIR)/common/%.c | $(OBJDIR)/$(TARGET)/common
+	@echo "  CC $<"
+	$(CC) $(CFLAGS) -fo=$@ $<
+
+$(OBJDIR)/$(TARGET)/platform/$(PLATFORM)/%.o: $(SRCDIR)/platform/$(PLATFORM)/%.c | $(OBJDIR)/$(TARGET)/platform/$(PLATFORM)
+	@echo "  CC $<"
+	$(CC) $(CFLAGS) -fo=$@ $<
 else
 # CC65 compilation
 $(OBJDIR)/$(TARGET)/common/%.o: $(SRCDIR)/common/%.c | $(OBJDIR)/$(TARGET)/common
@@ -146,6 +159,12 @@ ifeq ($(COMPILER_FAMILY),gcc)
 $(LIBRARY): $(OBJECTS) | $(BUILDDIR)
 	@echo "  AR $@"
 	$(AR) rcs $@ $(OBJECTS)
+	@echo "  Created $@"
+else ifeq ($(COMPILER_FAMILY),wcc)
+$(LIBRARY): $(OBJECTS) | $(BUILDDIR)
+	@echo "  AR $@"
+	rm -f $@
+	$(call AR_CMD,$@,$(OBJECTS))
 	@echo "  Created $@"
 else
 $(LIBRARY): $(OBJECTS) | $(BUILDDIR)

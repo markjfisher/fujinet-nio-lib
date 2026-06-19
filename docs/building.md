@@ -53,12 +53,14 @@ fujinet-nio-lib/
     fujinet-nio-linux.a      # Linux static library
     fujinet-nio-apple2.lib   # Apple II library (planned)
     fujinet-nio-coco.lib     # CoCo library (planned)
-    fujinet-nio-msdos.lib    # MS-DOS library (planned)
+    fujinet-nio-msdos.lib    # MS-DOS library
 ```
 
 ## Linux Native Testing
 
-The Linux target allows you to build and test applications natively on your PC, communicating with a FujiNet-NIO device via serial port or PTY.
+The Linux target allows you to build and test applications natively on your PC,
+communicating with a FujiNet-NIO device via a POSIX serial or PTY byte channel.
+It uses the same common stream transport as MS-DOS.
 
 ### Setting up the connection
 
@@ -106,8 +108,28 @@ Platform-specific transport code is located in:
 - `src/platform/bbc/` - BBC Micro `fn-rom` backed MOS/OSWORD wrappers
 - `src/platform/apple2/` - Apple II SmartPort (planned)
 - `src/platform/coco/` - CoCo Drivewire (planned)
-- `src/platform/msdos/` - MS-DOS TCP/serial (planned)
-- `src/platform/posix/` - Linux/POSIX transport
+- `src/platform/msdos/` - MS-DOS COM serial transport
+- `src/platform/linux/` - Linux/POSIX serial or PTY byte channel
+
+See [Transport Backends](transport-backends.md) for how library build targets map
+to `fujinet-nio` transports/channels, and how future MS-DOS parallel or BBC
+user-bus/1 MHz bus backends should be added.
+
+### MS-DOS target specifics
+
+The MS-DOS target uses Open Watcom and direct 8250-compatible UART access. It
+keeps the same common FujiBus packet, stream framing, network, clock, and session
+code used by other direct NIO targets; only COM-port byte I/O and BIOS-tick
+timeout handling live in `src/platform/msdos/`.
+
+By default the transport uses COM1 at 115200 baud. You can override this at
+compile time with target C flags, for example:
+
+```bash
+make msdos TARGET_CFLAGS_msdos="-DFN_MSDOS_COM=2 -DFN_MSDOS_BAUD_DIVISOR=12"
+```
+
+Common divisors are 1 for 115200, 2 for 57600, 6 for 19200, and 12 for 9600.
 
 ### BBC target specifics
 
