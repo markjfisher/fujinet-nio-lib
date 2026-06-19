@@ -211,6 +211,11 @@ uint8_t fn_write(fn_handle_t handle,
 
 **Returns:** `FN_OK` on success, error code on failure.
 
+`fn_write()` is completion-oriented: it retries transient `FN_ERR_NOT_READY` /
+`FN_ERR_BUSY` responses and continues partial writes internally until all
+requested bytes have been accepted or a non-transient error occurs. This hides
+asynchronous TCP connect completion from applications after `fn_open()`.
+
 **Half-Close:** To signal end of write (send FIN), call with `len=0` at current offset:
 ```c
 // After writing all data, half-close the write side

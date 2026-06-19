@@ -296,6 +296,10 @@ uint8_t fn_tcp_open(fn_handle_t *handle,
  * 
  * Offsets must be sequential. For HTTP, the request is dispatched
  * automatically when bodyLenHint bytes have been written.
+ *
+ * The library retries transient FN_ERR_NOT_READY/FN_ERR_BUSY responses and
+ * continues partial writes until the requested byte count has been accepted or
+ * a non-transient error occurs.
  * 
  * @param handle     Session handle
  * @param offset     Byte offset (must be sequential)
