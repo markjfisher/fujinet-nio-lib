@@ -6,6 +6,7 @@
 #   make            - Build all targets
 #   make atari      - Build for Atari
 #   make bbc        - Build for BBC B
+#   make bbc-clib   - Build for BBC B with clib ROM
 #   make linux      - build for linux/posix environment
 #   make clean      - Remove build artifacts
 #   make help       - Show this help
