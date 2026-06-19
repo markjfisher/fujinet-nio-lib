@@ -55,8 +55,6 @@ BIN_DIR := bin/$(TARGET)
 # `examples/disk/` source category to avoid path collisions.
 DISK_IMAGE_DIR := disk-images/$(TARGET)
 
-CC65_HOME ?= $(abspath $(LIB_DIR)/../../bbc/cc65)
-
 # ============================================================================
 # TCP/TLS Example Configuration
 # ============================================================================

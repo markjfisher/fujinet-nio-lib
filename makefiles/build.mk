@@ -84,13 +84,11 @@ DEPENDS := $(OBJECTS:.o=.d)
 # Include paths
 INCLUDES := -I$(INCDIR)
 
-# Cross-checkout defaults. These may be overridden by the environment.
-CC65_HOME ?= $(abspath $(dir $(lastword $(MAKEFILE_LIST)))../../../bbc/cc65)
-
 # Compiler flags
 CFLAGS   += $(INCLUDES) $(TARGET_CFLAGS)
 ASFLAGS  += $(INCLUDES) $(TARGET_ASFLAGS)
 ifeq ($(PLATFORM),bbc)
+include makefiles/cc65-env.mk
 ASFLAGS  += --asm-include-dir $(CC65_HOME)/libsrc/bbc
 ASFLAGS  += --asm-include-dir $(CC65_HOME)/asminc
 endif
