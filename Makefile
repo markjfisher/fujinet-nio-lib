@@ -73,7 +73,7 @@ test-bbc-scripted:
 	$(MAKE) bbc
 	$(MAKE) -C examples TARGET=bbc all
 	@if [ -d integration-tests/beebium ]; then \
-		cd integration-tests/beebium && uv run pytest -q scripted; \
+		cd integration-tests/beebium && ./run_pytest.sh -q scripted; \
 	else \
 		echo "integration-tests/beebium not present"; \
 		exit 1; \
@@ -84,7 +84,7 @@ test-bbc-real:
 	$(MAKE) bbc
 	$(MAKE) -C examples TARGET=bbc all
 	@if [ -d integration-tests/beebium ]; then \
-		cd integration-tests/beebium && uv run pytest -q real; \
+		cd integration-tests/beebium && ./run_pytest.sh -q real; \
 	else \
 		echo "integration-tests/beebium not present"; \
 		exit 1; \

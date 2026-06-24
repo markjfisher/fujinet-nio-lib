@@ -1,5 +1,9 @@
 # BBC Beebium Test Scaffold
 
+**Setup:** export `BEEBIUM_HOME`, `FUJINET_NIO_HOME`, and `FN_ROM_HOME`, then run
+tests — [docs/DEVELOPMENT.md](../../docs/DEVELOPMENT.md). Use `./run_pytest.sh`
+(not bare `uv run pytest`). No separate venv sync step.
+
 This directory is the initial scaffold for BBC-focused integration testing of
 `fujinet-nio-lib`.
 
@@ -79,6 +83,30 @@ integration-tests/beebium/
 
 The `apps/` route is recommended over driving the verbose examples directly once
 the test lane is implemented, because it keeps screen assertions much smaller.
+
+## Environment
+
+Two repo roots plus fn-rom for the sideways ROM image:
+
+| Variable | Required | Meaning |
+|----------|:--------:|---------|
+| `BEEBIUM_HOME` | yes | beebium repo root |
+| `FUJINET_NIO_HOME` | yes | fujinet-nio repo root (`fujinet_tools` derived from `py/`) |
+| `FN_ROM_HOME` | yes | fn-rom repo root (`build/fujinet.rom` derived after `make net`) |
+| `BEEBIUM_SERVER` | derived | `beebium-model-b` |
+| `BEEBIUM_MOS` / `BEEBIUM_BASIC` | derived | ROMs under `$BEEBIUM_HOME/roms/` |
+| `FN_ROM` | derived | `$FN_ROM_HOME/build/fujinet.rom` |
+| `FUJINET_BIN` | no | real fujinet-nio binary (future `real/` tests) |
+
+Preflight:
+
+```bash
+export BEEBIUM_HOME=/path/to/beebium
+export FUJINET_NIO_HOME=/path/to/fujinet-nio
+export FN_ROM_HOME=/path/to/fn-rom
+cd integration-tests/beebium
+./check_test_env.sh
+```
 
 ## Running
 

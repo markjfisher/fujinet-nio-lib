@@ -17,9 +17,10 @@ This document describes how to build the fujinet-nio-lib library for various pla
 - Open Watcom (wcc, wlib)
 - GNU Make
 
-### For Linux builds (native testing):
+### For Linux / BBC builds (native testing):
 - GCC compiler
 - GNU Make
+- See [Developer setup](DEVELOPMENT.md) for Beebium integration test prerequisites
 
 ## Building
 

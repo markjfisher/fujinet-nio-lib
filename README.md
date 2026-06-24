@@ -24,6 +24,7 @@ A clean, multi-platform 6502 library for communicating with FujiNet-NIO devices 
 
 ## Documentation
 
+- **[Developer setup](docs/DEVELOPMENT.md)** — Beebium BBC tests (three env vars)
 - **[API Reference](docs/api.md)** - Complete API documentation
 - **[Building](docs/building.md)** - Build instructions for all platforms
 - **[Transport Backends](docs/transport-backends.md)** - How platform library targets map to NIO channels
