@@ -15,6 +15,8 @@ else ifeq ($(COMPILER_FAMILY),wcc)
     -include makefiles/compiler-wcc.mk
 else ifeq ($(COMPILER_FAMILY),gcc)
     -include makefiles/compiler-gcc.mk
+else ifeq ($(COMPILER_FAMILY),amigagcc)
+    -include makefiles/compiler-amigagcc.mk
 else
     $(error Unknown compiler family: $(COMPILER_FAMILY))
 endif

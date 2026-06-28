@@ -127,6 +127,12 @@ const char *fn_platform_name(void);
     #define FN_PLATFORM_NAME     "msdos"
 #endif
 
+/* AmigaOS targets (amiga-gcc defines __amigaos__) */
+#ifdef __amigaos__
+    #define FN_PLATFORM_AMIGA    1
+    #define FN_PLATFORM_NAME     "amiga"
+#endif
+
 /* Default if not detected */
 #ifndef FN_PLATFORM_NAME
     #define FN_PLATFORM_NAME     "unknown"
