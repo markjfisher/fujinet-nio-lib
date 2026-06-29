@@ -13,6 +13,9 @@ PLATFORM_bbc-clib   := bbc
 PLATFORM_c64        := c64
 PLATFORM_coco       := coco
 PLATFORM_msdos      := msdos
+PLATFORM_msdos-serial := msdos
+PLATFORM_msdos-ioctl := msdos
+PLATFORM_msdos-f5 := msdos
 PLATFORM_linux      := linux
 
 # Get platform for current target
@@ -29,6 +32,9 @@ COMPILER_FAMILY_bbc-clib   := cc65
 COMPILER_FAMILY_c64        := cc65
 COMPILER_FAMILY_coco       := cmoc
 COMPILER_FAMILY_msdos      := wcc
+COMPILER_FAMILY_msdos-serial := wcc
+COMPILER_FAMILY_msdos-ioctl := wcc
+COMPILER_FAMILY_msdos-f5 := wcc
 COMPILER_FAMILY_linux      := gcc
 
 # Get compiler family for current target
@@ -38,6 +44,7 @@ COMPILER_FAMILY := $(COMPILER_FAMILY_$(TARGET))
 # stream targets provide only a byte-channel implementation and share the common
 # SLIP/FujiBus transport in src/common/fn_transport_stream.c.
 TRANSPORT_FAMILY_msdos     := stream
+TRANSPORT_FAMILY_msdos-serial := stream
 TRANSPORT_FAMILY_linux      := stream
 
 # Get transport family for current target
@@ -76,6 +83,17 @@ TARGET_ASFLAGS_coco     :=
 # MS-DOS
 TARGET_CFLAGS_msdos     :=
 TARGET_ASFLAGS_msdos    :=
+TARGET_CFLAGS_msdos-serial :=
+TARGET_ASFLAGS_msdos-serial :=
+TARGET_CFLAGS_msdos-ioctl :=
+TARGET_ASFLAGS_msdos-ioctl :=
+TARGET_CFLAGS_msdos-f5 :=
+TARGET_ASFLAGS_msdos-f5 :=
+
+TARGET_PLATFORM_SRCS_msdos := src/platform/msdos/fn_channel_serial.c
+TARGET_PLATFORM_SRCS_msdos-serial := src/platform/msdos/fn_channel_serial.c
+TARGET_PLATFORM_SRCS_msdos-ioctl := src/platform/msdos/fn_transport_ioctl.c
+TARGET_PLATFORM_SRCS_msdos-f5 := src/platform/msdos/fn_transport_f5.c
 
 # Linux (native)
 TARGET_CFLAGS_linux     :=
@@ -84,3 +102,4 @@ TARGET_ASFLAGS_linux    :=
 # Get flags for current target
 TARGET_CFLAGS  := $(TARGET_CFLAGS_$(TARGET))
 TARGET_ASFLAGS := $(TARGET_ASFLAGS_$(TARGET))
+TARGET_PLATFORM_SRCS := $(TARGET_PLATFORM_SRCS_$(TARGET))

@@ -13,13 +13,13 @@
 
 # Supported targets
 # TARGETS = atari apple2 apple2enh bbc c64 coco msdos linux
-TARGETS = atari bbc bbc-clib msdos linux
+TARGETS = atari bbc bbc-clib msdos-serial msdos-ioctl msdos-f5 linux
 
 # Output library name
 override PROGRAM := fujinet-nio
 
 # Phony targets
-.PHONY: all clean help disk-bbc disk-bbc-clib test-bbc test-bbc-scripted test-bbc-real $(TARGETS)
+.PHONY: all clean help disk-bbc disk-bbc-clib test-bbc test-bbc-scripted test-bbc-real msdos $(TARGETS)
 
 # Default target: build all
 all:
@@ -41,6 +41,8 @@ all:
 $(TARGETS):
 	@echo "Building for $@..."
 	$(MAKE) -f makefiles/build.mk TARGET=$@ PROGRAM=$(PROGRAM) lib
+
+msdos: msdos-serial msdos-ioctl msdos-f5
 
 # Clean all targets
 clean:
@@ -106,7 +108,10 @@ help:
 	@echo "  atari       - Atari 8-bit (cc65)"
 	@echo "  bbc         - BBC Micro (cc65)"
 	@echo "  bbc-clib    - BBC Micro CLIB ROM target (cc65)"
-	@echo "  msdos       - MS-DOS (Open Watcom)"
+	@echo "  msdos       - MS-DOS serial, IOCTL, and F5 libraries"
+	@echo "  msdos-serial - MS-DOS direct COM backend (Open Watcom)"
+	@echo "  msdos-ioctl  - MS-DOS FUJINET.SYS IOCTL backend (Open Watcom)"
+	@echo "  msdos-f5     - MS-DOS INT F5 backend stub (Open Watcom)"
 	@echo "  linux       - Linux/Posix (gcc)"
 	@echo ""
 	@echo "Environment:"

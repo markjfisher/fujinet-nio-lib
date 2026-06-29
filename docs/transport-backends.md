@@ -20,32 +20,60 @@ The library has four practical layers:
    and checksum handling.
 3. Transport core: frame exchange over a class of channels. The current common
    stream transport owns SLIP framing and calls byte-channel functions.
-4. Channel backend: the target-specific implementation of
+4. Channel/backend: the target-specific implementation of
    `fn_channel_init`, `fn_channel_ready`, `fn_channel_read_byte`,
-   `fn_channel_write_byte`, `fn_channel_drain_rx`, and `fn_channel_close`.
+   `fn_channel_write_byte`, `fn_channel_drain_rx`, and `fn_channel_close`, or a
+   target-specific implementation of the higher-level transport functions.
 
 For direct transports that cannot sensibly share `fn_transport_stream.c`, a
 platform can still implement
    `fn_transport_init`, `fn_transport_ready`, `fn_transport_exchange`, and
    `fn_platform_name` directly.
 
-The channel backend owns physical I/O only. It must not build device packets,
-calculate checksums, parse responses, or know about FujiNet devices.
+The channel/backend must not duplicate FujiBus packet construction, checksums,
+response parsing, or application-level service helpers. Byte-stream backends own
+physical I/O only. Non-stream backends, such as the MS-DOS IOCTL backend, own
+only the adaptation from the common FujiBus request packet to their resident
+driver ABI.
 
 ## Current Backends
 
 | Target | Backend | Notes |
 |--------|---------|-------|
 | `linux` | common stream transport over POSIX serial/PTY channel | Runtime device path through `FN_PORT`. |
-| `msdos` | common stream transport over COM serial channel | Direct 8250-compatible UART access. Defaults to COM1 at 115200 baud. |
+| `msdos` | alias that builds all MS-DOS backend libraries | Produces serial, IOCTL, and F5 archives. |
+| `msdos-serial` | common stream transport over COM serial channel | Direct 8250-compatible UART access. Defaults to COM1 at 115200 baud. |
+| `msdos-ioctl` | DOS block-device IOCTL backend | Sends raw NIO calls through a loaded `FUJINET.SYS`; the driver owns COM1. |
+| `msdos-f5` | INT F5 backend stub | Builds the backend shape but currently returns `FN_ERR_UNSUPPORTED` for NIO packet exchange. |
 | `bbc`, `bbc-clib` | `fn-rom`/MOS channels | Does not use the common direct transport stack. BBC delegates transport details to `fn-rom`. |
 | `atari` | SIO | Direct target-specific transport. |
 
-## Is MS-DOS Serial-Only?
+## MS-DOS Backends
 
-The `msdos` target currently selects the COM serial channel because
+MS-DOS has two practical runtime models:
+
+- `msdos-serial`: the application owns COM1/COM2 directly. This is useful for
+  standalone diagnostics and for machines where no resident DOS FujiNet driver
+  is loaded.
+- `msdos-ioctl`: the application talks to the resident NIO build of
+  `FUJINET.SYS` using DOS `INT 21h AH=44h` block-device IOCTL. The driver owns
+  the serial port, so applications can make network/FileService calls while also
+  reading files from FujiNet-provided DOS drives.
+
+The IOCTL backend does not make network traffic "block sized". DOS passes a
+control buffer and byte count to the block driver. `fujinet-nio-lib` builds the
+same FujiBus request packet as the serial backend, then the IOCTL backend
+extracts the device, command, and payload and forwards them to `FUJINET.SYS`
+using the driver's `NIO_CALL` control request. The backend reconstructs a normal
+FujiBus response packet so the common response parser is still shared.
+
+The `msdos-f5` library exists so build selection can name the third backend, but
+the current NIO build of `FUJINET.SYS` does not expose a raw NIO packet ABI over
+`INT F5`. Until that ABI exists, this backend intentionally reports
+`FN_ERR_UNSUPPORTED` rather than inventing an incompatible convention.
+
+The `msdos-serial` target selects the COM serial channel because
 `src/platform/msdos/fn_channel_serial.c` implements 8250-compatible byte I/O.
-
 That is a build-target/channel choice, not a public API or transport-core
 limitation. The same common protocol and stream transport code can support a
 future MS-DOS parallel-port channel if that channel implements the byte-channel
@@ -71,7 +99,9 @@ backend:
 
 | Future target | Platform directory | Backend |
 |---------------|--------------------|---------|
-| `msdos` or `msdos-serial` | `src/platform/msdos/` or `src/platform/msdos_serial/` | stream transport over COM/RS-232 |
+| `msdos-serial` | `src/platform/msdos/` or `src/platform/msdos_serial/` | stream transport over COM/RS-232 |
+| `msdos-ioctl` | `src/platform/msdos/` | resident `FUJINET.SYS` block IOCTL backend |
+| `msdos-f5` | `src/platform/msdos/` | future resident INT F5 backend |
 | `msdos-parallel` | `src/platform/msdos_parallel/` | stream transport over PC parallel port |
 | `bbc`, `bbc-clib` | `src/platform/bbc/` | `fn-rom`/MOS channel facade |
 | `bbc-userbus` | `src/platform/bbc_userbus/` | Direct BBC user-bus backend |

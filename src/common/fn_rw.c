@@ -146,6 +146,11 @@ uint8_t fn_read(fn_handle_t handle,
         return FN_ERR_INVALID;
     }
 
+    *bytes_read = 0;
+    if (flags != NULL) {
+        *flags = 0;
+    }
+
     slot = fn_find_session(handle);
     if (slot < 0) {
         return FN_ERR_NOT_FOUND;

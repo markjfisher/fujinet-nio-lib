@@ -34,7 +34,10 @@ make
 make atari      # Atari 8-bit
 make apple2     # Apple II
 make coco       # Tandy CoCo
-make msdos      # MS-DOS
+make msdos      # all MS-DOS backend libraries
+make msdos-serial # MS-DOS direct COM backend
+make msdos-ioctl  # MS-DOS FUJINET.SYS IOCTL backend
+make msdos-f5     # MS-DOS INT F5 backend stub
 make linux      # Native Linux (for testing)
 ```
 
@@ -54,7 +57,9 @@ fujinet-nio-lib/
     fujinet-nio-linux.a      # Linux static library
     fujinet-nio-apple2.lib   # Apple II library (planned)
     fujinet-nio-coco.lib     # CoCo library (planned)
-    fujinet-nio-msdos.lib    # MS-DOS library
+    fujinet-nio-msdos-serial.lib # MS-DOS direct COM backend
+    fujinet-nio-msdos-ioctl.lib  # MS-DOS FUJINET.SYS IOCTL backend
+    fujinet-nio-msdos-f5.lib     # MS-DOS INT F5 backend stub
 ```
 
 ## Linux Native Testing
@@ -109,7 +114,7 @@ Platform-specific transport code is located in:
 - `src/platform/bbc/` - BBC Micro `fn-rom` backed MOS/OSWORD wrappers
 - `src/platform/apple2/` - Apple II SmartPort (planned)
 - `src/platform/coco/` - CoCo Drivewire (planned)
-- `src/platform/msdos/` - MS-DOS COM serial transport
+- `src/platform/msdos/` - MS-DOS serial, IOCTL, and F5 backends
 - `src/platform/linux/` - Linux/POSIX serial or PTY byte channel
 
 See [Transport Backends](transport-backends.md) for how library build targets map
@@ -118,16 +123,26 @@ user-bus/1 MHz bus backends should be added.
 
 ### MS-DOS target specifics
 
-The MS-DOS target uses Open Watcom and direct 8250-compatible UART access. It
-keeps the same common FujiBus packet, stream framing, network, clock, and session
-code used by other direct NIO targets; only COM-port byte I/O and BIOS-tick
-timeout handling live in `src/platform/msdos/`.
+The MS-DOS target uses Open Watcom and produces three backend archives:
+
+- `fujinet-nio-msdos-serial.lib`: direct 8250-compatible UART access. The
+  application owns the COM port.
+- `fujinet-nio-msdos-ioctl.lib`: DOS `INT 21h AH=44h` block-device IOCTL to the
+  NIO build of `FUJINET.SYS`. The resident driver owns the COM port.
+- `fujinet-nio-msdos-f5.lib`: placeholder INT F5 backend. It currently builds
+  but returns `FN_ERR_UNSUPPORTED` for NIO packet exchange because there is not
+  yet a raw NIO-over-F5 ABI.
+
+All three archives use the same public headers and common FujiBus packet,
+response parsing, network, clock, raw-call, and session code. The serial archive
+also uses the common SLIP stream transport; the IOCTL archive adapts the common
+FujiBus request packet to the driver's `NIO_CALL` IOCTL control request.
 
 By default the transport uses COM1 at 115200 baud. You can override this at
 compile time with target C flags, for example:
 
 ```bash
-make msdos TARGET_CFLAGS_msdos="-DFN_MSDOS_COM=2 -DFN_MSDOS_BAUD_DIVISOR=12"
+make msdos-serial TARGET_CFLAGS_msdos-serial="-DFN_MSDOS_COM=2 -DFN_MSDOS_BAUD_DIVISOR=12"
 ```
 
 Common divisors are 1 for 115200, 2 for 57600, 6 for 19200, and 12 for 9600.

@@ -7,7 +7,7 @@ A clean, multi-platform 6502 library for communicating with FujiNet-NIO devices 
 **fujinet-nio-lib** is a modern C library designed for 8-bit applications that need to communicate with FujiNet-NIO devices. It provides:
 
 - **Handle-based API** - Simple, intuitive session management
-- **FujiBus protocol** - Binary protocol with SLIP framing
+- **FujiBus protocol** - Binary protocol with shared packet/checksum handling
 - **Multi-platform support** - Atari, Apple II, CoCo, C64, MS-DOS, and Linux
 - **Multi-compiler support** - CC65, CMOC, Watcom, GCC
 - **HTTP and TCP/TLS** - All protocols supported
@@ -38,8 +38,13 @@ A clean, multi-platform 6502 library for communicating with FujiNet-NIO devices 
 # Build for Linux (native testing)
 make linux
 
-# Build for MS-DOS
+# Build all MS-DOS backends
 make msdos
+
+# Or build one MS-DOS backend explicitly
+make msdos-serial
+make msdos-ioctl
+make msdos-f5
 
 # Build for Atari
 make atari
@@ -112,7 +117,7 @@ int main(void) {
 - HTTP operations tested and working
 - TCP/TLS operations tested and working
 - Linux native target for PC-based testing using the common FujiBus/NIO stream transport over a POSIX serial or PTY channel
-- MS-DOS target builds with Open Watcom and uses the common FujiBus/NIO stream transport over a COM serial channel
+- MS-DOS builds with Open Watcom and produces serial, `FUJINET.SYS` IOCTL, and INT F5 backend libraries
 - BBC target now uses the installed `fn-rom` network ROM through MOS channel opens and `OSWORD &78`
 - FujiBus protocol with SLIP framing
 - Handle-based session management
@@ -136,6 +141,8 @@ int main(void) {
 | Commodore 64 | IEC | CC65 | 🚧 Planned |
 | Tandy CoCo | Drivewire | CMOC | 🚧 Planned |
 | MS-DOS | COM serial | Watcom | ✅ Implemented |
+| MS-DOS | `FUJINET.SYS` block IOCTL | Watcom | ✅ Implemented |
+| MS-DOS | INT F5 backend stub | Watcom | 🚧 Builds, returns unsupported |
 | Linux | stream over POSIX serial/PTY | GCC | ✅ Working |
 
 ## Differences from fujinet-lib
@@ -144,7 +151,7 @@ int main(void) {
 |---------|-------------------|----------------------|
 | Protocol | Legacy SIO | FujiBus binary |
 | Addressing | Device specs | Handles |
-| Framing | Platform-specific | SLIP (common) |
+| Framing | Platform-specific | Shared protocol core; SLIP for stream backends |
 | Build | Complex recursive | Simplified explicit |
 | Platform code | Mixed with common | Clean separation |
 | TLS | HTTP only | HTTP and raw TCP |

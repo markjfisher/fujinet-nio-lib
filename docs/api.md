@@ -33,6 +33,51 @@ uint8_t fn_is_ready(void);
 
 **Returns:** Non-zero if device is ready, 0 if not.
 
+## Raw FujiBus/NIO Calls
+
+### `fn_raw_call()`
+
+Send one FujiBus/NIO request to an arbitrary NIO device and return the device
+status plus payload.
+
+```c
+#include "fn_raw.h"
+
+uint8_t fn_raw_call(uint8_t device,
+                    uint8_t command,
+                    const void *payload,
+                    uint16_t payload_length,
+                    void *reply,
+                    uint16_t reply_capacity,
+                    fn_raw_response_t *response);
+```
+
+This is for service-specific callers such as DiskService, FileService, and
+FujiNet control tools. It uses the same selected backend as the normal
+network-session API:
+
+- serial backend: builds a FujiBus packet, SLIP-frames it, and sends it over the
+  COM byte channel;
+- MS-DOS IOCTL backend: builds the same FujiBus request, forwards device,
+  command, and payload through `FUJINET.SYS` `NIO_CALL`, then reconstructs a
+  normal FujiBus response for the common parser;
+- MS-DOS F5 backend: currently returns `FN_ERR_UNSUPPORTED`.
+
+`fn_raw_call()` initializes the library on first use if needed.
+
+**Parameters:**
+- `device` - NIO device ID, such as `FN_DEVICE_DISK`, `FN_DEVICE_FILE`, or
+  `FN_DEVICE_NETWORK`
+- `command` - command byte for that device
+- `payload` / `payload_length` - request payload bytes after the FujiBus header
+- `reply` / `reply_capacity` - caller buffer for response payload bytes after
+  the returned status byte
+- `response` - output status and payload length
+
+**Returns:** `FN_OK` if the transport exchange completed and `response->status`
+contains the device status. Returns a library transport/error code if the
+request could not be exchanged or parsed.
+
 ## Network Operations
 
 ### Protocol Behavior

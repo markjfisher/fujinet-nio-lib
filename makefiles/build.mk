@@ -54,7 +54,8 @@ COMMON_SRCS_DEFAULT := $(SRCDIR)/common/fn_slip.c \
                        $(SRCDIR)/common/fn_clock_common.c \
                        $(SRCDIR)/common/fn_clock_core.c \
                        $(SRCDIR)/common/fn_clock_format.c \
-                       $(SRCDIR)/common/fn_clock_timezone.c
+                       $(SRCDIR)/common/fn_clock_timezone.c \
+                       $(SRCDIR)/common/fn_raw.c
 
 COMMON_SRCS_BBC := $(SRCDIR)/common/fn_util.c \
                    $(SRCDIR)/common/fn_ext.c
@@ -70,7 +71,11 @@ COMMON_SRCS += $(SRCDIR)/common/fn_transport_stream.c
 endif
 
 # Platform-specific sources
+ifneq ($(TARGET_PLATFORM_SRCS),)
+PLATFORM_SRCS := $(TARGET_PLATFORM_SRCS)
+else
 PLATFORM_SRCS := $(wildcard $(PLATFORM_DIR)/*.c)
+endif
 PLATFORM_ASMS := $(wildcard $(PLATFORM_DIR)/*.s)
 
 # All sources

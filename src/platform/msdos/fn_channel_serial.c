@@ -10,6 +10,7 @@
 
 #include "fujinet-nio.h"
 #include "fn_channel.h"
+#include "fn_msdos.h"
 
 #ifndef FN_MSDOS_COM
 #define FN_MSDOS_COM 1
@@ -40,6 +41,7 @@ enum {
 };
 
 static uint16_t _uart_base;
+static uint8_t _com_number = FN_MSDOS_COM;
 static uint8_t _initialized;
 
 static uint16_t com_base(uint8_t com_number)
@@ -95,7 +97,7 @@ uint8_t fn_channel_init(void)
         return FN_OK;
     }
 
-    base = com_base(FN_MSDOS_COM);
+    base = com_base(_com_number);
     if (base == 0) {
         return FN_ERR_INVALID;
     }
@@ -105,6 +107,13 @@ uint8_t fn_channel_init(void)
     _initialized = 1;
 
     return FN_OK;
+}
+
+void fn_msdos_serial_set_com(uint8_t com_number)
+{
+    if (!_initialized) {
+        _com_number = com_number;
+    }
 }
 
 uint8_t fn_channel_ready(void)
