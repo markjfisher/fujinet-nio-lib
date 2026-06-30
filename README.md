@@ -16,6 +16,7 @@ A clean, multi-platform 6502 library for communicating with FujiNet-NIO devices 
 
 - HTTP GET/POST/PUT/DELETE operations
 - TCP socket connections
+- Application storage key/value API
 - TLS/HTTPS support (via `tls://` URL scheme)
 - Automatic redirect following
 - Streaming reads for large responses

@@ -179,6 +179,19 @@ extern "C" {
 #define FN_INFO_PEER_CLOSED 0x20
 
 /* ============================================================================
+ * Application Storage
+ * ============================================================================ */
+
+/** App-store read reached end of value */
+#define FN_APPSTORE_READ_EOF     0x01
+
+/** App-store read target key exists */
+#define FN_APPSTORE_READ_EXISTS  0x02
+
+/** App-store list has more keys after this page */
+#define FN_APPSTORE_LIST_MORE    0x01
+
+/* ============================================================================
  * BBC / fn-rom Network Extensions
  * ============================================================================ */
 
@@ -203,6 +216,41 @@ typedef uint16_t fn_handle_t;
 
 /** Invalid handle value */
 #define FN_INVALID_HANDLE   0x0000
+
+/** Application storage stat result */
+typedef struct {
+    uint8_t exists;          /**< Non-zero if the key exists */
+    uint32_t size_bytes;     /**< Low 32 bits of value size */
+    uint32_t size_bytes_high;/**< High 32 bits of value size */
+    uint32_t mtime_unix;     /**< Low 32 bits of modified Unix time, or 0 */
+    uint32_t mtime_unix_high;/**< High 32 bits of modified Unix time, or 0 */
+} fn_appstore_stat_t;
+
+/** Application storage read result */
+typedef struct {
+    uint8_t flags;           /**< FN_APPSTORE_READ_* flags */
+    uint32_t offset;         /**< Echoed read offset */
+    uint16_t bytes_read;     /**< Bytes copied into caller buffer */
+} fn_appstore_read_t;
+
+/** Application storage write result */
+typedef struct {
+    uint32_t offset;         /**< Echoed write offset */
+    uint16_t bytes_written;  /**< Bytes accepted by device */
+} fn_appstore_write_t;
+
+/** Application storage delete result */
+typedef struct {
+    uint8_t deleted;         /**< Non-zero if an existing key was removed */
+} fn_appstore_delete_t;
+
+/** Application storage list page result */
+typedef struct {
+    uint8_t flags;           /**< FN_APPSTORE_LIST_* flags */
+    uint16_t start_index;    /**< Echoed start index */
+    uint16_t key_count;      /**< Keys encoded in key_data */
+    uint16_t key_data_len;   /**< Bytes written into key_data */
+} fn_appstore_list_t;
 
 /* ============================================================================
  * Initialization
@@ -387,6 +435,78 @@ uint8_t fn_set_content_profile(uint8_t profile);
  * `FN_ERR_UNSUPPORTED` on platforms that do not expose an equivalent API.
  */
 uint8_t fn_json_query(fn_handle_t handle, const char *path);
+
+/* ============================================================================
+ * Application Storage Operations
+ * ============================================================================ */
+
+/**
+ * @brief Query metadata for a namespaced application storage key.
+ *
+ * Missing keys return FN_OK with out->exists set to 0.
+ */
+uint8_t fn_appstore_stat(const char *namespace_name,
+                         const char *key,
+                         fn_appstore_stat_t *out);
+
+/**
+ * @brief Read bytes from a namespaced application storage key.
+ *
+ * Missing keys return FN_OK with FN_APPSTORE_READ_EXISTS clear, EOF set, and
+ * bytes_read set to 0.
+ */
+uint8_t fn_appstore_read(const char *namespace_name,
+                         const char *key,
+                         uint32_t offset,
+                         uint8_t *buf,
+                         uint16_t max_len,
+                         fn_appstore_read_t *out);
+
+/**
+ * @brief Write bytes to a namespaced application storage key.
+ *
+ * offset==0 creates or replaces the value. Later calls can append or overwrite
+ * by using the desired byte offset.
+ */
+uint8_t fn_appstore_write(const char *namespace_name,
+                          const char *key,
+                          uint32_t offset,
+                          const uint8_t *data,
+                          uint16_t len,
+                          fn_appstore_write_t *out);
+
+/**
+ * @brief Delete a namespaced application storage key.
+ *
+ * Missing keys return FN_OK with out->deleted set to 0.
+ */
+uint8_t fn_appstore_delete(const char *namespace_name,
+                           const char *key,
+                           fn_appstore_delete_t *out);
+
+/**
+ * @brief List keys in an application storage namespace.
+ *
+ * key_data receives the raw FileDevice list blob: repeated u16 little-endian
+ * key length followed by key bytes. Use fn_appstore_list_next_key() to iterate.
+ */
+uint8_t fn_appstore_list(const char *namespace_name,
+                         uint16_t start_index,
+                         uint8_t *key_data,
+                         uint16_t key_data_capacity,
+                         fn_appstore_list_t *out);
+
+/**
+ * @brief Decode the next key from an app-store list key_data blob.
+ *
+ * Pass offset=0 for the first key. On success, key_out is null-terminated and
+ * offset advances to the next encoded key.
+ */
+uint8_t fn_appstore_list_next_key(const uint8_t *key_data,
+                                  uint16_t key_data_len,
+                                  uint16_t *offset,
+                                  char *key_out,
+                                  uint16_t key_out_capacity);
 
 /* ============================================================================
  * Clock Operations

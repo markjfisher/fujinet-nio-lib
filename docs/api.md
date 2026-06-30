@@ -78,6 +78,132 @@ network-session API:
 contains the device status. Returns a library transport/error code if the
 request could not be exchanged or parsed.
 
+## Application Storage
+
+The app-store API talks to fujinet-nio's FileDevice application storage commands.
+It provides namespaced key/value storage for application preferences and state.
+Values are opaque bytes and can be larger than one FujiBus packet by using
+offset-based chunked reads and writes.
+
+Namespaces and keys are UTF-8 byte strings from 1 to 255 bytes. They are not
+filesystem paths; fujinet-nio owns the backing storage layout.
+
+### `fn_appstore_stat()`
+
+Query metadata for a key.
+
+```c
+uint8_t fn_appstore_stat(const char *namespace_name,
+                         const char *key,
+                         fn_appstore_stat_t *out);
+```
+
+Missing keys return `FN_OK` with `out->exists == 0`.
+`fn_appstore_stat_t` exposes 64-bit size and mtime as low/high 32-bit words:
+`size_bytes`, `size_bytes_high`, `mtime_unix`, and `mtime_unix_high`.
+
+### `fn_appstore_read()`
+
+Read one chunk from a key.
+
+```c
+uint8_t fn_appstore_read(const char *namespace_name,
+                         const char *key,
+                         uint32_t offset,
+                         uint8_t *buf,
+                         uint16_t max_len,
+                         fn_appstore_read_t *out);
+```
+
+Check `out->flags` for:
+
+- `FN_APPSTORE_READ_EXISTS`
+- `FN_APPSTORE_READ_EOF`
+
+Example:
+
+```c
+uint8_t buf[256];
+uint32_t offset = 0;
+fn_appstore_read_t rr;
+
+do {
+    result = fn_appstore_read("config-ng", "colour.preference",
+                              offset, buf, sizeof(buf), &rr);
+    if (result != FN_OK || !(rr.flags & FN_APPSTORE_READ_EXISTS)) {
+        break;
+    }
+    /* process buf[0..rr.bytes_read) */
+    offset += rr.bytes_read;
+} while (!(rr.flags & FN_APPSTORE_READ_EOF) && rr.bytes_read != 0);
+```
+
+### `fn_appstore_write()`
+
+Write one chunk to a key.
+
+```c
+uint8_t fn_appstore_write(const char *namespace_name,
+                          const char *key,
+                          uint32_t offset,
+                          const uint8_t *data,
+                          uint16_t len,
+                          fn_appstore_write_t *out);
+```
+
+`offset == 0` creates or replaces the value. Use later offsets for append or
+overwrite chunks.
+
+### `fn_appstore_delete()`
+
+Delete a key.
+
+```c
+uint8_t fn_appstore_delete(const char *namespace_name,
+                           const char *key,
+                           fn_appstore_delete_t *out);
+```
+
+Missing keys return `FN_OK` with `out->deleted == 0`.
+
+### `fn_appstore_list()`
+
+List keys in a namespace.
+
+```c
+uint8_t fn_appstore_list(const char *namespace_name,
+                         uint16_t start_index,
+                         uint8_t *key_data,
+                         uint16_t key_data_capacity,
+                         fn_appstore_list_t *out);
+```
+
+`key_data` receives the raw key list blob: repeated `u16` little-endian key
+length followed by key bytes. Use `fn_appstore_list_next_key()` to iterate it.
+
+```c
+uint8_t key_data[420];
+char key[128];
+uint16_t start = 0;
+
+do {
+    uint16_t off = 0;
+    uint16_t i;
+    result = fn_appstore_list("config-ng", start, key_data, sizeof(key_data), &lr);
+    if (result != FN_OK) {
+        break;
+    }
+    for (i = 0; i < lr.key_count; i++) {
+        result = fn_appstore_list_next_key(key_data, lr.key_data_len,
+                                           &off, key, sizeof(key));
+        if (result == FN_OK) {
+            puts(key);
+        }
+    }
+    start += lr.key_count;
+} while (lr.flags & FN_APPSTORE_LIST_MORE);
+```
+
 ## Network Operations
 
 ### Protocol Behavior

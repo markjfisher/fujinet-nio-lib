@@ -107,6 +107,25 @@ extern "C" {
 #define FN_CLOCK_VERSION    0x01
 
 /* ============================================================================
+ * File Device Commands
+ * ============================================================================ */
+
+/** Query metadata for an application storage key */
+#define FN_CMD_APPSTORE_STAT   0x20
+
+/** Read bytes from an application storage key */
+#define FN_CMD_APPSTORE_READ   0x21
+
+/** Write bytes to an application storage key */
+#define FN_CMD_APPSTORE_WRITE  0x22
+
+/** Delete an application storage key */
+#define FN_CMD_APPSTORE_DELETE 0x23
+
+/** List keys in an application storage namespace */
+#define FN_CMD_APPSTORE_LIST   0x24
+
+/* ============================================================================
  * Protocol Version
  * ============================================================================ */
 

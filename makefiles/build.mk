@@ -55,6 +55,7 @@ COMMON_SRCS_DEFAULT := $(SRCDIR)/common/fn_slip.c \
                        $(SRCDIR)/common/fn_clock_core.c \
                        $(SRCDIR)/common/fn_clock_format.c \
                        $(SRCDIR)/common/fn_clock_timezone.c \
+                       $(SRCDIR)/common/fn_appstore.c \
                        $(SRCDIR)/common/fn_raw.c
 
 COMMON_SRCS_BBC := $(SRCDIR)/common/fn_util.c \
