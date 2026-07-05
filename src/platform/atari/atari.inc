@@ -15,6 +15,7 @@ dstats  = $0303      ; Status
 dbuflo  = $0304      ; Buffer low
 dbufhi  = $0305      ; Buffer high
 dtimlo  = $0306      ; Timeout
+dunuse  = $0307      ; Unused byte, clear before SIO
 dbytlo  = $0308      ; Byte count low
 dbythi  = $0309      ; Byte count high
 daux1   = $030A      ; Aux byte 1

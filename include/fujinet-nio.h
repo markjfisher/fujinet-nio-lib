@@ -641,6 +641,13 @@ uint8_t fn_clock_sync_network_time(FN_TIME_T *time);
  */
 const char *fn_error_string(uint8_t error);
 
+#ifdef __ATARI__
+/**
+ * @brief Return the last Atari SIO DSTATS value observed by the transport.
+ */
+uint8_t fn_atari_last_sio_status(void);
+#endif
+
 /**
  * @brief Get the library version string.
  * 

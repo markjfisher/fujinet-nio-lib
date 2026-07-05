@@ -16,6 +16,14 @@ FN_DEVICE_NETWORK    = $FD
 FN_DEVICE_DISK       = $FC
 FN_DEVICE_FILE       = $FE
 
+; Atari SIO device IDs used to carry FujiBus over the SIO bus.
+; The FujiBus packet inside the SIO payload still uses FN_DEVICE_NETWORK.
+;
+; Diagnostic note: use the known FujiNet network SIO carrier while validating
+; Altirra/NetSIO write-data handoff. This is not legacy framing; only the outer
+; Atari SIO device id is shared.
+FN_SIO_DEVICE_FUJIBUS = $7F
+
 ; Network Commands
 FN_CMD_OPEN      = $01
 FN_CMD_READ      = $02

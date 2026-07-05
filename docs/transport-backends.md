@@ -48,6 +48,53 @@ driver ABI.
 | `bbc`, `bbc-clib` | `fn-rom`/MOS channels | Does not use the common direct transport stack. BBC delegates transport details to `fn-rom`. |
 | `atari` | SIO | Direct target-specific transport. |
 
+## Atari SIO Backend Notes
+
+The Atari target is a direct SIO transport, not the old firmware application
+command protocol. Application code still builds normal FujiBus request packets;
+the Atari transport SLIP-frames those packets and sends them over an SIO device
+ID reserved for the NIO FujiBus channel.
+
+The Atari transport is assembly, but it calls common C helpers for SLIP
+encoding and decoding. cc65's fastcall ABI passes the rightmost argument in A:X
+and places earlier arguments on the software stack in source order. For example:
+
+```c
+fn_slip_encode(request, req_len, output);
+```
+
+must be called from assembly by pushing `request`, then `req_len`, and finally
+placing `output` in A:X before `jsr _fn_slip_encode`. The decode path follows
+the same rule: push `input`, push `in_len`, pass `output` in A:X.
+
+This matters because the original spike had the rightmost argument on the stack.
+That made the SLIP routines read and write the wrong buffers, so the Atari side
+could issue SIO commands but the FujiBus payload was not being sent correctly.
+
+When running through Altirra/AltirraSDL's NetSIO custom device, the bridge-facing
+side also has to follow the Atari SIO completion sequence precisely:
+
+- SIO write command ACK response size is the payload size plus the checksum
+  byte.
+- After accepting the Atari write payload and checksum, the device sends ACK and
+  then the final SIO complete byte (`'C'`).
+- SIO read is ACK, SIO complete byte (`'C'`), the exact number of data bytes the
+  Atari requested, and then the SIO checksum byte.
+- FujiBus responses must be queued until the Atari issues the matching SIO read
+  command. Sending the response immediately when fujinet-nio writes to the
+  channel is too early for NetSIO.
+- AltirraSDL may miss the initial high-speed setting if it is sent before real
+  SIO traffic begins, so the NetSIO bridge repeats the 19200 baud speed-change
+  message when the first SIO command is observed.
+- NetSIO credit/update frames are connection-management traffic; they must not
+  be treated as an active SIO command.
+
+The Atari library reads response data in fixed-size SIO chunks until it sees a
+complete SLIP frame. The NIO NetSIO bridge sends the requested chunk size,
+padding only the final short chunk and retaining any queued response bytes that
+did not fit. This avoids sending a full maximum-size SIO transfer for every
+small FujiBus response.
+
 ## MS-DOS Backends
 
 MS-DOS has two practical runtime models:

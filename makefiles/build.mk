@@ -78,6 +78,7 @@ else
 PLATFORM_SRCS := $(wildcard $(PLATFORM_DIR)/*.c)
 endif
 PLATFORM_ASMS := $(wildcard $(PLATFORM_DIR)/*.s)
+PLATFORM_ASM_INCLUDES := $(wildcard $(PLATFORM_DIR)/*.inc)
 
 # All sources
 SOURCES := $(COMMON_SRCS) $(PLATFORM_SRCS)
@@ -126,7 +127,7 @@ $(BUILDDIR):
 	@mkdir -p $@
 
 # Assemble ASM files (CC65 only)
-$(OBJDIR)/$(TARGET)/platform/$(PLATFORM)/%.o: $(SRCDIR)/platform/$(PLATFORM)/%.s | $(OBJDIR)/$(TARGET)/platform/$(PLATFORM)
+$(OBJDIR)/$(TARGET)/platform/$(PLATFORM)/%.o: $(SRCDIR)/platform/$(PLATFORM)/%.s $(PLATFORM_ASM_INCLUDES) | $(OBJDIR)/$(TARGET)/platform/$(PLATFORM)
 	@echo "  AS $<"
 	$(CC) -t $(TARGET) -c $(ASFLAGS) --listing $(@:.o=.lst) -o $@ $<
 

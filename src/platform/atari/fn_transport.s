@@ -11,6 +11,7 @@
         .export _fn_transport_ready
         .export _fn_transport_exchange
         .export _fn_platform_name
+        .export _fn_atari_last_sio_status
         
         .import __fn_transport_ctx
         .import _fn_slip_encode
@@ -29,9 +30,11 @@
 ; SIO timeout in frames (approximately 1/60 second per frame)
 SIO_TIMEOUT      = 60 * 5   ; 5 seconds
 
-; Buffer sizes (keep small for 8-bit)
+; Buffer sizes (keep small for 8-bit). The SIO transfer buffers are fixed
+; in BSS so the linker places them inside the loaded program, above MEMLO.
 MAX_PACKET       = 512
 SLIP_BUFFER_SIZE = 768
+SIO_READ_CHUNK_SIZE = 128
 
 ;=============================================================================
 ; Data Section
@@ -48,9 +51,10 @@ _platform_name:
 
 .bss
 
-; SLIP encoding/decoding buffers
-slip_buffer:     .res SLIP_BUFFER_SIZE
-resp_buffer:     .res SLIP_BUFFER_SIZE
+last_sio_status: .res 1
+slip_end_count: .res 1
+sio_tx_buffer:   .res SLIP_BUFFER_SIZE
+sio_rx_buffer:   .res SLIP_BUFFER_SIZE
 
 ;=============================================================================
 ; Code Section
@@ -130,17 +134,18 @@ _fn_transport_exchange:
         sta ptr2+1
         
         ; SLIP encode the request
-        ; fn_slip_encode(request, req_len, slip_buffer)
-        ; Parameters: A:X = output buffer, stack = req_len, stack = input
+        ; fn_slip_encode(request, req_len, sio_tx_buffer)
+        ; cc65 fastcall: rightmost argument in A:X, earlier arguments pushed
+        ; left-to-right. For this call, push request and req_len, then pass
+        ; output in A:X.
         lda ptr1
         ldx ptr1+1
         jsr pushax         ; request
         lda tmp1
         ldx tmp2
         jsr pushax         ; req_len
-        lda #<slip_buffer
-        ldx #>slip_buffer
-        jsr pushax         ; output buffer
+        lda #<sio_tx_buffer
+        ldx #>sio_tx_buffer
         jsr _fn_slip_encode
         ; Result in A:X is encoded length
         sta tmp1           ; save encoded length low
@@ -148,7 +153,7 @@ _fn_transport_exchange:
         
         ; Send via SIO
         ; Set up DCB for write
-        lda #FN_DEVICE_NETWORK
+        lda #FN_SIO_DEVICE_FUJIBUS
         sta ddevic
         lda #$01
         sta dunit
@@ -156,9 +161,9 @@ _fn_transport_exchange:
         sta dcomnd
         lda #$80           ; Write operation
         sta dstats
-        lda #<slip_buffer
+        lda #<sio_tx_buffer
         sta dbuflo
-        lda #>slip_buffer
+        lda #>sio_tx_buffer
         sta dbufhi
         lda tmp1
         sta dbytlo
@@ -166,21 +171,45 @@ _fn_transport_exchange:
         sta dbythi
         lda #<SIO_TIMEOUT
         sta dtimlo
-        lda #0
+        lda #$00
+        sta dunuse
+        lda tmp1
         sta daux1
+        lda tmp2
         sta daux2
         
         ; Call SIO
         jsr siov
+        lda dstats
+        sta last_sio_status
         
         ; Check write result
         lda dstats
         cmp #$01
-        bne @write_error
+        beq @write_ok
+        jmp @write_error
+@write_ok:
         
-        ; Now read the response
+        ; Now read the response. SIO reads are fixed length, but FujiBus
+        ; responses are variable-length SLIP frames. Read in small SIO chunks
+        ; until the second SLIP END marker is seen.
+        lda #$00
+        sta tmp3           ; total raw response length low
+        sta tmp4           ; total raw response length high
+        sta slip_end_count
+
+@read_loop:
+        ; Stop if the receive buffer is full before a complete SLIP frame.
+        lda tmp3
+        cmp #<SLIP_BUFFER_SIZE
+        lda tmp4
+        sbc #>SLIP_BUFFER_SIZE
+        bcc @read_space_available
+        jmp @read_error
+@read_space_available:
+
         ; Set up DCB for read
-        lda #FN_DEVICE_NETWORK
+        lda #FN_SIO_DEVICE_FUJIBUS
         sta ddevic
         lda #$01
         sta dunit
@@ -188,45 +217,88 @@ _fn_transport_exchange:
         sta dcomnd
         lda #$40           ; Read operation
         sta dstats
-        lda #<resp_buffer
+        clc
+        lda #<sio_rx_buffer
+        adc tmp3
         sta dbuflo
-        lda #>resp_buffer
+        lda #>sio_rx_buffer
+        adc tmp4
         sta dbufhi
-        lda #<SLIP_BUFFER_SIZE
+        lda #<SIO_READ_CHUNK_SIZE
         sta dbytlo
-        lda #>SLIP_BUFFER_SIZE
+        lda #>SIO_READ_CHUNK_SIZE
         sta dbythi
         lda #<SIO_TIMEOUT
         sta dtimlo
-        lda #0
+        lda #$00
+        sta dunuse
+        lda #<SIO_READ_CHUNK_SIZE
         sta daux1
+        lda #>SIO_READ_CHUNK_SIZE
         sta daux2
         
         ; Call SIO
         jsr siov
+        lda dstats
+        sta last_sio_status
         
         ; Check read result
         lda dstats
         cmp #$01
         bne @read_error
-        
-        ; Get actual bytes read
-        lda dbytlo
+
+        ; Scan this chunk for raw SLIP END markers.
+        lda dbuflo
+        sta ptr3
+        lda dbufhi
+        sta ptr3+1
+        ldy #$00
+@scan_chunk:
+        cpy #SIO_READ_CHUNK_SIZE
+        beq @chunk_done
+        lda (ptr3),y
+        cmp #SLIP_END
+        bne @next_scan_byte
+        inc slip_end_count
+        lda slip_end_count
+        cmp #$02
+        bcs @frame_done
+@next_scan_byte:
+        iny
+        bne @scan_chunk
+
+@chunk_done:
+        clc
+        lda tmp3
+        adc #<SIO_READ_CHUNK_SIZE
+        sta tmp3
+        lda tmp4
+        adc #>SIO_READ_CHUNK_SIZE
+        sta tmp4
+        jmp @read_loop
+
+@frame_done:
+        clc
+        lda tmp3
+        adc #<SIO_READ_CHUNK_SIZE
         sta tmp1
-        lda dbythi
+        lda tmp4
+        adc #>SIO_READ_CHUNK_SIZE
         sta tmp2
         
         ; SLIP decode the response
-        ; fn_slip_decode(resp_buffer, resp_len, response)
-        lda #<resp_buffer
-        ldx #>resp_buffer
-        jsr pushax
+        ; fn_slip_decode(sio_rx_buffer, resp_len, response)
+        ; cc65 fastcall: rightmost argument in A:X, earlier arguments pushed
+        ; left-to-right. For this call, push input and in_len, then pass
+        ; output in A:X.
+        lda #<sio_rx_buffer
+        ldx #>sio_rx_buffer
+        jsr pushax         ; input
         lda tmp1
         ldx tmp2
-        jsr pushax
+        jsr pushax         ; resp_len
         lda ptr2
         ldx ptr2+1
-        jsr pushax
         jsr _fn_slip_decode
         ; Result in A:X is decoded length
         
@@ -259,6 +331,15 @@ _fn_transport_exchange:
 _fn_platform_name:
         lda #<_platform_name
         ldx #>_platform_name
+        rts
+
+;-----------------------------------------------------------------------------
+; fn_atari_last_sio_status - Get last SIO DSTATS value.
+;
+; uint8_t fn_atari_last_sio_status(void)
+;-----------------------------------------------------------------------------
+_fn_atari_last_sio_status:
+        lda last_sio_status
         rts
 
 ;=============================================================================
