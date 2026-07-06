@@ -29,6 +29,9 @@ uint8_t fn_open(fn_handle_t *handle,
     if (flags & FN_OPEN_FOLLOW_REDIR) {
         open_flags |= FN_OPEN_FLAG_FOLLOW_REDIR;
     }
+    if (flags & FN_OPEN_BODY_UNKNOWN) {
+        open_flags |= FN_OPEN_FLAG_BODY_UNKNOWN;
+    }
     if (flags & FN_OPEN_ALLOW_EVICT) {
         open_flags |= FN_OPEN_FLAG_ALLOW_EVICT;
     }

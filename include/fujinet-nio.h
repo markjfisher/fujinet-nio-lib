@@ -143,6 +143,9 @@ extern "C" {
 /** Follow HTTP redirects automatically */
 #define FN_OPEN_FOLLOW_REDIR 0x02
 
+/** POST/PUT body length is unknown; commit with a zero-length write */
+#define FN_OPEN_BODY_UNKNOWN 0x04
+
 /** Allow handle eviction if no handles available */
 #define FN_OPEN_ALLOW_EVICT 0x08
 
