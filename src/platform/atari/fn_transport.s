@@ -14,10 +14,8 @@
         .export _fn_atari_last_sio_status
         
         .import __fn_transport_ctx
-        .import _fn_slip_encode
-        .import _fn_slip_decode
         
-        .importzp ptr1, ptr2, ptr3
+        .importzp ptr1, ptr2
         .importzp tmp1, tmp2, tmp3, tmp4
         
         .include "atari.inc"
@@ -30,11 +28,10 @@
 ; SIO timeout in frames (approximately 1/60 second per frame)
 SIO_TIMEOUT      = 60 * 5   ; 5 seconds
 
-; Buffer sizes (keep small for 8-bit). The SIO transfer buffers are fixed
-; in BSS so the linker places them inside the loaded program, above MEMLO.
-MAX_PACKET       = 512
-SLIP_BUFFER_SIZE = 768
-SIO_READ_CHUNK_SIZE = 128
+; SIO transfers are chunked so the transport does not need whole encoded
+; request/response staging buffers. FujiBus packets are SLIP framed directly
+; to/from the public request and response buffers.
+SIO_CHUNK_SIZE   = 128
 
 ;=============================================================================
 ; Data Section
@@ -52,9 +49,11 @@ _platform_name:
 .bss
 
 last_sio_status: .res 1
-slip_end_count: .res 1
-sio_tx_buffer:   .res SLIP_BUFFER_SIZE
-sio_rx_buffer:   .res SLIP_BUFFER_SIZE
+chunk_len:       .res 1
+transport_error: .res 1
+slip_started:    .res 1
+slip_escaped:    .res 1
+sio_chunk_buffer: .res SIO_CHUNK_SIZE
 
 ;=============================================================================
 ; Code Section
@@ -133,81 +132,72 @@ _fn_transport_exchange:
         lda __fn_transport_ctx,y
         sta ptr2+1
         
-        ; SLIP encode the request
-        ; fn_slip_encode(request, req_len, sio_tx_buffer)
-        ; cc65 fastcall: rightmost argument in A:X, earlier arguments pushed
-        ; left-to-right. For this call, push request and req_len, then pass
-        ; output in A:X.
-        lda ptr1
-        ldx ptr1+1
-        jsr pushax         ; request
-        lda tmp1
-        ldx tmp2
-        jsr pushax         ; req_len
-        lda #<sio_tx_buffer
-        ldx #>sio_tx_buffer
-        jsr _fn_slip_encode
-        ; Result in A:X is encoded length
-        sta tmp1           ; save encoded length low
-        stx tmp2           ; save encoded length high
-        
-        ; Send via SIO
-        ; Set up DCB for write
-        lda #FN_SIO_DEVICE_FUJIBUS
-        sta ddevic
-        lda #$01
-        sta dunit
-        lda #'W'           ; Write command
-        sta dcomnd
-        lda #$80           ; Write operation
-        sta dstats
-        lda #<sio_tx_buffer
-        sta dbuflo
-        lda #>sio_tx_buffer
-        sta dbufhi
-        lda tmp1
-        sta dbytlo
-        lda tmp2
-        sta dbythi
-        lda #<SIO_TIMEOUT
-        sta dtimlo
         lda #$00
-        sta dunuse
-        lda tmp1
-        sta daux1
-        lda tmp2
-        sta daux2
-        
-        ; Call SIO
-        jsr siov
-        lda dstats
-        sta last_sio_status
-        
-        ; Check write result
-        lda dstats
-        cmp #$01
-        beq @write_ok
+        sta chunk_len
+        sta transport_error
+
+        ; Stream SLIP encoded request bytes through small SIO write chunks.
+        lda #SLIP_END
+        jsr @tx_append_byte
+        lda transport_error
+        beq @tx_start_ok
         jmp @write_error
-@write_ok:
-        
-        ; Now read the response. SIO reads are fixed length, but FujiBus
-        ; responses are variable-length SLIP frames. Read in small SIO chunks
-        ; until the second SLIP END marker is seen.
+@tx_start_ok:
+
+@tx_loop:
+        lda tmp1
+        ora tmp2
+        beq @tx_frame_done
+
+        ldy #$00
+        lda (ptr1),y
+        jsr @tx_emit_slip_byte
+        lda transport_error
+        beq @tx_byte_ok
+        jmp @write_error
+@tx_byte_ok:
+
+        inc ptr1
+        bne @tx_dec_remaining
+        inc ptr1+1
+@tx_dec_remaining:
+        lda tmp1
+        bne @tx_dec_low
+        dec tmp2
+@tx_dec_low:
+        dec tmp1
+        jmp @tx_loop
+
+@tx_frame_done:
+        lda #SLIP_END
+        jsr @tx_append_byte
+        lda transport_error
+        beq @tx_end_ok
+        jmp @write_error
+@tx_end_ok:
+        jsr @tx_flush_chunk
+        lda transport_error
+        beq @tx_flush_ok_to_read
+        jmp @write_error
+@tx_flush_ok_to_read:
+
+        ; response max from transport context
+        ldy #6
+        lda __fn_transport_ctx,y
+        sta tmp3
+        iny
+        lda __fn_transport_ctx,y
+        sta tmp4
+
+        ; Decode the response SLIP frame directly into the caller response
+        ; buffer as SIO read chunks arrive.
         lda #$00
-        sta tmp3           ; total raw response length low
-        sta tmp4           ; total raw response length high
-        sta slip_end_count
+        sta tmp1           ; decoded response length low
+        sta tmp2           ; decoded response length high
+        sta slip_started
+        sta slip_escaped
 
 @read_loop:
-        ; Stop if the receive buffer is full before a complete SLIP frame.
-        lda tmp3
-        cmp #<SLIP_BUFFER_SIZE
-        lda tmp4
-        sbc #>SLIP_BUFFER_SIZE
-        bcc @read_space_available
-        jmp @read_error
-@read_space_available:
-
         ; Set up DCB for read
         lda #FN_SIO_DEVICE_FUJIBUS
         sta ddevic
@@ -217,24 +207,21 @@ _fn_transport_exchange:
         sta dcomnd
         lda #$40           ; Read operation
         sta dstats
-        clc
-        lda #<sio_rx_buffer
-        adc tmp3
+        lda #<sio_chunk_buffer
         sta dbuflo
-        lda #>sio_rx_buffer
-        adc tmp4
+        lda #>sio_chunk_buffer
         sta dbufhi
-        lda #<SIO_READ_CHUNK_SIZE
+        lda #<SIO_CHUNK_SIZE
         sta dbytlo
-        lda #>SIO_READ_CHUNK_SIZE
+        lda #>SIO_CHUNK_SIZE
         sta dbythi
         lda #<SIO_TIMEOUT
         sta dtimlo
         lda #$00
         sta dunuse
-        lda #<SIO_READ_CHUNK_SIZE
+        lda #<SIO_CHUNK_SIZE
         sta daux1
-        lda #>SIO_READ_CHUNK_SIZE
+        lda #>SIO_CHUNK_SIZE
         sta daux2
         
         ; Call SIO
@@ -245,68 +232,100 @@ _fn_transport_exchange:
         ; Check read result
         lda dstats
         cmp #$01
-        bne @read_error
+        beq @read_ok
+        jmp @read_error
+@read_ok:
 
-        ; Scan this chunk for raw SLIP END markers.
-        lda dbuflo
-        sta ptr3
-        lda dbufhi
-        sta ptr3+1
-        ldy #$00
-@scan_chunk:
-        cpy #SIO_READ_CHUNK_SIZE
-        beq @chunk_done
-        lda (ptr3),y
+        ldx #$00
+@rx_decode_chunk:
+        cpx #SIO_CHUNK_SIZE
+        beq @read_loop
+
+        lda sio_chunk_buffer,x
         cmp #SLIP_END
-        bne @next_scan_byte
-        inc slip_end_count
-        lda slip_end_count
-        cmp #$02
-        bcs @frame_done
-@next_scan_byte:
-        iny
-        bne @scan_chunk
+        beq @rx_slip_end
 
-@chunk_done:
-        clc
-        lda tmp3
-        adc #<SIO_READ_CHUNK_SIZE
-        sta tmp3
-        lda tmp4
-        adc #>SIO_READ_CHUNK_SIZE
-        sta tmp4
-        jmp @read_loop
+        ldy slip_started
+        beq @rx_next_byte
+
+        ldy slip_escaped
+        bne @rx_escaped_byte
+
+        cmp #SLIP_ESCAPE
+        beq @rx_escape
+        jmp @rx_store_byte
+
+@rx_escaped_byte:
+        ldy #$00
+        sty slip_escaped
+        cmp #SLIP_ESC_END
+        beq @rx_store_slip_end
+        cmp #SLIP_ESC_ESC
+        beq @rx_store_slip_escape
+        jmp @read_error
+
+@rx_store_slip_end:
+        lda #SLIP_END
+        jmp @rx_store_byte
+
+@rx_store_slip_escape:
+        lda #SLIP_ESCAPE
+        jmp @rx_store_byte
+
+@rx_escape:
+        lda #$01
+        sta slip_escaped
+        jmp @rx_next_byte
+
+@rx_slip_end:
+        lda slip_started
+        bne @rx_after_started_end
+        lda #$01
+        sta slip_started
+        jmp @rx_next_byte
+
+@rx_after_started_end:
+        lda tmp1
+        ora tmp2
+        bne @frame_done
+        jmp @rx_next_byte
+
+@rx_store_byte:
+        pha
+        lda tmp2
+        cmp tmp4
+        bcc @rx_has_space
+        bne @rx_no_space
+        lda tmp1
+        cmp tmp3
+        bcc @rx_has_space
+@rx_no_space:
+        pla
+        jmp @read_error
+
+@rx_has_space:
+        pla
+        ldy #$00
+        sta (ptr2),y
+        inc ptr2
+        bne @rx_inc_len
+        inc ptr2+1
+@rx_inc_len:
+        inc tmp1
+        bne @rx_next_byte
+        inc tmp2
+
+@rx_next_byte:
+        inx
+        jmp @rx_decode_chunk
 
 @frame_done:
-        clc
-        lda tmp3
-        adc #<SIO_READ_CHUNK_SIZE
-        sta tmp1
-        lda tmp4
-        adc #>SIO_READ_CHUNK_SIZE
-        sta tmp2
-        
-        ; SLIP decode the response
-        ; fn_slip_decode(sio_rx_buffer, resp_len, response)
-        ; cc65 fastcall: rightmost argument in A:X, earlier arguments pushed
-        ; left-to-right. For this call, push input and in_len, then pass
-        ; output in A:X.
-        lda #<sio_rx_buffer
-        ldx #>sio_rx_buffer
-        jsr pushax         ; input
-        lda tmp1
-        ldx tmp2
-        jsr pushax         ; resp_len
-        lda ptr2
-        ldx ptr2+1
-        jsr _fn_slip_decode
-        ; Result in A:X is decoded length
-        
         ; Store response length into transport context
         ldy #8
+        lda tmp1
         sta __fn_transport_ctx,y
         iny
-        txa
+        lda tmp2
         sta __fn_transport_ctx,y
         
         ; Return success
@@ -314,11 +333,99 @@ _fn_transport_exchange:
         rts
         
 @write_error:
-        lda #$08           ; FN_ERR_TRANSPORT
+        lda #FN_ERR_TRANSPORT
         rts
         
 @read_error:
-        lda #$08           ; FN_ERR_TRANSPORT
+        lda #FN_ERR_TRANSPORT
+        rts
+
+@tx_emit_slip_byte:
+        cmp #SLIP_END
+        beq @tx_emit_escaped_end
+        cmp #SLIP_ESCAPE
+        beq @tx_emit_escaped_escape
+        jmp @tx_append_byte
+
+@tx_emit_escaped_end:
+        lda #SLIP_ESCAPE
+        jsr @tx_append_byte
+        lda transport_error
+        bne @tx_emit_done
+        lda #SLIP_ESC_END
+        jmp @tx_append_byte
+
+@tx_emit_escaped_escape:
+        lda #SLIP_ESCAPE
+        jsr @tx_append_byte
+        lda transport_error
+        bne @tx_emit_done
+        lda #SLIP_ESC_ESC
+        jmp @tx_append_byte
+
+@tx_emit_done:
+        rts
+
+@tx_append_byte:
+        pha
+        lda chunk_len
+        cmp #SIO_CHUNK_SIZE
+        bcc @tx_append_has_space
+        jsr @tx_flush_chunk
+        lda transport_error
+        beq @tx_append_has_space
+        pla
+        rts
+
+@tx_append_has_space:
+        pla
+        ldx chunk_len
+        sta sio_chunk_buffer,x
+        inc chunk_len
+        rts
+
+@tx_flush_chunk:
+        lda chunk_len
+        beq @tx_flush_done
+
+        lda #FN_SIO_DEVICE_FUJIBUS
+        sta ddevic
+        lda #$01
+        sta dunit
+        lda #'W'           ; Write command
+        sta dcomnd
+        lda #$80           ; Write operation
+        sta dstats
+        lda #<sio_chunk_buffer
+        sta dbuflo
+        lda #>sio_chunk_buffer
+        sta dbufhi
+        lda chunk_len
+        sta dbytlo
+        lda #$00
+        sta dbythi
+        lda #<SIO_TIMEOUT
+        sta dtimlo
+        lda #$00
+        sta dunuse
+        lda chunk_len
+        sta daux1
+        lda #$00
+        sta daux2
+
+        jsr siov
+        lda dstats
+        sta last_sio_status
+        cmp #$01
+        beq @tx_flush_ok
+        lda #FN_ERR_TRANSPORT
+        sta transport_error
+        rts
+
+@tx_flush_ok:
+        lda #$00
+        sta chunk_len
+@tx_flush_done:
         rts
 
 ;-----------------------------------------------------------------------------

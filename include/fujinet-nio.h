@@ -1,8 +1,8 @@
 /**
  * @file fujinet-nio.h
- * @brief FujiNet-NIO Library for 6502 Applications
+ * @brief FujiNet-NIO Library for C Applications
  * 
- * This library provides a clean interface for 6502 applications to communicate
+ * This library provides a clean interface for C applications to communicate
  * with FujiNet-NIO devices using the FujiBus protocol. It supports both HTTP
  * and TCP network operations through a handle-based API.
  * 
@@ -54,7 +54,7 @@ extern "C" {
 /** Maximum concurrent network sessions */
 #ifndef FN_MAX_SESSIONS
 #ifdef __CC65__
-#define FN_MAX_SESSIONS     3
+#define FN_MAX_SESSIONS     2
 #else
 #define FN_MAX_SESSIONS     4
 #endif
