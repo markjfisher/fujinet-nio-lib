@@ -17,6 +17,7 @@ A clean, multi-platform 6502 library for communicating with FujiNet-NIO devices 
 - HTTP GET/POST/PUT/DELETE operations
 - TCP socket connections
 - Application storage key/value API
+- Optional legacy fujinet-lib appkey compatibility API
 - TLS/HTTPS support (via `tls://` URL scheme)
 - Automatic redirect following
 - Streaming reads for large responses
@@ -30,6 +31,10 @@ A clean, multi-platform 6502 library for communicating with FujiNet-NIO devices 
 - **[Building](docs/building.md)** - Build instructions for all platforms
 - **[Transport Backends](docs/transport-backends.md)** - How platform library targets map to NIO channels
 - **[Examples](examples/README.md)** - Example applications and usage
+
+The legacy appkey compatibility functions are available via
+`#include "fn_legacy_appkey.h"`. They are compiled into separate archive members
+and only link into applications that call the old `fuji_*_appkey()` symbols.
 
 ## Quick Start
 

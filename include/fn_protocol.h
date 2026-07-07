@@ -110,6 +110,15 @@ extern "C" {
  * File Device Commands
  * ============================================================================ */
 
+/** Read bytes from a filesystem URI */
+#define FN_CMD_FILE_READ       0x03
+
+/** Write bytes to a filesystem URI */
+#define FN_CMD_FILE_WRITE      0x04
+
+/** Create a directory at a filesystem URI */
+#define FN_CMD_FILE_MKDIR      0x06
+
 /** Query metadata for an application storage key */
 #define FN_CMD_APPSTORE_STAT   0x20
 

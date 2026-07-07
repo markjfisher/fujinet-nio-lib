@@ -88,6 +88,44 @@ offset-based chunked reads and writes.
 Namespaces and keys are UTF-8 byte strings from 1 to 255 bytes. They are not
 filesystem paths; fujinet-nio owns the backing storage layout.
 
+## Legacy Appkeys
+
+`fn_legacy_appkey.h` provides the old fujinet-lib appkey function names for
+applications or compatibility layers that already call:
+
+```c
+void fuji_set_appkey_details(uint16_t creator_id,
+                             uint8_t app_id,
+                             enum AppKeySize keysize);
+bool fuji_read_appkey(uint8_t key_id, uint16_t *count, uint8_t *data);
+bool fuji_write_appkey(uint8_t key_id, uint16_t count, uint8_t *data);
+```
+
+This is intentionally a compatibility layer over FileDevice filesystem calls,
+not a migration into the new app-store API. It reads and writes the same legacy
+key-file layout used by older FujiNet firmware:
+
+```text
+persist:///FujiNet/<creator-id><app-id><key-id>.key
+```
+
+For example, creator `0xfe0c`, app `0x01`, key `0x01` becomes:
+
+```text
+persist:///FujiNet/fe0c0101.key
+```
+
+The `persist:///` scheme is resolved by fujinet-nio to the platform's default
+persistent filesystem, such as `host` on POSIX/embedded Altirra and `sd0` or
+`flash` on ESP32. This keeps client code platform agnostic while preserving the
+legacy on-disk format. `fuji_write_appkey()` creates `persist:///FujiNet` before
+writing, so a new persistent store starts empty but usable.
+
+These functions live in separate `src/legacy` archive members. Normal
+applications do not link them unless they reference the legacy symbols. The BBC
+ROM-backed target does not currently include this layer because it does not use
+the common raw FileDevice call path.
+
 ### `fn_appstore_stat()`
 
 Query metadata for a key.

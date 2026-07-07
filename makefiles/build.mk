@@ -58,13 +58,21 @@ COMMON_SRCS_DEFAULT := $(SRCDIR)/common/fn_slip.c \
                        $(SRCDIR)/common/fn_appstore.c \
                        $(SRCDIR)/common/fn_raw.c
 
+LEGACY_SRCS_DEFAULT := $(SRCDIR)/legacy/fn_legacy_appkey_state.c \
+                       $(SRCDIR)/legacy/fn_legacy_appkey_util.c \
+                       $(SRCDIR)/legacy/fn_legacy_appkey_set.c \
+                       $(SRCDIR)/legacy/fn_legacy_appkey_read.c \
+                       $(SRCDIR)/legacy/fn_legacy_appkey_write.c
+
 COMMON_SRCS_BBC := $(SRCDIR)/common/fn_util.c \
                    $(SRCDIR)/common/fn_ext.c
 
 ifeq ($(PLATFORM),bbc)
 COMMON_SRCS := $(COMMON_SRCS_BBC)
+LEGACY_SRCS :=
 else
 COMMON_SRCS := $(COMMON_SRCS_DEFAULT)
+LEGACY_SRCS := $(LEGACY_SRCS_DEFAULT)
 endif
 
 ifeq ($(TRANSPORT_FAMILY),stream)
@@ -81,7 +89,7 @@ PLATFORM_ASMS := $(wildcard $(PLATFORM_DIR)/*.s)
 PLATFORM_ASM_INCLUDES := $(wildcard $(PLATFORM_DIR)/*.inc)
 
 # All sources
-SOURCES := $(COMMON_SRCS) $(PLATFORM_SRCS)
+SOURCES := $(COMMON_SRCS) $(LEGACY_SRCS) $(PLATFORM_SRCS)
 
 # Object files
 OBJECTS_C   := $(SOURCES:.c=.o)
@@ -120,6 +128,9 @@ $(OBJDIR)/$(TARGET):
 $(OBJDIR)/$(TARGET)/common:
 	@mkdir -p $@
 
+$(OBJDIR)/$(TARGET)/legacy:
+	@mkdir -p $@
+
 $(OBJDIR)/$(TARGET)/platform/$(PLATFORM):
 	@mkdir -p $@
 
@@ -138,6 +149,10 @@ $(OBJDIR)/$(TARGET)/common/%.o: $(SRCDIR)/common/%.c | $(OBJDIR)/$(TARGET)/commo
 	@echo "  CC $<"
 	$(CC) -c $(CFLAGS) -MMD -MF $(@:.o=.d) -o $@ $<
 
+$(OBJDIR)/$(TARGET)/legacy/%.o: $(SRCDIR)/legacy/%.c | $(OBJDIR)/$(TARGET)/legacy
+	@echo "  CC $<"
+	$(CC) -c $(CFLAGS) -MMD -MF $(@:.o=.d) -o $@ $<
+
 $(OBJDIR)/$(TARGET)/platform/$(PLATFORM)/%.o: $(SRCDIR)/platform/$(PLATFORM)/%.c | $(OBJDIR)/$(TARGET)/platform/$(PLATFORM)
 	@echo "  CC $<"
 	$(CC) -c $(CFLAGS) -MMD -MF $(@:.o=.d) -o $@ $<
@@ -147,12 +162,20 @@ $(OBJDIR)/$(TARGET)/common/%.o: $(SRCDIR)/common/%.c | $(OBJDIR)/$(TARGET)/commo
 	@echo "  CC $<"
 	$(CC) $(CFLAGS) -fo=$@ $<
 
+$(OBJDIR)/$(TARGET)/legacy/%.o: $(SRCDIR)/legacy/%.c | $(OBJDIR)/$(TARGET)/legacy
+	@echo "  CC $<"
+	$(CC) $(CFLAGS) -fo=$@ $<
+
 $(OBJDIR)/$(TARGET)/platform/$(PLATFORM)/%.o: $(SRCDIR)/platform/$(PLATFORM)/%.c | $(OBJDIR)/$(TARGET)/platform/$(PLATFORM)
 	@echo "  CC $<"
 	$(CC) $(CFLAGS) -fo=$@ $<
 else
 # CC65 compilation
 $(OBJDIR)/$(TARGET)/common/%.o: $(SRCDIR)/common/%.c | $(OBJDIR)/$(TARGET)/common
+	@echo "  CC $<"
+	$(CC) -t $(TARGET) -c $(CFLAGS) --create-dep $(@:.o=.d) --listing $(@:.o=.lst) -o $@ $<
+
+$(OBJDIR)/$(TARGET)/legacy/%.o: $(SRCDIR)/legacy/%.c | $(OBJDIR)/$(TARGET)/legacy
 	@echo "  CC $<"
 	$(CC) -t $(TARGET) -c $(CFLAGS) --create-dep $(@:.o=.d) --listing $(@:.o=.lst) -o $@ $<
 
