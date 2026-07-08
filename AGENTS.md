@@ -2,7 +2,7 @@
 
 ## Project principles
 
-`fujinet-nio-lib` targets small 6502 systems, so code size and RAM use are part of
+`fujinet-nio-lib` targets small 6502 and similar systems, so code size and RAM use are part of
 correctness, especially on BBC Micro targets.
 
 Agents working in this repo should follow these rules.
