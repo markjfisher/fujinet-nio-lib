@@ -55,7 +55,14 @@ COMMON_SRCS_DEFAULT := $(SRCDIR)/common/fn_slip.c \
                        $(SRCDIR)/common/fn_clock_core.c \
                        $(SRCDIR)/common/fn_clock_format.c \
                        $(SRCDIR)/common/fn_clock_timezone.c \
-                       $(SRCDIR)/common/fn_appstore.c \
+                       $(SRCDIR)/common/fn_appstore_common.c \
+                       $(SRCDIR)/common/fn_appstore_default.c \
+                       $(SRCDIR)/common/fn_appstore_stat.c \
+                       $(SRCDIR)/common/fn_appstore_read.c \
+                       $(SRCDIR)/common/fn_appstore_write.c \
+                       $(SRCDIR)/common/fn_appstore_delete.c \
+                       $(SRCDIR)/common/fn_appstore_list.c \
+                       $(SRCDIR)/common/fn_appstore_list_next_key.c \
                        $(SRCDIR)/common/fn_raw.c
 
 LEGACY_SRCS_DEFAULT := $(SRCDIR)/legacy/fn_legacy_appkey_state.c \
@@ -65,7 +72,14 @@ LEGACY_SRCS_DEFAULT := $(SRCDIR)/legacy/fn_legacy_appkey_state.c \
                        $(SRCDIR)/legacy/fn_legacy_appkey_write.c
 
 COMMON_SRCS_BBC := $(SRCDIR)/common/fn_util.c \
-                   $(SRCDIR)/common/fn_ext.c
+                   $(SRCDIR)/common/fn_ext.c \
+                   $(SRCDIR)/common/fn_appstore_common.c \
+                   $(SRCDIR)/common/fn_appstore_stat.c \
+                   $(SRCDIR)/common/fn_appstore_read.c \
+                   $(SRCDIR)/common/fn_appstore_write.c \
+                   $(SRCDIR)/common/fn_appstore_delete.c \
+                   $(SRCDIR)/common/fn_appstore_list.c \
+                   $(SRCDIR)/common/fn_appstore_list_next_key.c
 
 ifeq ($(PLATFORM),bbc)
 COMMON_SRCS := $(COMMON_SRCS_BBC)

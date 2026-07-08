@@ -1,36 +1,10 @@
 #include <string.h>
 
 #include "fujinet-nio.h"
+#include "fn_internal.h"
 #include "fn_protocol.h"
 #include "fn_raw.h"
 #include "fn_legacy_appkey_internal.h"
-
-static uint16_t get_u16le(const uint8_t *p)
-{
-    return (uint16_t)p[0] | ((uint16_t)p[1] << 8);
-}
-
-static uint32_t get_u32le(const uint8_t *p)
-{
-    return (uint32_t)p[0]
-        | ((uint32_t)p[1] << 8)
-        | ((uint32_t)p[2] << 16)
-        | ((uint32_t)p[3] << 24);
-}
-
-static void put_u16le(uint8_t *p, uint16_t value)
-{
-    p[0] = (uint8_t)(value & 0xFF);
-    p[1] = (uint8_t)((value >> 8) & 0xFF);
-}
-
-static void put_u32le(uint8_t *p, uint32_t value)
-{
-    p[0] = (uint8_t)(value & 0xFF);
-    p[1] = (uint8_t)((value >> 8) & 0xFF);
-    p[2] = (uint8_t)((value >> 16) & 0xFF);
-    p[3] = (uint8_t)((value >> 24) & 0xFF);
-}
 
 bool fuji_write_appkey(uint8_t key_id, uint16_t count, uint8_t *data)
 {
@@ -55,9 +29,9 @@ bool fuji_write_appkey(uint8_t key_id, uint16_t count, uint8_t *data)
     }
 
     off = _fn_legacy_file_uri_prefix(_fn_legacy_appkey_transfer, uri, uri_len);
-    put_u32le(&_fn_legacy_appkey_transfer[off], 0);
+    FN_PUT_LE32(&_fn_legacy_appkey_transfer[off], 0);
     off = (uint16_t)(off + 4);
-    put_u16le(&_fn_legacy_appkey_transfer[off], count);
+    FN_PUT_LE16(&_fn_legacy_appkey_transfer[off], count);
     off = (uint16_t)(off + 2);
     if (count != 0) {
         memcpy(&_fn_legacy_appkey_transfer[off], data, count);
@@ -74,8 +48,8 @@ bool fuji_write_appkey(uint8_t key_id, uint16_t count, uint8_t *data)
         raw.status != FN_OK ||
         raw.payload_length < 10 ||
         _fn_legacy_appkey_transfer[0] != 1 ||
-        get_u32le(&_fn_legacy_appkey_transfer[4]) != 0 ||
-        get_u16le(&_fn_legacy_appkey_transfer[8]) != count) {
+        FN_GET_LE32(&_fn_legacy_appkey_transfer[4]) != 0 ||
+        FN_GET_LE16(&_fn_legacy_appkey_transfer[8]) != count) {
         return false;
     }
 

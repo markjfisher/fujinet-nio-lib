@@ -71,6 +71,31 @@ void fn_free_handle(fn_handle_t handle);
      ((uint32_t)(buf)[(offset) + 2] << 16) | \
      ((uint32_t)(buf)[(offset) + 3] << 24))
 
+#define FN_GET_LE16(p) \
+    ((uint16_t)(p)[0] | ((uint16_t)(p)[1] << 8))
+
+#define FN_GET_LE32(p) \
+    ((uint32_t)(p)[0] | \
+     ((uint32_t)(p)[1] << 8) | \
+     ((uint32_t)(p)[2] << 16) | \
+     ((uint32_t)(p)[3] << 24))
+
+#define FN_PUT_LE16(p, value) \
+    do { \
+        uint16_t _fn_le_value = (uint16_t)(value); \
+        (p)[0] = (uint8_t)(_fn_le_value & 0xFFu); \
+        (p)[1] = (uint8_t)(_fn_le_value >> 8); \
+    } while (0)
+
+#define FN_PUT_LE32(p, value) \
+    do { \
+        uint32_t _fn_le_value = (uint32_t)(value); \
+        (p)[0] = (uint8_t)(_fn_le_value & 0xFFu); \
+        (p)[1] = (uint8_t)(_fn_le_value >> 8); \
+        (p)[2] = (uint8_t)(_fn_le_value >> 16); \
+        (p)[3] = (uint8_t)(_fn_le_value >> 24); \
+    } while (0)
+
 /* ============================================================================
  * SLIP Functions
  * ============================================================================ */

@@ -9,6 +9,7 @@
 #define FN_BBC_REASON_CONTENT_TYPE  0x03
 #define FN_BBC_REASON_SET_OPEN_URL  0x04
 #define FN_BBC_REASON_SET_OPEN_FLAGS 0x05
+#define FN_BBC_REASON_FILE_CALL     0x06
 
 #define FN_BBC_STATUS_OK            0x00
 #define FN_BBC_STATUS_BAD_CALL      0x01
@@ -36,5 +37,11 @@ uint8_t fn_bbc_arm_open_flags(uint8_t flags);
 uint8_t fn_bbc_arm_open_url(const char *url, uint16_t len);
 const char *fn_bbc_prepare_short_open_name(const char *url, uint16_t url_len);
 uint8_t fn_bbc_claim_channel(fn_handle_t *handle, unsigned char channel);
+uint8_t fn_bbc_file_call(uint8_t command,
+                         const uint8_t *request,
+                         uint16_t request_len,
+                         uint8_t *response,
+                         uint16_t response_capacity,
+                         uint16_t *response_len);
 
 #endif
