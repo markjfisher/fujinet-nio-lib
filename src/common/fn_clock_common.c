@@ -45,3 +45,8 @@ uint8_t fn_clock_exchange(uint8_t command,
     *data_len = _fn_parse_ctx.data_len;
     return FN_OK;
 }
+
+uint8_t fn_clock_response_byte(uint16_t offset)
+{
+    return _fn_resp_buf[offset];
+}

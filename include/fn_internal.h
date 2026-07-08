@@ -179,6 +179,7 @@ uint8_t fn_clock_exchange(uint8_t command,
                           uint8_t *status,
                           uint16_t *data_offset,
                           uint16_t *data_len);
+uint8_t fn_clock_response_byte(uint16_t offset);
 
 #ifdef __cplusplus
 }

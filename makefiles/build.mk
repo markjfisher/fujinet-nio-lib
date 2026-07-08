@@ -52,9 +52,16 @@ COMMON_SRCS_DEFAULT := $(SRCDIR)/common/fn_slip.c \
                        $(SRCDIR)/common/fn_util.c \
                        $(SRCDIR)/common/fn_ext.c \
                        $(SRCDIR)/common/fn_clock_common.c \
-                       $(SRCDIR)/common/fn_clock_core.c \
-                       $(SRCDIR)/common/fn_clock_format.c \
-                       $(SRCDIR)/common/fn_clock_timezone.c \
+                       $(SRCDIR)/common/fn_clock_time_common.c \
+                       $(SRCDIR)/common/fn_clock_get.c \
+                       $(SRCDIR)/common/fn_clock_set.c \
+                       $(SRCDIR)/common/fn_clock_sync_network_time.c \
+                       $(SRCDIR)/common/fn_clock_get_format.c \
+                       $(SRCDIR)/common/fn_clock_get_tz.c \
+                       $(SRCDIR)/common/fn_clock_get_timezone.c \
+                       $(SRCDIR)/common/fn_clock_set_timezone_common.c \
+                       $(SRCDIR)/common/fn_clock_set_timezone.c \
+                       $(SRCDIR)/common/fn_clock_set_timezone_save.c \
                        $(SRCDIR)/common/fn_appstore_common.c \
                        $(SRCDIR)/common/fn_appstore_default.c \
                        $(SRCDIR)/common/fn_appstore_stat.c \
@@ -73,6 +80,16 @@ LEGACY_SRCS_DEFAULT := $(SRCDIR)/legacy/fn_legacy_appkey_state.c \
 
 COMMON_SRCS_BBC := $(SRCDIR)/common/fn_util.c \
                    $(SRCDIR)/common/fn_ext.c \
+                   $(SRCDIR)/common/fn_clock_time_common.c \
+                   $(SRCDIR)/common/fn_clock_get.c \
+                   $(SRCDIR)/common/fn_clock_set.c \
+                   $(SRCDIR)/common/fn_clock_sync_network_time.c \
+                   $(SRCDIR)/common/fn_clock_get_format.c \
+                   $(SRCDIR)/common/fn_clock_get_tz.c \
+                   $(SRCDIR)/common/fn_clock_get_timezone.c \
+                   $(SRCDIR)/common/fn_clock_set_timezone_common.c \
+                   $(SRCDIR)/common/fn_clock_set_timezone.c \
+                   $(SRCDIR)/common/fn_clock_set_timezone_save.c \
                    $(SRCDIR)/common/fn_appstore_common.c \
                    $(SRCDIR)/common/fn_appstore_stat.c \
                    $(SRCDIR)/common/fn_appstore_read.c \
