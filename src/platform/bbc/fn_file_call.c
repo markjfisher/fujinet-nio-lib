@@ -18,19 +18,21 @@ static uint8_t map_device_status(uint8_t status)
     }
 }
 
-uint8_t fn_bbc_device_call(uint8_t device,
-                           uint8_t command,
-                           const uint8_t *request,
-                           uint16_t request_len,
-                           uint8_t *response,
-                           uint16_t response_capacity,
-                           uint16_t *response_len)
+uint8_t fn_bbc_device_call_raw(uint8_t device,
+                               uint8_t command,
+                               const uint8_t *request,
+                               uint16_t request_len,
+                               uint8_t *response,
+                               uint16_t response_capacity,
+                               uint8_t *device_status,
+                               uint16_t *response_len)
 {
     uint8_t block[16];
     uint8_t rom_status;
 
     if ((request_len != 0 && request == 0) ||
         (response_capacity != 0 && response == 0) ||
+        device_status == 0 ||
         response_len == 0) {
         return FN_ERR_INVALID;
     }
@@ -54,7 +56,34 @@ uint8_t fn_bbc_device_call(uint8_t device,
         return fn_bbc_status_to_result(rom_status);
     }
 
-    return map_device_status(block[4]);
+    *device_status = block[4];
+    return FN_OK;
+}
+
+uint8_t fn_bbc_device_call(uint8_t device,
+                           uint8_t command,
+                           const uint8_t *request,
+                           uint16_t request_len,
+                           uint8_t *response,
+                           uint16_t response_capacity,
+                           uint16_t *response_len)
+{
+    uint8_t status;
+    uint8_t result;
+
+    result = fn_bbc_device_call_raw(device,
+                                    command,
+                                    request,
+                                    request_len,
+                                    response,
+                                    response_capacity,
+                                    &status,
+                                    response_len);
+    if (result != FN_OK) {
+        return result;
+    }
+
+    return map_device_status(status);
 }
 
 uint8_t fn_bbc_file_call(uint8_t command,

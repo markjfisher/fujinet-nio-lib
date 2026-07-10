@@ -56,6 +56,7 @@ COMMON_SRCS_DEFAULT := $(SRCDIR)/common/fn_slip.c \
                        $(SRCDIR)/common/fn_clock_get.c \
                        $(SRCDIR)/common/fn_clock_set.c \
                        $(SRCDIR)/common/fn_clock_sync_network_time.c \
+                       $(SRCDIR)/common/fn_clock_format_common.c \
                        $(SRCDIR)/common/fn_clock_get_format.c \
                        $(SRCDIR)/common/fn_clock_get_tz.c \
                        $(SRCDIR)/common/fn_clock_get_timezone.c \
@@ -84,6 +85,7 @@ COMMON_SRCS_BBC := $(SRCDIR)/common/fn_util.c \
                    $(SRCDIR)/common/fn_clock_get.c \
                    $(SRCDIR)/common/fn_clock_set.c \
                    $(SRCDIR)/common/fn_clock_sync_network_time.c \
+                   $(SRCDIR)/common/fn_clock_format_common.c \
                    $(SRCDIR)/common/fn_clock_get_format.c \
                    $(SRCDIR)/common/fn_clock_get_tz.c \
                    $(SRCDIR)/common/fn_clock_get_timezone.c \

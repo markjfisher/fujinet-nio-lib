@@ -33,16 +33,6 @@ uint8_t fn_clock_get_tz(uint8_t *time_data, const char *tz, FnTimeFormat format)
     if (status != FN_OK) {
         return status;
     }
-    if (data_len < 2) {
-        return FN_ERR_INVALID;
-    }
-    if (fn_clock_response_byte(data_offset) != FN_CLOCK_VERSION) {
-        return FN_ERR_UNSUPPORTED;
-    }
 
-    for (i = 0; i < data_len - 2; ++i) {
-        time_data[i] = fn_clock_response_byte(data_offset + 2 + i);
-    }
-
-    return FN_OK;
+    return fn_clock_copy_format_response(time_data, data_offset, data_len);
 }

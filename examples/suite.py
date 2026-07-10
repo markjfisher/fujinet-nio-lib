@@ -127,15 +127,6 @@ class TestSuite:
 
         return TestResult(name, target, passed, output, duration_ms)
 
-    def run_clock_test(self, target: str, port: str) -> TestResult:
-        """Run clock test example."""
-        env = {"FN_PORT": port}
-        return self.run_example(
-            "clock_test", target, env,
-            expect_contains=["FujiNet-NIO Clock", "Current time:"],
-            timeout=10
-        )
-
     def run_http_get(self, target: str, port: str, http_host: str) -> TestResult:
         """Run HTTP GET example."""
         env = {
@@ -209,7 +200,6 @@ class TestSuite:
         print(f"{'='*60}")
 
         tests = [
-            ("Clock", lambda: self.run_clock_test(target, port)),
             ("HTTP", lambda: self.run_http_get(target, port, host_ip)),
             ("HTTPS", lambda: self.run_https_get(target, port, host_ip)),
             ("TCP", lambda: self.run_tcp_get(target, port, host_ip)),

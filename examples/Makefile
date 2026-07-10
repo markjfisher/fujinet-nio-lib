@@ -134,19 +134,15 @@ CFLAGS += -I$(INCDIR)
 # Network examples (TCP/HTTP/TLS)
 NETWORK_EXAMPLES := http_get tcp_get tcp_stream
 
-# Clock examples
-CLOCK_EXAMPLES := clock_test
-
 ifneq ($(filter $(TARGET),bbc bbc-clib),)
 NETWORK_EXAMPLES := http_get tcp_get
-CLOCK_EXAMPLES :=
 endif
 
 # Disk examples (future)
 # DISK_EXAMPLES := disk_info
 
 # All examples (add categories as they are created)
-ALL_EXAMPLES := $(NETWORK_EXAMPLES) $(CLOCK_EXAMPLES)
+ALL_EXAMPLES := $(NETWORK_EXAMPLES)
 
 # ============================================================================
 # Source and object file mappings
@@ -161,7 +157,6 @@ TCP_GET_DIR := network
 # Format: EXAMPLE_DIR maps example name to its source directory
 define GET_EXAMPLE_DIR
 $(if $(filter $(1),$(NETWORK_EXAMPLES)),network,\
-$(if $(filter $(1),$(CLOCK_EXAMPLES)),clock,\
 $(if $(filter $(1),$(DISK_EXAMPLES)),disk,\
 $(error Unknown example category for $(1)))))
 endef
@@ -179,7 +174,6 @@ BINARIES := $(foreach ex,$(ALL_EXAMPLES),$(BIN_DIR)/$(ex)$(EXEEXT))
 DFS_NAME_http_get := HTTPGET
 DFS_NAME_tcp_get := TCPGET
 DFS_NAME_tcp_stream := TCPSTRM
-DFS_NAME_clock_test := CLOCK
 
 define GET_DFS_NAME
 $(DFS_NAME_$(1))

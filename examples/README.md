@@ -14,30 +14,23 @@ examples/
         http_get.o
         tcp_get.o
         tcp_stream.o
-      clock/                 # Clock examples
-        clock_test.o
     atari/                   # Atari target
       network/
         http_get.o
         tcp_get.o
         tcp_stream.o
-      clock/
-        clock_test.o
   bin/                       # Final executables
     linux/
       http_get
       tcp_get
       tcp_stream
-      clock_test
     atari/
       http_get.xex
       tcp_get.xex
       tcp_stream.xex
-      clock_test.xex
   disk-images/
     bbc/
       network.ssd
-      clock.ssd           # when BBC clock examples are enabled
       disk.ssd            # when BBC disk examples are added
 ```
 
@@ -57,7 +50,6 @@ For `TARGET=bbc`, `make` now builds both the linked binaries and grouped disk im
 make http_get TARGET=linux
 make tcp_get TARGET=linux
 make tcp_stream TARGET=linux
-make clock_test TARGET=linux
 ```
 
 ### Build BBC disk images:
@@ -142,8 +134,6 @@ FN_TEST_URL="tls://echo.fujinet.online:6001" ./bin/linux/tcp_get
 # Run TCP streaming example
 ./bin/linux/tcp_stream
 
-# Run clock example
-./bin/linux/clock_test
 ```
 
 ### Atari Examples
@@ -160,7 +150,7 @@ make TARGET=atari FN_TCP_HOST=192.168.1.100 FN_TCP_PORT=7777
 make TARGET=atari FN_TCP_HOST=example.com FN_TCP_PORT=443 FN_TCP_TLS=1
 ```
 
-The clock example works without any configuration - it simply reads and displays the current time from the FujiNet device.
+Clock examples now live in the `nio-apps` repository so they can be shared across application targets.
 
 ### BBC Examples
 
@@ -174,7 +164,6 @@ Currently supported BBC example set:
 Current BBC notes:
 
 - `tcp_stream` is not yet enabled for BBC
-- `clock_test` is not yet enabled for BBC because the BBC library path currently returns `FN_ERR_UNSUPPORTED` for clock APIs
 - the example link path currently injects a tiny `initenv` shim object as a cc65 BBC runtime workaround
 - BBC example binaries are linked at `$1900` so they can be safely `*RUN` from disk images without colliding with DFS workspace
 - BBC disk images are built with the bundled `scripts/create_ssd.py` and per-file `.inf` metadata
@@ -206,15 +195,6 @@ Current BBC notes:
   - Frame-based data reception
   - Pattern suitable for games and interactive applications
   - Statistics tracking (frames received, bytes, timing)
-
-### Clock Examples (`clock/`)
-
-- **clock_test** - Clock device demonstration showing:
-  - Getting the current time from FujiNet
-  - Setting the time on the device
-  - Human-readable time formatting (year, month, day, hour, minute, second)
-  - Raw time value display (Unix timestamp)
-  - Note: Time setting may be disabled on some FujiNet configurations
 
 ### Disk Examples (`disk/`) - Planned
 
