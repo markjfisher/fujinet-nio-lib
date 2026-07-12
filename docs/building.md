@@ -37,7 +37,7 @@ make coco       # Tandy CoCo
 make msdos      # all MS-DOS backend libraries
 make msdos-serial # MS-DOS direct COM backend
 make msdos-ioctl  # MS-DOS FUJINET.SYS IOCTL backend
-make msdos-f5     # MS-DOS INT F5 backend stub
+make msdos-f5     # MS-DOS FUJINET.SYS INT F5 backend
 make linux      # Native Linux (for testing)
 ```
 
@@ -59,7 +59,7 @@ fujinet-nio-lib/
     fujinet-nio-coco.lib     # CoCo library (planned)
     fujinet-nio-msdos-serial.lib # MS-DOS direct COM backend
     fujinet-nio-msdos-ioctl.lib  # MS-DOS FUJINET.SYS IOCTL backend
-    fujinet-nio-msdos-f5.lib     # MS-DOS INT F5 backend stub
+    fujinet-nio-msdos-f5.lib     # MS-DOS FUJINET.SYS INT F5 backend
 ```
 
 ## Linux Native Testing

@@ -116,7 +116,7 @@ help:
 	@echo "  msdos       - MS-DOS serial, IOCTL, and F5 libraries"
 	@echo "  msdos-serial - MS-DOS direct COM backend (Open Watcom)"
 	@echo "  msdos-ioctl  - MS-DOS FUJINET.SYS IOCTL backend (Open Watcom)"
-	@echo "  msdos-f5     - MS-DOS INT F5 backend stub (Open Watcom)"
+	@echo "  msdos-f5     - MS-DOS FUJINET.SYS INT F5 backend (Open Watcom)"
 	@echo "  linux       - Linux/Posix (gcc)"
 	@echo ""
 	@echo "Environment:"

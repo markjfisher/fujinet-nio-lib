@@ -151,7 +151,7 @@ backend:
 |---------------|--------------------|---------|
 | `msdos-serial` | `src/platform/msdos/` or `src/platform/msdos_serial/` | stream transport over COM/RS-232 |
 | `msdos-ioctl` | `src/platform/msdos/` | resident `FUJINET.SYS` block IOCTL backend |
-| `msdos-f5` | `src/platform/msdos/` | future resident INT F5 backend |
+| `msdos-f5` | `src/platform/msdos/` | resident `FUJINET.SYS` INT F5 backend |
 | `msdos-parallel` | `src/platform/msdos_parallel/` | stream transport over PC parallel port |
 | `bbc`, `bbc-clib` | `src/platform/bbc/` | `fn-rom`/MOS channel facade |
 | `bbc-userbus` | `src/platform/bbc_userbus/` | Direct BBC user-bus backend |

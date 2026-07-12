@@ -148,7 +148,7 @@ int main(void) {
 | Tandy CoCo | Drivewire | CMOC | 🚧 Planned |
 | MS-DOS | COM serial | Watcom | ✅ Implemented |
 | MS-DOS | `FUJINET.SYS` block IOCTL | Watcom | ✅ Implemented |
-| MS-DOS | INT F5 backend stub | Watcom | 🚧 Builds, returns unsupported |
+| MS-DOS | `FUJINET.SYS` INT F5 | Watcom | ✅ Implemented |
 | Linux | stream over POSIX serial/PTY | GCC | ✅ Working |
 
 ## Differences from fujinet-lib
