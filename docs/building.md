@@ -129,14 +129,13 @@ The MS-DOS target uses Open Watcom and produces three backend archives:
   application owns the COM port.
 - `fujinet-nio-msdos-ioctl.lib`: DOS `INT 21h AH=44h` block-device IOCTL to the
   NIO build of `FUJINET.SYS`. The resident driver owns the COM port.
-- `fujinet-nio-msdos-f5.lib`: placeholder INT F5 backend. It currently builds
-  but returns `FN_ERR_UNSUPPORTED` for NIO packet exchange because there is not
-  yet a raw NIO-over-F5 ABI.
+- `fujinet-nio-msdos-f5.lib`: DOS `INT F5` backend to the NIO build of
+  `FUJINET.SYS`. The resident driver owns the COM port.
 
 All three archives use the same public headers and common FujiBus packet,
 response parsing, network, clock, raw-call, and session code. The serial archive
-also uses the common SLIP stream transport; the IOCTL archive adapts the common
-FujiBus request packet to the driver's `NIO_CALL` IOCTL control request.
+also uses the common SLIP stream transport; the IOCTL and F5 archives adapt the
+common FujiBus request packet to resident-driver control calls.
 
 By default the transport uses COM1 at 115200 baud. You can override this at
 compile time with target C flags, for example:

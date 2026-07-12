@@ -44,7 +44,7 @@ driver ABI.
 | `msdos` | alias that builds all MS-DOS backend libraries | Produces serial, IOCTL, and F5 archives. |
 | `msdos-serial` | common stream transport over COM serial channel | Direct 8250-compatible UART access. Defaults to COM1 at 115200 baud. |
 | `msdos-ioctl` | DOS block-device IOCTL backend | Sends raw NIO calls through a loaded `FUJINET.SYS`; the driver owns COM1. |
-| `msdos-f5` | INT F5 backend stub | Builds the backend shape but currently returns `FN_ERR_UNSUPPORTED` for NIO packet exchange. |
+| `msdos-f5` | INT F5 backend | Sends raw NIO calls through the NIO build of `FUJINET.SYS`; the driver owns COM1. |
 | `bbc`, `bbc-clib` | `fn-rom`/MOS channels | Does not use the common direct transport stack. BBC delegates transport details to `fn-rom`. |
 | `atari` | SIO | Direct target-specific transport. |
 
@@ -106,6 +106,9 @@ MS-DOS has two practical runtime models:
   `FUJINET.SYS` using DOS `INT 21h AH=44h` block-device IOCTL. The driver owns
   the serial port, so applications can make network/FileService calls while also
   reading files from FujiNet-provided DOS drives.
+- `msdos-f5`: the application talks to the same resident NIO build of
+  `FUJINET.SYS` using `INT F5`. This follows the firmware-style application
+  entry point while still using the NIO service protocol behind the driver.
 
 The IOCTL backend does not make network traffic "block sized". DOS passes a
 control buffer and byte count to the block driver. `fujinet-nio-lib` builds the
@@ -114,10 +117,10 @@ extracts the device, command, and payload and forwards them to `FUJINET.SYS`
 using the driver's `NIO_CALL` control request. The backend reconstructs a normal
 FujiBus response packet so the common response parser is still shared.
 
-The `msdos-f5` library exists so build selection can name the third backend, but
-the current NIO build of `FUJINET.SYS` does not expose a raw NIO packet ABI over
-`INT F5`. Until that ABI exists, this backend intentionally reports
-`FN_ERR_UNSUPPORTED` rather than inventing an incompatible convention.
+The `msdos-f5` backend uses `AX=F502h` with `ES:BX` pointing at the same `FUJI`
+NIO control block used by the IOCTL backend. `FUJINET.SYS` returns the NIO
+status and serial diagnostics in that block, and the library reconstructs the
+normal FujiBus response packet so common response parsing is shared.
 
 The `msdos-serial` target selects the COM serial channel because
 `src/platform/msdos/fn_channel_serial.c` implements 8250-compatible byte I/O.

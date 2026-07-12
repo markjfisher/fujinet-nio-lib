@@ -13,6 +13,10 @@ extern "C" {
 #define FN_MSDOS_IOCTL_MAX_URI   255
 #define FN_MSDOS_IOCTL_MAX_PATH  127
 #define FN_MSDOS_IOCTL_MAX_UNITS 8
+#define FN_MSDOS_F5_INT          0xF5
+#define FN_MSDOS_F5_DETECT       0x0000
+#define FN_MSDOS_F5_RESPONSE     0xF501
+#define FN_MSDOS_F5_NIO_CALL     0xF502
 
 enum {
     FN_MSDOS_IOCTL_QUERY = 0,
