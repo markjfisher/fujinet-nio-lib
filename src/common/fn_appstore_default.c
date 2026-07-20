@@ -1,9 +1,6 @@
 #include "fn_appstore_internal.h"
 #include "fn_raw.h"
 
-static uint8_t app_req_buf[FN_MAX_PACKET_SIZE - FN_HEADER_SIZE];
-static uint8_t app_resp_buf[FN_MAX_PACKET_SIZE];
-
 static uint8_t map_status(uint8_t status)
 {
     switch (status) {
@@ -20,37 +17,24 @@ static uint8_t map_status(uint8_t status)
     }
 }
 
-uint8_t *fn_appstore_request_buffer(void)
-{
-    return app_req_buf;
-}
-
-uint8_t *fn_appstore_response_buffer(void)
-{
-    return app_resp_buf;
-}
-
-uint16_t fn_appstore_request_capacity(void)
-{
-    return sizeof(app_req_buf);
-}
-
-uint16_t fn_appstore_response_capacity(void)
-{
-    return sizeof(app_resp_buf);
-}
-
-uint8_t fn_appstore_call(uint8_t command, uint16_t request_len, uint16_t *response_len)
+uint8_t fn_appstore_call(fn_appstore_io_t *io,
+                         uint8_t command,
+                         uint16_t request_len,
+                         uint16_t *response_len)
 {
     fn_raw_response_t raw;
     uint8_t result;
 
+    if (fn_appstore_validate_io(io, request_len) != FN_OK) {
+        return FN_ERR_INVALID;
+    }
+
     result = fn_raw_call(FN_DEVICE_FILE,
                          command,
-                         app_req_buf,
+                         io->buffer,
                          request_len,
-                         app_resp_buf,
-                         sizeof(app_resp_buf),
+                         io->buffer,
+                         io->capacity,
                          &raw);
     if (result != FN_OK) {
         return result;

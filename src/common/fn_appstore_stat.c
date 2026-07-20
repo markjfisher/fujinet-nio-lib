@@ -1,7 +1,8 @@
 #include "fujinet-nio.h"
 #include "fn_appstore_internal.h"
 
-uint8_t fn_appstore_stat(const char *namespace_name,
+uint8_t fn_appstore_stat(fn_appstore_io_t *io,
+                         const char *namespace_name,
                          const char *key,
                          fn_appstore_stat_t *out)
 {
@@ -10,7 +11,7 @@ uint8_t fn_appstore_stat(const char *namespace_name,
     uint16_t response_len;
     uint8_t result;
 
-    if (out == 0) {
+    if (out == 0 || fn_appstore_validate_io(io, 20) != FN_OK) {
         return FN_ERR_INVALID;
     }
     out->exists = 0;
@@ -19,16 +20,16 @@ uint8_t fn_appstore_stat(const char *namespace_name,
     out->mtime_unix = 0;
     out->mtime_unix_high = 0;
 
-    result = fn_appstore_build_prefix(&off, namespace_name, key, 1);
+    result = fn_appstore_build_prefix(io, &off, namespace_name, key, 1);
     if (result != FN_OK) {
         return result;
     }
-    result = fn_appstore_call(FN_CMD_APPSTORE_STAT, off, &response_len);
+    result = fn_appstore_call(io, FN_CMD_APPSTORE_STAT, off, &response_len);
     if (result != FN_OK) {
         return result;
     }
 
-    resp = fn_appstore_response_buffer();
+    resp = io->buffer;
     if (response_len < 20 || resp[0] != FN_FILEPROTO_VERSION) {
         return FN_ERR_IO;
     }

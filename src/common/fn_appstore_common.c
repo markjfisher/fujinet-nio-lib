@@ -19,7 +19,16 @@ static uint8_t check_name_len(const char *s, uint16_t *len, uint8_t allow_empty)
     return FN_OK;
 }
 
-uint8_t fn_appstore_build_prefix(uint16_t *off,
+uint8_t fn_appstore_validate_io(fn_appstore_io_t *io, uint16_t min_capacity)
+{
+    if (io == 0 || io->buffer == 0 || io->capacity < min_capacity) {
+        return FN_ERR_INVALID;
+    }
+    return FN_OK;
+}
+
+uint8_t fn_appstore_build_prefix(fn_appstore_io_t *io,
+                                 uint16_t *off,
                                  const char *namespace_name,
                                  const char *key,
                                  uint8_t key_required)
@@ -37,8 +46,11 @@ uint8_t fn_appstore_build_prefix(uint16_t *off,
     if (result != FN_OK || (key_required && key_len == 0)) {
         return FN_ERR_INVALID;
     }
+    if (fn_appstore_validate_io(io, (uint16_t)(1 + 2 + ns_len + 2 + key_len)) != FN_OK) {
+        return FN_ERR_INVALID;
+    }
 
-    buf = fn_appstore_request_buffer();
+    buf = io->buffer;
     *off = 0;
     buf[(*off)++] = FN_FILEPROTO_VERSION;
     FN_PUT_LE16(&buf[*off], ns_len);

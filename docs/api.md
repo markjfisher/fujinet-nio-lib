@@ -126,12 +126,30 @@ applications do not link them unless they reference the legacy symbols. The BBC
 ROM-backed target does not currently include this layer because it does not use
 the common raw FileDevice call path.
 
+App-store calls use caller-owned scratch storage so 8-bit applications can
+choose the smallest practical buffer and can share it with other temporary
+storage when lifetimes do not overlap.
+
+```c
+uint8_t appstore_scratch[320];
+fn_appstore_io_t appstore_io = {
+    appstore_scratch,
+    sizeof(appstore_scratch)
+};
+```
+
+The scratch buffer is used for both request and response data. It may also be
+used as the destination buffer for reads. Do not use it as the source `data`
+buffer for writes, because the request header is built in scratch before the
+payload is copied.
+
 ### `fn_appstore_stat()`
 
 Query metadata for a key.
 
 ```c
-uint8_t fn_appstore_stat(const char *namespace_name,
+uint8_t fn_appstore_stat(fn_appstore_io_t *io,
+                         const char *namespace_name,
                          const char *key,
                          fn_appstore_stat_t *out);
 ```
@@ -145,7 +163,8 @@ Missing keys return `FN_OK` with `out->exists == 0`.
 Read one chunk from a key.
 
 ```c
-uint8_t fn_appstore_read(const char *namespace_name,
+uint8_t fn_appstore_read(fn_appstore_io_t *io,
+                         const char *namespace_name,
                          const char *key,
                          uint32_t offset,
                          uint8_t *buf,
@@ -166,7 +185,7 @@ uint32_t offset = 0;
 fn_appstore_read_t rr;
 
 do {
-    result = fn_appstore_read("config-ng", "colour.preference",
+    result = fn_appstore_read(&appstore_io, "config-ng", "colour.preference",
                               offset, buf, sizeof(buf), &rr);
     if (result != FN_OK || !(rr.flags & FN_APPSTORE_READ_EXISTS)) {
         break;
@@ -181,7 +200,8 @@ do {
 Write one chunk to a key.
 
 ```c
-uint8_t fn_appstore_write(const char *namespace_name,
+uint8_t fn_appstore_write(fn_appstore_io_t *io,
+                          const char *namespace_name,
                           const char *key,
                           uint32_t offset,
                           const uint8_t *data,
@@ -197,7 +217,8 @@ overwrite chunks.
 Delete a key.
 
 ```c
-uint8_t fn_appstore_delete(const char *namespace_name,
+uint8_t fn_appstore_delete(fn_appstore_io_t *io,
+                           const char *namespace_name,
                            const char *key,
                            fn_appstore_delete_t *out);
 ```
@@ -209,7 +230,8 @@ Missing keys return `FN_OK` with `out->deleted == 0`.
 List keys in a namespace.
 
 ```c
-uint8_t fn_appstore_list(const char *namespace_name,
+uint8_t fn_appstore_list(fn_appstore_io_t *io,
+                         const char *namespace_name,
                          uint16_t start_index,
                          uint8_t *key_data,
                          uint16_t key_data_capacity,
@@ -227,7 +249,7 @@ uint16_t start = 0;
 do {
     uint16_t off = 0;
     uint16_t i;
-    result = fn_appstore_list("config-ng", start, key_data, sizeof(key_data), &lr);
+    result = fn_appstore_list(&appstore_io, "config-ng", start, key_data, sizeof(key_data), &lr);
     if (result != FN_OK) {
         break;
     }

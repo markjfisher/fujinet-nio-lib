@@ -3,7 +3,8 @@
 #include "fujinet-nio.h"
 #include "fn_appstore_internal.h"
 
-uint8_t fn_appstore_list(const char *namespace_name,
+uint8_t fn_appstore_list(fn_appstore_io_t *io,
+                         const char *namespace_name,
                          uint16_t start_index,
                          uint8_t *key_data,
                          uint16_t key_data_capacity,
@@ -16,8 +17,10 @@ uint8_t fn_appstore_list(const char *namespace_name,
     uint16_t response_len;
     uint8_t result;
 
-    if (out == 0 || key_data == 0 || key_data_capacity == 0 ||
-        key_data_capacity > (uint16_t)(FN_MAX_PACKET_SIZE - 10)) {
+    if (out == 0 || key_data == 0 ||
+        fn_appstore_validate_io(io, 10) != FN_OK ||
+        key_data_capacity == 0 ||
+        key_data_capacity > (uint16_t)(io->capacity - 10)) {
         return FN_ERR_INVALID;
     }
     out->flags = 0;
@@ -25,23 +28,26 @@ uint8_t fn_appstore_list(const char *namespace_name,
     out->key_count = 0;
     out->key_data_len = 0;
 
-    result = fn_appstore_build_prefix(&off, namespace_name, "", 0);
+    result = fn_appstore_build_prefix(io, &off, namespace_name, "", 0);
     if (result != FN_OK) {
         return result;
     }
 
-    req = fn_appstore_request_buffer();
+    if ((uint16_t)(off + 4) > io->capacity) {
+        return FN_ERR_INVALID;
+    }
+    req = io->buffer;
     FN_PUT_LE16(&req[off], start_index);
     off = (uint16_t)(off + 2);
     FN_PUT_LE16(&req[off], key_data_capacity);
     off = (uint16_t)(off + 2);
 
-    result = fn_appstore_call(FN_CMD_APPSTORE_LIST, off, &response_len);
+    result = fn_appstore_call(io, FN_CMD_APPSTORE_LIST, off, &response_len);
     if (result != FN_OK) {
         return result;
     }
 
-    resp = fn_appstore_response_buffer();
+    resp = io->buffer;
     if (response_len < 10 || resp[0] != FN_FILEPROTO_VERSION) {
         return FN_ERR_IO;
     }

@@ -255,6 +255,12 @@ typedef struct {
     uint16_t key_data_len;   /**< Bytes written into key_data */
 } fn_appstore_list_t;
 
+/** Caller-owned application storage scratch buffer */
+typedef struct {
+    uint8_t *buffer;         /**< Scratch buffer used for request and response */
+    uint16_t capacity;       /**< Bytes available at buffer */
+} fn_appstore_io_t;
+
 /* ============================================================================
  * Initialization
  * ============================================================================ */
@@ -448,7 +454,8 @@ uint8_t fn_json_query(fn_handle_t handle, const char *path);
  *
  * Missing keys return FN_OK with out->exists set to 0.
  */
-uint8_t fn_appstore_stat(const char *namespace_name,
+uint8_t fn_appstore_stat(fn_appstore_io_t *io,
+                         const char *namespace_name,
                          const char *key,
                          fn_appstore_stat_t *out);
 
@@ -458,7 +465,8 @@ uint8_t fn_appstore_stat(const char *namespace_name,
  * Missing keys return FN_OK with FN_APPSTORE_READ_EXISTS clear, EOF set, and
  * bytes_read set to 0.
  */
-uint8_t fn_appstore_read(const char *namespace_name,
+uint8_t fn_appstore_read(fn_appstore_io_t *io,
+                         const char *namespace_name,
                          const char *key,
                          uint32_t offset,
                          uint8_t *buf,
@@ -471,7 +479,8 @@ uint8_t fn_appstore_read(const char *namespace_name,
  * offset==0 creates or replaces the value. Later calls can append or overwrite
  * by using the desired byte offset.
  */
-uint8_t fn_appstore_write(const char *namespace_name,
+uint8_t fn_appstore_write(fn_appstore_io_t *io,
+                          const char *namespace_name,
                           const char *key,
                           uint32_t offset,
                           const uint8_t *data,
@@ -483,7 +492,8 @@ uint8_t fn_appstore_write(const char *namespace_name,
  *
  * Missing keys return FN_OK with out->deleted set to 0.
  */
-uint8_t fn_appstore_delete(const char *namespace_name,
+uint8_t fn_appstore_delete(fn_appstore_io_t *io,
+                           const char *namespace_name,
                            const char *key,
                            fn_appstore_delete_t *out);
 
@@ -493,7 +503,8 @@ uint8_t fn_appstore_delete(const char *namespace_name,
  * key_data receives the raw FileDevice list blob: repeated u16 little-endian
  * key length followed by key bytes. Use fn_appstore_list_next_key() to iterate.
  */
-uint8_t fn_appstore_list(const char *namespace_name,
+uint8_t fn_appstore_list(fn_appstore_io_t *io,
+                         const char *namespace_name,
                          uint16_t start_index,
                          uint8_t *key_data,
                          uint16_t key_data_capacity,
