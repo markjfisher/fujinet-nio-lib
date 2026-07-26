@@ -261,6 +261,12 @@ typedef struct {
     uint16_t capacity;       /**< Bytes available at buffer */
 } fn_appstore_io_t;
 
+/** Caller-owned scratch buffer for mount/path resolution helpers */
+typedef struct {
+    uint8_t *buffer;         /**< Scratch buffer used for request and response */
+    uint16_t capacity;       /**< Bytes available at buffer */
+} fn_mount_resolve_io_t;
+
 /* ============================================================================
  * Initialization
  * ============================================================================ */
@@ -521,6 +527,26 @@ uint8_t fn_appstore_list_next_key(const uint8_t *key_data,
                                   uint16_t *offset,
                                   char *key_out,
                                   uint16_t key_out_capacity);
+
+/* ============================================================================
+ * Mount/Path Resolution
+ * ============================================================================ */
+
+uint8_t fn_resolve_mount_target(fn_mount_resolve_io_t *io,
+                                const char *host,
+                                const char *browse_path,
+                                const char *leaf,
+                                char *canonical_uri,
+                                uint16_t canonical_cap,
+                                char *display_path,
+                                uint16_t display_cap,
+                                uint8_t *flags_out);
+
+uint8_t fn_format_mount_display(fn_mount_resolve_io_t *io,
+                                const char *canonical_uri,
+                                char *display_path,
+                                uint16_t display_cap,
+                                uint8_t *flags_out);
 
 /* ============================================================================
  * Clock Operations

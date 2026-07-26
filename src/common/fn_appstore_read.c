@@ -16,6 +16,8 @@ uint8_t fn_appstore_read(fn_appstore_io_t *io,
     uint16_t off;
     uint16_t data_len;
     uint16_t response_len;
+    uint32_t response_offset;
+    uint8_t response_flags;
     uint8_t result;
 
     if (out == 0 || (max_len != 0 && buf == 0) ||
@@ -54,12 +56,14 @@ uint8_t fn_appstore_read(fn_appstore_io_t *io,
     if ((uint16_t)(10 + data_len) > response_len || data_len > max_len) {
         return FN_ERR_IO;
     }
+    response_flags = resp[1];
+    response_offset = FN_GET_LE32(&resp[4]);
     if (data_len != 0) {
         memmove(buf, &resp[10], data_len);
     }
 
-    out->flags = resp[1];
-    out->offset = FN_GET_LE32(&resp[4]);
+    out->flags = response_flags;
+    out->offset = response_offset;
     out->bytes_read = data_len;
     return FN_OK;
 }

@@ -116,6 +116,9 @@ extern "C" {
 /** Write bytes to a filesystem URI */
 #define FN_CMD_FILE_WRITE      0x04
 
+/** Resolve a filesystem target to canonical URI + display path */
+#define FN_CMD_FILE_RESOLVE_PATH 0x05
+
 /** Create a directory at a filesystem URI */
 #define FN_CMD_FILE_MKDIR      0x06
 

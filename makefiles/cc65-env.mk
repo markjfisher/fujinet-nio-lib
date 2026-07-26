@@ -12,6 +12,12 @@ endif
 endif
 
 ifeq ($(strip $(CC65_HOME)),)
+ifneq ($(wildcard $(CURDIR)/../cc65),)
+CC65_HOME := $(CURDIR)/../cc65
+endif
+endif
+
+ifeq ($(strip $(CC65_HOME)),)
 $(error CC65_HOME is not set. Export your cc65 checkout root, e.g.: export CC65_HOME=$$HOME/dev/bbc/cc65)
 endif
 
