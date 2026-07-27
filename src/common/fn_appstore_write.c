@@ -21,12 +21,10 @@ uint8_t fn_appstore_write(fn_appstore_io_t *io,
         fn_appstore_validate_io(io, 10) != FN_OK) {
         return FN_ERR_INVALID;
     }
-    out->offset = offset;
-    out->bytes_written = 0;
 
-    result = fn_appstore_build_prefix(io, &off, namespace_name, key, 1);
-    if (result != FN_OK) {
-        return result;
+    off = fn_appstore_build_prefix(io, namespace_name, key, 1);
+    if (off == 0) {
+        return FN_ERR_INVALID;
     }
     if ((uint16_t)(off + 6 + len) > io->capacity) {
         return FN_ERR_INVALID;

@@ -14,15 +14,10 @@ uint8_t fn_appstore_stat(fn_appstore_io_t *io,
     if (out == 0 || fn_appstore_validate_io(io, 20) != FN_OK) {
         return FN_ERR_INVALID;
     }
-    out->exists = 0;
-    out->size_bytes = 0;
-    out->size_bytes_high = 0;
-    out->mtime_unix = 0;
-    out->mtime_unix_high = 0;
 
-    result = fn_appstore_build_prefix(io, &off, namespace_name, key, 1);
-    if (result != FN_OK) {
-        return result;
+    off = fn_appstore_build_prefix(io, namespace_name, key, 1);
+    if (off == 0) {
+        return FN_ERR_INVALID;
     }
     result = fn_appstore_call(io, FN_CMD_APPSTORE_STAT, off, &response_len);
     if (result != FN_OK) {

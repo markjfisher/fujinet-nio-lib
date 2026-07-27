@@ -25,13 +25,10 @@ uint8_t fn_appstore_read(fn_appstore_io_t *io,
         max_len == 0 || max_len > (uint16_t)(io->capacity - 10)) {
         return FN_ERR_INVALID;
     }
-    out->flags = 0;
-    out->offset = offset;
-    out->bytes_read = 0;
 
-    result = fn_appstore_build_prefix(io, &off, namespace_name, key, 1);
-    if (result != FN_OK) {
-        return result;
+    off = fn_appstore_build_prefix(io, namespace_name, key, 1);
+    if (off == 0) {
+        return FN_ERR_INVALID;
     }
     if ((uint16_t)(off + 6) > io->capacity) {
         return FN_ERR_INVALID;

@@ -97,7 +97,6 @@ COMMON_SRCS_BBC := $(SRCDIR)/common/fn_util.c \
                    $(SRCDIR)/common/fn_clock_set_timezone_common.c \
                    $(SRCDIR)/common/fn_clock_set_timezone.c \
                    $(SRCDIR)/common/fn_clock_set_timezone_save.c \
-                   $(SRCDIR)/common/fn_appstore_common.c \
                    $(SRCDIR)/common/fn_appstore_stat.c \
                    $(SRCDIR)/common/fn_appstore_read.c \
                    $(SRCDIR)/common/fn_appstore_write.c \

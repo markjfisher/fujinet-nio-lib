@@ -23,14 +23,10 @@ uint8_t fn_appstore_list(fn_appstore_io_t *io,
         key_data_capacity > (uint16_t)(io->capacity - 10)) {
         return FN_ERR_INVALID;
     }
-    out->flags = 0;
-    out->start_index = start_index;
-    out->key_count = 0;
-    out->key_data_len = 0;
 
-    result = fn_appstore_build_prefix(io, &off, namespace_name, "", 0);
-    if (result != FN_OK) {
-        return result;
+    off = fn_appstore_build_prefix(io, namespace_name, "", 0);
+    if (off == 0) {
+        return FN_ERR_INVALID;
     }
 
     if ((uint16_t)(off + 4) > io->capacity) {

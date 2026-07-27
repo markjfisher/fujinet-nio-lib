@@ -13,10 +13,9 @@ uint8_t fn_appstore_call(fn_appstore_io_t *io,
                          uint8_t command,
                          uint16_t request_len,
                          uint16_t *response_len);
-uint8_t fn_appstore_build_prefix(fn_appstore_io_t *io,
-                                 uint16_t *off,
-                                 const char *namespace_name,
-                                 const char *key,
-                                 uint8_t key_required);
+uint16_t fn_appstore_build_prefix(fn_appstore_io_t *io,
+                                  const char *namespace_name,
+                                  const char *key,
+                                  uint8_t key_required);
 
 #endif

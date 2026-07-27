@@ -25,10 +25,6 @@ uint8_t fn_appstore_call(fn_appstore_io_t *io,
     fn_raw_response_t raw;
     uint8_t result;
 
-    if (fn_appstore_validate_io(io, request_len) != FN_OK) {
-        return FN_ERR_INVALID;
-    }
-
     result = fn_raw_call(FN_DEVICE_FILE,
                          command,
                          io->buffer,
