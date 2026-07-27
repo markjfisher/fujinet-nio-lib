@@ -247,6 +247,66 @@ def build_network_close_response(status: int = 0) -> bytes:
     return fb.build_fuji_response_wire(netp.NETWORK_DEVICE_ID, netp.CMD_CLOSE, status, b"")
 
 
+def build_appstore_stat_response(*, exists: bool, size: int = 0, mtime: int = 0, status: int = 0) -> bytes:
+    flags = 0x01 if exists else 0x00
+    body = (
+        bytes([fp.FILEPROTO_VERSION, flags])
+        + struct.pack("<H", 0)
+        + struct.pack("<Q", size)
+        + struct.pack("<Q", mtime)
+    )
+    return fb.build_fuji_response_wire(fp.FILE_DEVICE_ID, fp.CMD_APPSTORE_STAT, status, body)
+
+
+def build_appstore_read_response(*, offset: int, data: bytes, exists: bool = True, eof: bool = True, status: int = 0) -> bytes:
+    flags = 0
+    if eof:
+        flags |= 0x01
+    if exists:
+        flags |= 0x02
+    body = (
+        bytes([fp.FILEPROTO_VERSION, flags])
+        + struct.pack("<H", 0)
+        + struct.pack("<I", offset)
+        + struct.pack("<H", len(data))
+        + data
+    )
+    return fb.build_fuji_response_wire(fp.FILE_DEVICE_ID, fp.CMD_APPSTORE_READ, status, body)
+
+
+def build_appstore_write_response(*, offset: int, written: int, status: int = 0) -> bytes:
+    body = (
+        bytes([fp.FILEPROTO_VERSION, 0])
+        + struct.pack("<H", 0)
+        + struct.pack("<I", offset)
+        + struct.pack("<H", written)
+    )
+    return fb.build_fuji_response_wire(fp.FILE_DEVICE_ID, fp.CMD_APPSTORE_WRITE, status, body)
+
+
+def build_appstore_delete_response(*, deleted: bool, status: int = 0) -> bytes:
+    flags = 0x01 if deleted else 0x00
+    body = bytes([fp.FILEPROTO_VERSION, flags]) + struct.pack("<H", 0)
+    return fb.build_fuji_response_wire(fp.FILE_DEVICE_ID, fp.CMD_APPSTORE_DELETE, status, body)
+
+
+def build_appstore_list_response(*, keys: list[str], start_index: int = 0, more: bool = False, status: int = 0) -> bytes:
+    key_data = bytearray()
+    for key in keys:
+        key_b = key.encode("utf-8")
+        key_data += struct.pack("<H", len(key_b)) + key_b
+    flags = 0x01 if more else 0x00
+    body = (
+        bytes([fp.FILEPROTO_VERSION, flags])
+        + struct.pack("<H", 0)
+        + struct.pack("<H", start_index)
+        + struct.pack("<H", len(keys))
+        + struct.pack("<H", len(key_data))
+        + bytes(key_data)
+    )
+    return fb.build_fuji_response_wire(fp.FILE_DEVICE_ID, fp.CMD_APPSTORE_LIST, status, body)
+
+
 def disk_image_responder(*, image_path, fuji_slot: int, drive_slot: int, uri: str, formatted_mounts: str = "0: AUTO\n", inner: Responder | None = None):
     with open(image_path, "rb") as fh:
         image = fh.read()

@@ -19,6 +19,8 @@ This first cut is intentionally small:
 - the main repo `test-bbc` target builds the BBC library and BBC-supported examples
 - this directory provides the dependency and fixture skeleton for future pytest lanes
 - one real scripted smoke test is now checked in for a BBC library-linked C app run from SSD via `fn-rom`
+- app-store CRUD coverage runs a BBC C app from SSD, validates the FujiBus wire
+  payloads for stat/read/write/list/delete, and asserts the app's screen output
 
 ## Reuse source
 
@@ -43,10 +45,11 @@ The design is based on these `fn-rom` assets:
 Current scripted coverage:
 
 - HTTP GET smoke using `apps/http_get_smoke.c`
+- TCP stream partial/no-probe smoke tests
+- app-store CRUD using `apps/appstore_crud.c`
 
 Recommended next scripted tests:
 
-- TCP request/response smoke
 - JSON query smoke once a compact BBC test app is added
 
 ### Real lane
@@ -95,6 +98,7 @@ Two repo roots plus fn-rom for the sideways ROM image:
 | `FN_ROM_HOME` | yes | fn-rom repo root (`build/fujinet.rom` derived after `make net`) |
 | `BEEBIUM_SERVER` | derived | `beebium-model-b` |
 | `BEEBIUM_MOS` / `BEEBIUM_BASIC` | derived | ROMs under `$BEEBIUM_HOME/roms/` |
+| `BEEBIUM_PYTHON` | no | Python 3.12+ interpreter for the current Beebium client |
 | `FN_ROM` | derived | `$FN_ROM_HOME/build/fujinet.rom` |
 | `FUJINET_BIN` | no | real fujinet-nio binary (future `real/` tests) |
 
@@ -108,6 +112,13 @@ cd integration-tests/beebium
 ./check_test_env.sh
 ```
 
+Targeted app-store regression run:
+
+```bash
+BEEBIUM_PYTHON=/usr/bin/python3.14 \
+  ./run_pytest.sh scripted/test_appstore_crud.py -q -s
+```
+
 ## Running
 
 The top-level make targets are:
@@ -118,5 +129,4 @@ make test-bbc-scripted
 make test-bbc-real
 ```
 
-At present `test-bbc-scripted` and `test-bbc-real` are scaffolding targets that
-expect the pytest lane to be populated.
+The scripted lane is populated; the real lane is still scaffolding.

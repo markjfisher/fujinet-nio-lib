@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import time
-
-from beebium.screen import dump_screen
 from fujinet_tools import fujibus as fb
 from fuji_device import (
     build_network_close_response,
@@ -11,7 +9,7 @@ from fuji_device import (
     disk_image_responder,
 )
 from fujinet_tools import netproto as netp
-from helpers import command, wait_for_screen_text
+from helpers import command, dump_screen_text, wait_for_screen_text
 
 
 def test_tcp_stream_single_fn_read_returns_partial_data_without_waiting_for_eof(
@@ -64,7 +62,7 @@ def test_tcp_stream_single_fn_read_returns_partial_data_without_waiting_for_eof(
     try:
         wait_for_screen_text(beebium, "[OK 2 0]", timeout=8.0)
     except TimeoutError:
-        print("SCREEN AFTER *RUN TPSTRN:\n" + dump_screen(beebium))
+        print("SCREEN AFTER *RUN TPSTRN:\n" + dump_screen_text(beebium))
         print("SEEN REQUESTS:", [(pkt.device, pkt.command, pkt.payload.hex()) for pkt in fuji_device.requests])
         raise
 
@@ -77,7 +75,7 @@ def test_tcp_stream_single_fn_read_returns_partial_data_without_waiting_for_eof(
         if close_pkt is not None:
             break
     else:
-        print("SCREEN AFTER *RUN TPSTRM:\n" + dump_screen(beebium))
+        print("SCREEN AFTER *RUN TPSTRM:\n" + dump_screen_text(beebium))
         raise AssertionError("close packet not observed")
 
     assert len(read_requests) == 2
@@ -142,7 +140,7 @@ def test_tcp_stream_no_probe_avoids_followup_read_when_chunk_is_self_framed(
     try:
         wait_for_screen_text(beebium, "[OK 2 0]", timeout=8.0)
     except TimeoutError:
-        print("SCREEN AFTER *RUN TPSTRN:\n" + dump_screen(beebium))
+        print("SCREEN AFTER *RUN TPSTRN:\n" + dump_screen_text(beebium))
         print("SEEN REQUESTS:", [(pkt.device, pkt.command, pkt.payload.hex()) for pkt in fuji_device.requests])
         raise
 

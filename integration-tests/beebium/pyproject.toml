@@ -2,9 +2,10 @@
 name = "fujinet-nio-lib-beebium-tests"
 version = "0.1.0"
 description = "BBC beebium integration test scaffold for fujinet-nio-lib"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 
-# beebium is not on PyPI — use run_pytest.sh (--with-editable from BEEBIUM_HOME).
+# beebium is not on PyPI — run_pytest.sh uses
+# BEEBIUM_HOME/clients/beebium-python-client via --with-editable.
 dependencies = [
   "grpcio>=1.60",
   "protobuf>=4.25",

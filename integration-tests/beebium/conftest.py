@@ -36,6 +36,60 @@ def pytest_configure(config):
     ensure_environment()
 
 
+def _build_bbc_test_ssd(app_src: Path, dfs_name: str, disc_title: str) -> Path:
+    cc65 = shutil.which("cl65")
+    if not cc65:
+        pytest.skip("cl65 not available")
+
+    create_ssd = _LIB_ROOT / "scripts" / "create_ssd.py"
+    if not create_ssd.is_file():
+        pytest.skip(f"create_ssd.py not found at {create_ssd}")
+
+    dfstool = shutil.which("dfstool")
+    if not dfstool:
+        pytest.skip("dfstool not available")
+
+    lib_file = _LIB_ROOT / "build" / "fujinet-nio-bbc.lib"
+    initenv_obj = _LIB_ROOT / "obj" / "bbc" / "platform" / "bbc" / "initenv.o"
+    if not lib_file.is_file() or not initenv_obj.is_file():
+        pytest.skip("BBC library artifacts not built; run make bbc first")
+
+    tmp = Path(tempfile.mkdtemp(prefix=f"fnlib-bbc-{disc_title.lower()}-"))
+    stage = tmp / "stage"
+    stage.mkdir(parents=True, exist_ok=True)
+    binary = stage / dfs_name
+    ssd = tmp / f"{disc_title.lower()}.ssd"
+
+    subprocess.run(
+        [
+            cc65,
+            "-t",
+            "bbc",
+            "--start-addr",
+            "0x1900",
+            "-I",
+            str(_LIB_ROOT / "include"),
+            "-o",
+            str(binary),
+            str(app_src),
+            str(lib_file),
+            str(initenv_obj),
+        ],
+        check=True,
+        cwd=str(_LIB_ROOT),
+    )
+
+    (stage / f"{dfs_name}.inf").write_text(f"$.{dfs_name} 001900 001900\n")
+
+    subprocess.run(
+        ["python3", str(create_ssd), "-i", str(stage), "-o", str(ssd), "-t", disc_title],
+        check=True,
+        cwd=str(_LIB_ROOT),
+    )
+
+    return ssd
+
+
 @pytest.fixture(scope="session")
 def beebium_paths():
     return {
@@ -50,170 +104,26 @@ def beebium_paths():
 
 @pytest.fixture(scope="session")
 def http_get_smoke_ssd(scaffold_info):
-    cc65 = shutil.which("cl65")
-    if not cc65:
-        pytest.skip("cl65 not available")
-
-    create_ssd = _LIB_ROOT / "scripts" / "create_ssd.py"
-    if not create_ssd.is_file():
-        pytest.skip(f"create_ssd.py not found at {create_ssd}")
-
-    dfstool = shutil.which("dfstool")
-    if not dfstool:
-        pytest.skip("dfstool not available")
-
     app_src = _HERE.parent / "apps" / "http_get_smoke.c"
-    lib_file = _LIB_ROOT / "build" / "fujinet-nio-bbc.lib"
-    initenv_obj = _LIB_ROOT / "obj" / "bbc" / "platform" / "bbc" / "initenv.o"
-    if not lib_file.is_file() or not initenv_obj.is_file():
-        pytest.skip("BBC library artifacts not built; run make bbc first")
-
-    tmp = Path(tempfile.mkdtemp(prefix="fnlib-bbc-smoke-"))
-    stage = tmp / "stage"
-    stage.mkdir(parents=True, exist_ok=True)
-    binary = stage / "HTGET"
-    ssd = tmp / "htget.ssd"
-
-    subprocess.run(
-        [
-            cc65,
-            "-t",
-            "bbc",
-            "--start-addr",
-            "0x1900",
-            "-I",
-            str(_LIB_ROOT / "include"),
-            "-o",
-            str(binary),
-            str(app_src),
-            str(lib_file),
-            str(initenv_obj),
-        ],
-        check=True,
-        cwd=str(_LIB_ROOT),
-    )
-
-    (stage / "HTGET.inf").write_text("$.HTGET 001900 001900\n")
-
-    subprocess.run(
-        ["python3", str(create_ssd), "-i", str(stage), "-o", str(ssd), "-t", "HTGET"],
-        check=True,
-        cwd=str(_LIB_ROOT),
-    )
-
-    return ssd
+    return _build_bbc_test_ssd(app_src, "HTGET", "HTGET")
 
 
 @pytest.fixture(scope="session")
 def tcp_stream_partial_ssd(scaffold_info):
-    cc65 = shutil.which("cl65")
-    if not cc65:
-        pytest.skip("cl65 not available")
-
-    create_ssd = _LIB_ROOT / "scripts" / "create_ssd.py"
-    if not create_ssd.is_file():
-        pytest.skip(f"create_ssd.py not found at {create_ssd}")
-
-    dfstool = shutil.which("dfstool")
-    if not dfstool:
-        pytest.skip("dfstool not available")
-
     app_src = _HERE.parent / "apps" / "tcp_stream_partial.c"
-    lib_file = _LIB_ROOT / "build" / "fujinet-nio-bbc.lib"
-    initenv_obj = _LIB_ROOT / "obj" / "bbc" / "platform" / "bbc" / "initenv.o"
-    if not lib_file.is_file() or not initenv_obj.is_file():
-        pytest.skip("BBC library artifacts not built; run make bbc first")
-
-    tmp = Path(tempfile.mkdtemp(prefix="fnlib-bbc-tcp-stream-"))
-    stage = tmp / "stage"
-    stage.mkdir(parents=True, exist_ok=True)
-    binary = stage / "TPSTRM"
-    ssd = tmp / "tpstrm.ssd"
-
-    subprocess.run(
-        [
-            cc65,
-            "-t",
-            "bbc",
-            "--start-addr",
-            "0x1900",
-            "-I",
-            str(_LIB_ROOT / "include"),
-            "-o",
-            str(binary),
-            str(app_src),
-            str(lib_file),
-            str(initenv_obj),
-        ],
-        check=True,
-        cwd=str(_LIB_ROOT),
-    )
-
-    (stage / "TPSTRM.inf").write_text("$.TPSTRM 001900 001900\n")
-
-    subprocess.run(
-        ["python3", str(create_ssd), "-i", str(stage), "-o", str(ssd), "-t", "TPSTRM"],
-        check=True,
-        cwd=str(_LIB_ROOT),
-    )
-
-    return ssd
+    return _build_bbc_test_ssd(app_src, "TPSTRM", "TPSTRM")
 
 
 @pytest.fixture(scope="session")
 def tcp_stream_no_probe_ssd(scaffold_info):
-    cc65 = shutil.which("cl65")
-    if not cc65:
-        pytest.skip("cl65 not available")
-
-    create_ssd = _LIB_ROOT / "scripts" / "create_ssd.py"
-    if not create_ssd.is_file():
-        pytest.skip(f"create_ssd.py not found at {create_ssd}")
-
-    dfstool = shutil.which("dfstool")
-    if not dfstool:
-        pytest.skip("dfstool not available")
-
     app_src = _HERE.parent / "apps" / "tcp_stream_no_probe.c"
-    lib_file = _LIB_ROOT / "build" / "fujinet-nio-bbc.lib"
-    initenv_obj = _LIB_ROOT / "obj" / "bbc" / "platform" / "bbc" / "initenv.o"
-    if not lib_file.is_file() or not initenv_obj.is_file():
-        pytest.skip("BBC library artifacts not built; run make bbc first")
+    return _build_bbc_test_ssd(app_src, "TPSTRN", "TPSTRN")
 
-    tmp = Path(tempfile.mkdtemp(prefix="fnlib-bbc-tcp-stream-np-"))
-    stage = tmp / "stage"
-    stage.mkdir(parents=True, exist_ok=True)
-    binary = stage / "TPSTRN"
-    ssd = tmp / "tpstrn.ssd"
 
-    subprocess.run(
-        [
-            cc65,
-            "-t",
-            "bbc",
-            "--start-addr",
-            "0x1900",
-            "-I",
-            str(_LIB_ROOT / "include"),
-            "-o",
-            str(binary),
-            str(app_src),
-            str(lib_file),
-            str(initenv_obj),
-        ],
-        check=True,
-        cwd=str(_LIB_ROOT),
-    )
-
-    (stage / "TPSTRN.inf").write_text("$.TPSTRN 001900 001900\n")
-
-    subprocess.run(
-        ["python3", str(create_ssd), "-i", str(stage), "-o", str(ssd), "-t", "TPSTRN"],
-        check=True,
-        cwd=str(_LIB_ROOT),
-    )
-
-    return ssd
+@pytest.fixture(scope="session")
+def appstore_crud_ssd(scaffold_info):
+    app_src = _HERE.parent / "apps" / "appstore_crud.c"
+    return _build_bbc_test_ssd(app_src, "ASTORE", "ASTORE")
 
 
 @pytest.fixture()

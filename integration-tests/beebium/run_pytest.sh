@@ -11,7 +11,7 @@ for var in BEEBIUM_HOME FUJINET_NIO_HOME FN_ROM_HOME; do
   fi
 done
 
-client="${BEEBIUM_HOME}/clients/python"
+client="${BEEBIUM_HOME}/clients/beebium-python-client"
 if [[ ! -f "${client}/pyproject.toml" ]]; then
   echo "ERROR: Beebium Python client not found at ${client}" >&2
   exit 1
@@ -20,4 +20,4 @@ fi
 cd "$here"
 # Use python -m pytest so the editable beebium client is on sys.path (.venv/bin/pytest
 # alone does not pick up --with-editable).
-exec uv run --with-editable "${client}" python -m pytest -p no:beebium "$@"
+exec uv run --python "${BEEBIUM_PYTHON:-python3}" --with-editable "${client}" python -m pytest -p no:beebium "$@"

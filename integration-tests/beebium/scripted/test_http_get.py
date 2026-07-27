@@ -8,9 +8,8 @@ from fuji_device import (
     build_network_read_response,
     disk_image_responder,
 )
-from helpers import command, wait_for_screen_text
+from helpers import command, dump_screen_text, wait_for_screen_text
 from fujinet_tools import netproto as netp
-from beebium.screen import dump_screen
 
 
 def _decode_open_payload(payload: bytes):
@@ -62,7 +61,7 @@ def test_http_get_smoke_app_runs_from_disk_and_emits_open_read_close(beebium, fu
 
     open_pkt = fuji_device.wait_for_command(netp.NETWORK_DEVICE_ID, netp.CMD_OPEN, timeout=8.0)
     if open_pkt is None:
-        print("SCREEN AFTER *RUN HTGET:\n" + dump_screen(beebium))
+        print("SCREEN AFTER *RUN HTGET:\n" + dump_screen_text(beebium))
         print("SEEN REQUESTS:", [(pkt.device, pkt.command) for pkt in fuji_device.requests])
     assert open_pkt is not None and open_pkt.checksum_ok
     version, method, flags, url = _decode_open_payload(open_pkt.payload)
@@ -73,7 +72,7 @@ def test_http_get_smoke_app_runs_from_disk_and_emits_open_read_close(beebium, fu
 
     read_pkt = fuji_device.wait_for_command(netp.NETWORK_DEVICE_ID, netp.CMD_READ, timeout=8.0)
     if read_pkt is None:
-        print("SCREEN AFTER OPEN:\n" + dump_screen(beebium))
+        print("SCREEN AFTER OPEN:\n" + dump_screen_text(beebium))
         print("SEEN REQUESTS:", [(pkt.device, pkt.command) for pkt in fuji_device.requests])
     assert read_pkt is not None and read_pkt.checksum_ok
     assert int.from_bytes(read_pkt.payload[1:3], "little") == handle

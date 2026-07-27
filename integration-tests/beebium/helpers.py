@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 
-from beebium.screen import dump_screen
+from beebium.client.screen import dump_screen
 
 
 def command(bbc, text: str) -> None:
@@ -23,11 +23,15 @@ def run_basic_program(bbc, lines: list[str], *, wait: float = 0.05) -> None:
     command(bbc, "RUN")
 
 
+def dump_screen_text(bbc) -> str:
+    return dump_screen(bbc)
+
+
 def wait_for_screen_text(bbc, text: str, *, timeout: float = 8.0, case_sensitive: bool = True) -> None:
     deadline = time.monotonic() + timeout
     wanted = text if case_sensitive else text.upper()
     while time.monotonic() < deadline:
-        screen = dump_screen(bbc)
+        screen = dump_screen_text(bbc)
         haystack = screen if case_sensitive else screen.upper()
         if wanted in haystack:
             return
