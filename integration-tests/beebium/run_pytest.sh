@@ -20,4 +20,4 @@ fi
 cd "$here"
 # Use python -m pytest so the editable beebium client is on sys.path (.venv/bin/pytest
 # alone does not pick up --with-editable).
-exec uv run --python "${BEEBIUM_PYTHON:-python3}" --with-editable "${client}" python -m pytest -p no:beebium "$@"
+exec uv run --python "${BEEBIUM_PYTHON:-python3}" --with Pillow --with-editable "${client}" python -m pytest -p no:beebium "$@"
