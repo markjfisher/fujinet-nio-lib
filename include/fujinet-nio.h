@@ -194,6 +194,23 @@ extern "C" {
 /** App-store list has more keys after this page */
 #define FN_APPSTORE_LIST_MORE    0x01
 
+/** Slot catalogue request should retain the tail of a truncated URI */
+#define FN_SLOT_CATALOG_TAIL_URI 0x01
+#define FN_SLOT_CATALOG_FORMATTED 0x02
+
+/** Slot catalogue response has another complete-record page */
+#define FN_SLOT_CATALOG_MORE 0x01
+#define FN_SLOT_CATALOG_RESPONSE_FORMATTED 0x02
+
+/** Slot catalogue entry contains a valid version-1 slot record */
+#define FN_SLOT_CATALOG_ENTRY_VALID 0x01
+
+/** Slot catalogue entry requests read-only mounting */
+#define FN_SLOT_CATALOG_ENTRY_READ_ONLY 0x02
+
+/** Slot catalogue entry URI was shortened to the requested limit */
+#define FN_SLOT_CATALOG_ENTRY_URI_TRUNCATED 0x04
+
 /* ============================================================================
  * BBC / fn-rom Network Extensions
  * ============================================================================ */
@@ -260,6 +277,25 @@ typedef struct {
     uint8_t *buffer;         /**< Scratch buffer used for request and response */
     uint16_t capacity;       /**< Bytes available at buffer */
 } fn_appstore_io_t;
+
+/** Slot catalogue range page; pointers refer to the caller-owned I/O buffer. */
+typedef struct {
+    uint8_t flags;
+    uint8_t next_index;
+    uint8_t presence_len;
+    uint8_t entry_count;
+    uint16_t entry_data_len;
+    const uint8_t *presence;
+    const uint8_t *entry_data;
+} fn_slot_catalog_page_t;
+
+/** One decoded slot catalogue entry; URI bytes are not null-terminated. */
+typedef struct {
+    uint8_t index;
+    uint8_t flags;
+    uint8_t uri_len;
+    const uint8_t *uri;
+} fn_slot_catalog_entry_t;
 
 /** Caller-owned scratch buffer for mount/path resolution helpers */
 typedef struct {
@@ -527,6 +563,26 @@ uint8_t fn_appstore_list_next_key(const uint8_t *key_data,
                                   uint16_t *offset,
                                   char *key_out,
                                   uint16_t key_out_capacity);
+
+/**
+ * @brief Read populated entries from an inclusive sparse slot range.
+ *
+ * max_payload_bytes covers the presence bitmap and complete entry records and
+ * must not exceed io->capacity minus the seven-byte response header.
+ */
+uint8_t fn_slot_catalog_range(fn_appstore_io_t *io,
+                              uint8_t lower,
+                              uint8_t upper,
+                              uint8_t cursor,
+                              uint8_t request_flags,
+                              uint8_t max_uri_bytes,
+                              uint16_t max_payload_bytes,
+                              fn_slot_catalog_page_t *out);
+
+/** Decode the next entry from a slot catalogue page. */
+uint8_t fn_slot_catalog_next_entry(const fn_slot_catalog_page_t *page,
+                                   uint16_t *offset,
+                                   fn_slot_catalog_entry_t *out);
 
 /* ============================================================================
  * Mount/Path Resolution

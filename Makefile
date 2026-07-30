@@ -19,7 +19,9 @@ TARGETS = atari bbc bbc-clib msdos-serial msdos-ioctl msdos-f5 linux
 override PROGRAM := fujinet-nio
 
 # Phony targets
-.PHONY: all clean help disk-bbc disk-bbc-clib test-legacy test-mount-resolve test-bbc test-bbc-scripted test-bbc-real msdos $(TARGETS)
+.PHONY: all clean help disk-bbc disk-bbc-clib test-legacy test-mount-resolve \
+	test-appstore-read test-slot-catalog test-bbc test-bbc-scripted \
+	test-bbc-real msdos $(TARGETS)
 
 # Default target: build all
 all:
@@ -104,6 +106,10 @@ test-appstore-read:
 	@echo "Running app-store read wire tests..."
 	bash ./tests/run_appstore_read_wire_test.sh
 
+test-slot-catalog:
+	@echo "Running slot catalogue wire tests..."
+	bash ./tests/run_slot_catalog_wire_test.sh
+
 # Help
 help:
 	@echo "FujiNet-NIO Library Build System"
@@ -115,6 +121,7 @@ help:
 	@echo "  make disk-bbc-clib - Build BBC CLIB example disk image(s)"
 	@echo "  make test-legacy - Run legacy compatibility wire tests"
 	@echo "  make test-appstore-read - Run app-store read wire tests"
+	@echo "  make test-slot-catalog - Run slot catalogue wire tests"
 	@echo "  make clean      - Remove all build artifacts"
 	@echo "  make help       - Show this help message"
 	@echo ""

@@ -137,6 +137,9 @@ extern "C" {
 /** List keys in an application storage namespace */
 #define FN_CMD_APPSTORE_LIST   0x24
 
+/** Read a sparse range from the shared slot catalogue */
+#define FN_CMD_SLOT_CATALOG_RANGE 0x25
+
 /* ============================================================================
  * Protocol Version
  * ============================================================================ */

@@ -71,6 +71,8 @@ COMMON_SRCS_DEFAULT := $(SRCDIR)/common/fn_slip.c \
                        $(SRCDIR)/common/fn_appstore_delete.c \
                        $(SRCDIR)/common/fn_appstore_list.c \
                        $(SRCDIR)/common/fn_appstore_list_next_key.c \
+                       $(SRCDIR)/common/fn_slot_catalog_range.c \
+                       $(SRCDIR)/common/fn_slot_catalog_next_entry.c \
                        $(SRCDIR)/common/fn_mount_resolve_common.c \
                        $(SRCDIR)/common/fn_mount_resolve_build.c \
                        $(SRCDIR)/common/fn_mount_resolve_default.c \
@@ -103,6 +105,8 @@ COMMON_SRCS_BBC := $(SRCDIR)/common/fn_util.c \
                    $(SRCDIR)/common/fn_appstore_delete.c \
                    $(SRCDIR)/common/fn_appstore_list.c \
                    $(SRCDIR)/common/fn_appstore_list_next_key.c \
+                   $(SRCDIR)/common/fn_slot_catalog_range.c \
+                   $(SRCDIR)/common/fn_slot_catalog_next_entry.c \
                    $(SRCDIR)/common/fn_mount_resolve_common.c \
                    $(SRCDIR)/common/fn_mount_resolve_build.c \
                    $(SRCDIR)/common/fn_resolve_mount_target.c \
