@@ -43,7 +43,7 @@ def test_tcp_stream_single_fn_read_returns_partial_data_without_waiting_for_eof(
     fuji_device.set_responder(
         disk_image_responder(
             image_path=str(tcp_stream_partial_ssd),
-            fuji_slot=7,
+            catalog_slot=7,
             drive_slot=4,
             uri="sd0:/tpstrm.ssd",
             inner=inner,
@@ -121,7 +121,7 @@ def test_tcp_stream_no_probe_avoids_followup_read_when_chunk_is_self_framed(
     fuji_device.set_responder(
         disk_image_responder(
             image_path=str(tcp_stream_no_probe_ssd),
-            fuji_slot=7,
+            catalog_slot=7,
             drive_slot=4,
             uri="sd0:/tpstrn.ssd",
             inner=inner,

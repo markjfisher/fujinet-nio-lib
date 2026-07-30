@@ -43,7 +43,7 @@ def test_http_get_smoke_app_runs_from_disk_and_emits_open_read_close(beebium, fu
     fuji_device.set_responder(
         disk_image_responder(
             image_path=str(http_get_smoke_ssd),
-            fuji_slot=7,
+            catalog_slot=7,
             drive_slot=4,
             uri="sd0:/htget.ssd",
             inner=inner,

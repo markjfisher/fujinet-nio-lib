@@ -11,7 +11,6 @@ from typing import Callable, Optional
 from fujinet_tools import fujibus as fb
 from fujinet_tools import diskproto as dp
 from fujinet_tools import fileproto as fp
-from fujinet_tools import fujiproto as fuji
 from fujinet_tools import netproto as netp
 
 FujiPacket = fb.FujiPacket
@@ -146,33 +145,20 @@ def build_list_response(formatted_text: str = "FILE\n", status: int = 0) -> byte
     return fb.build_fuji_response_wire(fp.FILE_DEVICE_ID, fp.CMD_LIST, status, body)
 
 
-def build_get_mounts_response(text: str, status: int = 0) -> bytes:
+def build_disk_list_mounts_response(text: str, status: int = 0) -> bytes:
     text_b = text.encode("utf-8")
     entry_count = text.count("\n") + (1 if text and not text.endswith("\n") else 0)
     body = (
-        bytes([fuji.GET_MOUNTS_VERSION, fuji.GET_MOUNTS_RESP_FLAG_FORMATTED])
+        bytes([dp.DISKPROTO_VERSION, 0x02])
         + struct.pack("<H", 0)
         + struct.pack("<H", 0)
         + struct.pack("<H", entry_count)
         + struct.pack("<H", len(text_b))
         + text_b
     )
-    return fb.build_fuji_response_wire(fuji.FUJI_DEVICE_ID, fuji.CMD_GET_MOUNTS, status, body)
-
-
-def build_get_mount_response(*, slot: int, enabled: bool, uri: str, mode: str = "auto", status: int = 0) -> bytes:
-    uri_b = uri.encode("utf-8")
-    mode_b = mode.encode("utf-8")
-    body = bytes([
-        slot & 0xFF,
-        0x01 if enabled else 0x00,
-        len(uri_b) & 0xFF,
-    ]) + uri_b + bytes([len(mode_b) & 0xFF]) + mode_b
-    return fb.build_fuji_response_wire(fuji.FUJI_DEVICE_ID, fuji.CMD_GET_MOUNT, status, body)
-
-
-def build_set_mount_response(status: int = 0) -> bytes:
-    return fb.build_fuji_response_wire(fuji.FUJI_DEVICE_ID, fuji.CMD_SET_MOUNT, status, b"")
+    return fb.build_fuji_response_wire(
+        dp.DISK_DEVICE_ID, dp.CMD_LIST_MOUNTS, status, body
+    )
 
 
 def build_disk_mount_response(*, slot: int, sector_count: int, status: int = 0) -> bytes:
@@ -307,29 +293,81 @@ def build_appstore_list_response(*, keys: list[str], start_index: int = 0, more:
     return fb.build_fuji_response_wire(fp.FILE_DEVICE_ID, fp.CMD_APPSTORE_LIST, status, body)
 
 
-def disk_image_responder(*, image_path, fuji_slot: int, drive_slot: int, uri: str, formatted_mounts: str = "0: AUTO\n", inner: Responder | None = None):
+def disk_image_responder(*, image_path, catalog_slot: int, drive_slot: int, uri: str, formatted_mounts: str = "0: AUTO\n", inner: Responder | None = None):
     with open(image_path, "rb") as fh:
         image = fh.read()
     nsec = max(1, len(image) // 256)
+    appstore: dict[tuple[str, str], bytes] = {
+        ("config-nio", f"slot-{catalog_slot:03d}"): bytes([1, 0]) + uri.encode()
+    }
 
     def _resp(pkt: FujiPacket):
-        if inner is not None:
+        is_catalog_request = False
+        if (
+            pkt.device == fp.FILE_DEVICE_ID
+            and pkt.command in (
+                fp.CMD_APPSTORE_READ,
+                fp.CMD_APPSTORE_WRITE,
+                fp.CMD_APPSTORE_DELETE,
+            )
+            and len(pkt.payload) >= 3
+        ):
+            ns_len = int.from_bytes(pkt.payload[1:3], "little")
+            is_catalog_request = (
+                len(pkt.payload) >= 3 + ns_len
+                and pkt.payload[3:3 + ns_len] == b"config-nio"
+            )
+
+        if inner is not None and not is_catalog_request:
             r = inner(pkt)
             if r is not None:
                 return r
         if pkt.device == fp.FILE_DEVICE_ID:
+            if pkt.command in (
+                fp.CMD_APPSTORE_READ,
+                fp.CMD_APPSTORE_WRITE,
+                fp.CMD_APPSTORE_DELETE,
+            ):
+                payload = pkt.payload
+                ns_len = int.from_bytes(payload[1:3], "little")
+                pos = 3
+                namespace = payload[pos:pos + ns_len].decode("utf-8")
+                pos += ns_len
+                key_len = int.from_bytes(payload[pos:pos + 2], "little")
+                pos += 2
+                key = payload[pos:pos + key_len].decode("utf-8")
+                pos += key_len
+                store_key = (namespace, key)
+                if pkt.command == fp.CMD_APPSTORE_DELETE:
+                    deleted = store_key in appstore
+                    appstore.pop(store_key, None)
+                    return build_appstore_delete_response(deleted=deleted)
+                offset = int.from_bytes(payload[pos:pos + 4], "little")
+                if pkt.command == fp.CMD_APPSTORE_WRITE:
+                    data_len = int.from_bytes(payload[pos + 4:pos + 6], "little")
+                    data = payload[pos + 6:pos + 6 + data_len]
+                    old = appstore.get(store_key, b"")
+                    appstore[store_key] = (
+                        old[:offset] + data + old[offset + len(data):]
+                    )
+                    return build_appstore_write_response(
+                        offset=offset, written=len(data)
+                    )
+                data = appstore.get(store_key)
+                if data is None:
+                    return build_appstore_read_response(
+                        offset=offset, data=b"", exists=False
+                    )
+                return build_appstore_read_response(
+                    offset=offset, data=data[offset:], exists=True
+                )
             if pkt.command == fp.CMD_RESOLVE_PATH:
                 return build_resolve_path_response(uri, uri)
             if pkt.command == fp.CMD_LIST:
                 return build_list_response("HTGET\n")
-        if pkt.device == fuji.FUJI_DEVICE_ID:
-            if pkt.command == fuji.CMD_GET_MOUNT:
-                return build_get_mount_response(slot=fuji_slot, enabled=True, uri=uri)
-            if pkt.command == fuji.CMD_SET_MOUNT:
-                return build_set_mount_response()
-            if pkt.command == fuji.CMD_GET_MOUNTS:
-                return build_get_mounts_response(formatted_mounts)
         if pkt.device == dp.DISK_DEVICE_ID:
+            if pkt.command == dp.CMD_LIST_MOUNTS:
+                return build_disk_list_mounts_response(formatted_mounts)
             if pkt.command == dp.CMD_MOUNT:
                 return build_disk_mount_response(slot=drive_slot, sector_count=nsec)
             if pkt.command == dp.CMD_INFO:

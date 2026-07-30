@@ -140,7 +140,7 @@ def test_appstore_crud_app_validates_wire_and_screen_output(beebium, fuji_device
     fuji_device.set_responder(
         disk_image_responder(
             image_path=str(appstore_crud_ssd),
-            fuji_slot=7,
+            catalog_slot=7,
             drive_slot=4,
             uri="sd0:/astore.ssd",
             inner=inner,
