@@ -12,6 +12,7 @@ from fuji_device import (
 )
 from helpers import command, dump_screen_text, wait_for_screen_text
 from fujinet_tools import fileproto as fp
+from fujinet_tools import appstoreproto as ap
 
 
 def _u16(payload: bytes, off: int) -> tuple[int, int]:
@@ -28,7 +29,7 @@ def _lp_string(payload: bytes, off: int) -> tuple[str, int]:
 
 
 def _decode_prefix(payload: bytes) -> tuple[str, str, int]:
-    assert payload[0] == fp.FILEPROTO_VERSION
+    assert payload[0] == ap.APPSTORE_VERSION
     off = 1
     namespace, off = _lp_string(payload, off)
     key, off = _lp_string(payload, off)
@@ -78,10 +79,10 @@ def test_appstore_crud_app_validates_wire_and_screen_output(beebium, fuji_device
         return list(store.setdefault(namespace, OrderedDict()).keys())
 
     def inner(pkt):
-        if pkt.device != fp.FILE_DEVICE_ID:
+        if pkt.device != ap.APPSTORE_DEVICE_ID:
             return None
 
-        if pkt.command == fp.CMD_APPSTORE_DELETE:
+        if pkt.command == ap.CMD_DELETE:
             seen.append((pkt.command, pkt.payload))
             namespace, key, off = _decode_prefix(pkt.payload)
             assert off == len(pkt.payload)
@@ -91,7 +92,7 @@ def test_appstore_crud_app_validates_wire_and_screen_output(beebium, fuji_device
             store[namespace].pop(key, None)
             return build_appstore_delete_response(deleted=deleted)
 
-        if pkt.command == fp.CMD_APPSTORE_STAT:
+        if pkt.command == ap.CMD_STAT:
             seen.append((pkt.command, pkt.payload))
             namespace, key, off = _decode_prefix(pkt.payload)
             assert off == len(pkt.payload)
@@ -103,7 +104,7 @@ def test_appstore_crud_app_validates_wire_and_screen_output(beebium, fuji_device
                 mtime=123456 if value is not None else 0,
             )
 
-        if pkt.command == fp.CMD_APPSTORE_WRITE:
+        if pkt.command == ap.CMD_WRITE:
             seen.append((pkt.command, pkt.payload))
             namespace, key, offset, data = _decode_write_req(pkt.payload)
             assert namespace == "test.app"
@@ -115,7 +116,7 @@ def test_appstore_crud_app_validates_wire_and_screen_output(beebium, fuji_device
                 store[namespace][key] = data
             return build_appstore_write_response(offset=0, written=len(data))
 
-        if pkt.command == fp.CMD_APPSTORE_READ:
+        if pkt.command == ap.CMD_READ:
             seen.append((pkt.command, pkt.payload))
             namespace, key, offset, max_len = _decode_read_req(pkt.payload)
             assert namespace == "test.app"
@@ -126,7 +127,7 @@ def test_appstore_crud_app_validates_wire_and_screen_output(beebium, fuji_device
             assert max_len >= len(value)
             return build_appstore_read_response(offset=0, data=value)
 
-        if pkt.command == fp.CMD_APPSTORE_LIST:
+        if pkt.command == ap.CMD_LIST:
             seen.append((pkt.command, pkt.payload))
             namespace, key, start, max_payload = _decode_list_req(pkt.payload)
             assert key == ""
@@ -181,31 +182,31 @@ def test_appstore_crud_app_validates_wire_and_screen_output(beebium, fuji_device
         "empty.app": OrderedDict(),
     }
     assert [cmd for cmd, _payload in seen] == [
-        fp.CMD_APPSTORE_LIST,
-        fp.CMD_APPSTORE_WRITE,
-        fp.CMD_APPSTORE_WRITE,
-        fp.CMD_APPSTORE_WRITE,
-        fp.CMD_APPSTORE_LIST,
-        fp.CMD_APPSTORE_READ,
-        fp.CMD_APPSTORE_STAT,
-        fp.CMD_APPSTORE_READ,
-        fp.CMD_APPSTORE_STAT,
-        fp.CMD_APPSTORE_READ,
-        fp.CMD_APPSTORE_STAT,
-        fp.CMD_APPSTORE_WRITE,
-        fp.CMD_APPSTORE_READ,
-        fp.CMD_APPSTORE_STAT,
-        fp.CMD_APPSTORE_READ,
-        fp.CMD_APPSTORE_STAT,
-        fp.CMD_APPSTORE_READ,
-        fp.CMD_APPSTORE_STAT,
-        fp.CMD_APPSTORE_DELETE,
-        fp.CMD_APPSTORE_READ,
-        fp.CMD_APPSTORE_STAT,
-        fp.CMD_APPSTORE_LIST,
-        fp.CMD_APPSTORE_READ,
-        fp.CMD_APPSTORE_STAT,
-        fp.CMD_APPSTORE_READ,
-        fp.CMD_APPSTORE_STAT,
-        fp.CMD_APPSTORE_DELETE,
+        ap.CMD_LIST,
+        ap.CMD_WRITE,
+        ap.CMD_WRITE,
+        ap.CMD_WRITE,
+        ap.CMD_LIST,
+        ap.CMD_READ,
+        ap.CMD_STAT,
+        ap.CMD_READ,
+        ap.CMD_STAT,
+        ap.CMD_READ,
+        ap.CMD_STAT,
+        ap.CMD_WRITE,
+        ap.CMD_READ,
+        ap.CMD_STAT,
+        ap.CMD_READ,
+        ap.CMD_STAT,
+        ap.CMD_READ,
+        ap.CMD_STAT,
+        ap.CMD_DELETE,
+        ap.CMD_READ,
+        ap.CMD_STAT,
+        ap.CMD_LIST,
+        ap.CMD_READ,
+        ap.CMD_STAT,
+        ap.CMD_READ,
+        ap.CMD_STAT,
+        ap.CMD_DELETE,
     ]

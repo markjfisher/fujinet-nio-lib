@@ -71,6 +71,12 @@ COMMON_SRCS_DEFAULT := $(SRCDIR)/common/fn_slip.c \
                        $(SRCDIR)/common/fn_appstore_delete.c \
                        $(SRCDIR)/common/fn_appstore_list.c \
                        $(SRCDIR)/common/fn_appstore_list_next_key.c \
+                       $(SRCDIR)/common/fn_slot_catalog_common.c \
+                       $(SRCDIR)/common/fn_slot_catalog_validate_default.c \
+                       $(SRCDIR)/common/fn_slot_catalog_default.c \
+                       $(SRCDIR)/common/fn_slot_catalog_get.c \
+                       $(SRCDIR)/common/fn_slot_catalog_put.c \
+                       $(SRCDIR)/common/fn_slot_catalog_delete.c \
                        $(SRCDIR)/common/fn_slot_catalog_range.c \
                        $(SRCDIR)/common/fn_slot_catalog_next_entry.c \
                        $(SRCDIR)/common/fn_mount_resolve_common.c \
@@ -105,6 +111,10 @@ COMMON_SRCS_BBC := $(SRCDIR)/common/fn_util.c \
                    $(SRCDIR)/common/fn_appstore_delete.c \
                    $(SRCDIR)/common/fn_appstore_list.c \
                    $(SRCDIR)/common/fn_appstore_list_next_key.c \
+                   $(SRCDIR)/common/fn_slot_catalog_common.c \
+                   $(SRCDIR)/common/fn_slot_catalog_get.c \
+                   $(SRCDIR)/common/fn_slot_catalog_put.c \
+                   $(SRCDIR)/common/fn_slot_catalog_delete.c \
                    $(SRCDIR)/common/fn_slot_catalog_range.c \
                    $(SRCDIR)/common/fn_slot_catalog_next_entry.c \
                    $(SRCDIR)/common/fn_mount_resolve_common.c \

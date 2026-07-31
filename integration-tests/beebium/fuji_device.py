@@ -11,6 +11,8 @@ from typing import Callable, Optional
 from fujinet_tools import fujibus as fb
 from fujinet_tools import diskproto as dp
 from fujinet_tools import fileproto as fp
+from fujinet_tools import appstoreproto as ap
+from fujinet_tools import slotproto as sp
 from fujinet_tools import netproto as netp
 
 FujiPacket = fb.FujiPacket
@@ -135,7 +137,7 @@ def build_list_response(formatted_text: str = "FILE\n", status: int = 0) -> byte
     text_bytes = formatted_text.encode("utf-8")
     entry_count = formatted_text.count("\n") + (1 if formatted_text and not formatted_text.endswith("\n") else 0)
     body = (
-        bytes([fp.FILEPROTO_VERSION, flags])
+        bytes([ap.APPSTORE_VERSION, flags])
         + struct.pack("<H", 0)
         + struct.pack("<H", 0)
         + struct.pack("<H", entry_count)
@@ -241,7 +243,7 @@ def build_appstore_stat_response(*, exists: bool, size: int = 0, mtime: int = 0,
         + struct.pack("<Q", size)
         + struct.pack("<Q", mtime)
     )
-    return fb.build_fuji_response_wire(fp.FILE_DEVICE_ID, fp.CMD_APPSTORE_STAT, status, body)
+    return fb.build_fuji_response_wire(ap.APPSTORE_DEVICE_ID, ap.CMD_STAT, status, body)
 
 
 def build_appstore_read_response(*, offset: int, data: bytes, exists: bool = True, eof: bool = True, status: int = 0) -> bytes:
@@ -251,29 +253,29 @@ def build_appstore_read_response(*, offset: int, data: bytes, exists: bool = Tru
     if exists:
         flags |= 0x02
     body = (
-        bytes([fp.FILEPROTO_VERSION, flags])
+        bytes([ap.APPSTORE_VERSION, flags])
         + struct.pack("<H", 0)
         + struct.pack("<I", offset)
         + struct.pack("<H", len(data))
         + data
     )
-    return fb.build_fuji_response_wire(fp.FILE_DEVICE_ID, fp.CMD_APPSTORE_READ, status, body)
+    return fb.build_fuji_response_wire(ap.APPSTORE_DEVICE_ID, ap.CMD_READ, status, body)
 
 
 def build_appstore_write_response(*, offset: int, written: int, status: int = 0) -> bytes:
     body = (
-        bytes([fp.FILEPROTO_VERSION, 0])
+        bytes([ap.APPSTORE_VERSION, 0])
         + struct.pack("<H", 0)
         + struct.pack("<I", offset)
         + struct.pack("<H", written)
     )
-    return fb.build_fuji_response_wire(fp.FILE_DEVICE_ID, fp.CMD_APPSTORE_WRITE, status, body)
+    return fb.build_fuji_response_wire(ap.APPSTORE_DEVICE_ID, ap.CMD_WRITE, status, body)
 
 
 def build_appstore_delete_response(*, deleted: bool, status: int = 0) -> bytes:
     flags = 0x01 if deleted else 0x00
-    body = bytes([fp.FILEPROTO_VERSION, flags]) + struct.pack("<H", 0)
-    return fb.build_fuji_response_wire(fp.FILE_DEVICE_ID, fp.CMD_APPSTORE_DELETE, status, body)
+    body = bytes([ap.APPSTORE_VERSION, flags]) + struct.pack("<H", 0)
+    return fb.build_fuji_response_wire(ap.APPSTORE_DEVICE_ID, ap.CMD_DELETE, status, body)
 
 
 def build_appstore_list_response(*, keys: list[str], start_index: int = 0, more: bool = False, status: int = 0) -> bytes:
@@ -283,32 +285,31 @@ def build_appstore_list_response(*, keys: list[str], start_index: int = 0, more:
         key_data += struct.pack("<H", len(key_b)) + key_b
     flags = 0x01 if more else 0x00
     body = (
-        bytes([fp.FILEPROTO_VERSION, flags])
+        bytes([ap.APPSTORE_VERSION, flags])
         + struct.pack("<H", 0)
         + struct.pack("<H", start_index)
         + struct.pack("<H", len(keys))
         + struct.pack("<H", len(key_data))
         + bytes(key_data)
     )
-    return fb.build_fuji_response_wire(fp.FILE_DEVICE_ID, fp.CMD_APPSTORE_LIST, status, body)
+    return fb.build_fuji_response_wire(ap.APPSTORE_DEVICE_ID, ap.CMD_LIST, status, body)
 
 
 def disk_image_responder(*, image_path, catalog_slot: int, drive_slot: int, uri: str, formatted_mounts: str = "0: AUTO\n", inner: Responder | None = None):
     with open(image_path, "rb") as fh:
         image = fh.read()
     nsec = max(1, len(image) // 256)
-    appstore: dict[tuple[str, str], bytes] = {
-        ("config-nio", f"slot-{catalog_slot:03d}"): bytes([1, 0]) + uri.encode()
-    }
+    appstore: dict[tuple[str, str], bytes] = {}
+    slots: dict[int, tuple[int, str]] = {catalog_slot: (sp.ENTRY_VALID, uri)}
 
     def _resp(pkt: FujiPacket):
         is_catalog_request = False
         if (
-            pkt.device == fp.FILE_DEVICE_ID
+            pkt.device == ap.APPSTORE_DEVICE_ID
             and pkt.command in (
-                fp.CMD_APPSTORE_READ,
-                fp.CMD_APPSTORE_WRITE,
-                fp.CMD_APPSTORE_DELETE,
+                ap.CMD_READ,
+                ap.CMD_WRITE,
+                ap.CMD_DELETE,
             )
             and len(pkt.payload) >= 3
         ):
@@ -322,11 +323,53 @@ def disk_image_responder(*, image_path, catalog_slot: int, drive_slot: int, uri:
             r = inner(pkt)
             if r is not None:
                 return r
-        if pkt.device == fp.FILE_DEVICE_ID:
+        if pkt.device == sp.SLOT_CATALOG_DEVICE_ID:
+            if pkt.command == sp.CMD_GET:
+                index = pkt.payload[1]
+                entry = slots.get(index)
+                if entry is None:
+                    return fb.build_fuji_response_wire(
+                        sp.SLOT_CATALOG_DEVICE_ID, sp.CMD_GET, 1, b""
+                    )
+                flags, entry_uri = entry
+                body = (
+                    bytes([sp.SLOT_CATALOG_VERSION, flags, index])
+                    + struct.pack("<H", len(entry_uri.encode()))
+                    + entry_uri.encode()
+                )
+                return fb.build_fuji_response_wire(
+                    sp.SLOT_CATALOG_DEVICE_ID, sp.CMD_GET, 0, body
+                )
+            if pkt.command == sp.CMD_PUT:
+                index = pkt.payload[1]
+                flags = sp.ENTRY_VALID | pkt.payload[2]
+                target_len = int.from_bytes(pkt.payload[3:5], "little")
+                target = pkt.payload[5:5 + target_len].decode()
+                canonical = uri if target == uri.rsplit("/", 1)[-1] else target
+                slots[index] = (flags, canonical)
+                body = (
+                    bytes([sp.SLOT_CATALOG_VERSION, flags, index])
+                    + struct.pack("<H", len(canonical.encode()))
+                    + canonical.encode()
+                )
+                return fb.build_fuji_response_wire(
+                    sp.SLOT_CATALOG_DEVICE_ID, sp.CMD_PUT, 0, body
+                )
+            if pkt.command == sp.CMD_DELETE:
+                index = pkt.payload[1]
+                deleted = index in slots
+                slots.pop(index, None)
+                return fb.build_fuji_response_wire(
+                    sp.SLOT_CATALOG_DEVICE_ID,
+                    sp.CMD_DELETE,
+                    0,
+                    bytes([sp.SLOT_CATALOG_VERSION, int(deleted), index]),
+                )
+        if pkt.device == ap.APPSTORE_DEVICE_ID:
             if pkt.command in (
-                fp.CMD_APPSTORE_READ,
-                fp.CMD_APPSTORE_WRITE,
-                fp.CMD_APPSTORE_DELETE,
+                ap.CMD_READ,
+                ap.CMD_WRITE,
+                ap.CMD_DELETE,
             ):
                 payload = pkt.payload
                 ns_len = int.from_bytes(payload[1:3], "little")
@@ -338,12 +381,12 @@ def disk_image_responder(*, image_path, catalog_slot: int, drive_slot: int, uri:
                 key = payload[pos:pos + key_len].decode("utf-8")
                 pos += key_len
                 store_key = (namespace, key)
-                if pkt.command == fp.CMD_APPSTORE_DELETE:
+                if pkt.command == ap.CMD_DELETE:
                     deleted = store_key in appstore
                     appstore.pop(store_key, None)
                     return build_appstore_delete_response(deleted=deleted)
                 offset = int.from_bytes(payload[pos:pos + 4], "little")
-                if pkt.command == fp.CMD_APPSTORE_WRITE:
+                if pkt.command == ap.CMD_WRITE:
                     data_len = int.from_bytes(payload[pos + 4:pos + 6], "little")
                     data = payload[pos + 6:pos + 6 + data_len]
                     old = appstore.get(store_key, b"")
@@ -361,6 +404,7 @@ def disk_image_responder(*, image_path, catalog_slot: int, drive_slot: int, uri:
                 return build_appstore_read_response(
                     offset=offset, data=data[offset:], exists=True
                 )
+        if pkt.device == fp.FILE_DEVICE_ID:
             if pkt.command == fp.CMD_RESOLVE_PATH:
                 return build_resolve_path_response(uri, uri)
             if pkt.command == fp.CMD_LIST:

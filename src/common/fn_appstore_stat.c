@@ -25,7 +25,7 @@ uint8_t fn_appstore_stat(fn_appstore_io_t *io,
     }
 
     resp = io->buffer;
-    if (response_len < 20 || resp[0] != FN_FILEPROTO_VERSION) {
+    if (response_len < 20 || resp[0] != FN_APPSTORE_PROTOCOL_VERSION) {
         return FN_ERR_IO;
     }
 

@@ -56,6 +56,12 @@ extern "C" {
 /** File service device */
 #define FN_DEVICE_FILE       0xFE
 
+/** Namespaced application-state service */
+#define FN_DEVICE_APPSTORE   0xF1
+
+/** Sparse slot-catalogue service */
+#define FN_DEVICE_SLOT_CATALOG 0xF2
+
 /** Clock device */
 #define FN_DEVICE_CLOCK      0x45
 
@@ -106,9 +112,7 @@ extern "C" {
 /** Clock protocol version */
 #define FN_CLOCK_VERSION    0x01
 
-/* ============================================================================
- * File Device Commands
- * ============================================================================ */
+/* File service commands */
 
 /** Read bytes from a filesystem URI */
 #define FN_CMD_FILE_READ       0x03
@@ -122,23 +126,26 @@ extern "C" {
 /** Create a directory at a filesystem URI */
 #define FN_CMD_FILE_MKDIR      0x06
 
-/** Query metadata for an application storage key */
-#define FN_CMD_APPSTORE_STAT   0x20
+/* AppStore service commands */
+#define FN_CMD_APPSTORE_STAT   0x01
 
 /** Read bytes from an application storage key */
-#define FN_CMD_APPSTORE_READ   0x21
+#define FN_CMD_APPSTORE_READ   0x02
 
 /** Write bytes to an application storage key */
-#define FN_CMD_APPSTORE_WRITE  0x22
+#define FN_CMD_APPSTORE_WRITE  0x03
 
 /** Delete an application storage key */
-#define FN_CMD_APPSTORE_DELETE 0x23
+#define FN_CMD_APPSTORE_DELETE 0x04
 
 /** List keys in an application storage namespace */
-#define FN_CMD_APPSTORE_LIST   0x24
+#define FN_CMD_APPSTORE_LIST   0x05
 
-/** Read a sparse range from the shared slot catalogue */
-#define FN_CMD_SLOT_CATALOG_RANGE 0x25
+/* Slot-catalogue service commands */
+#define FN_CMD_SLOT_CATALOG_GET    0x01
+#define FN_CMD_SLOT_CATALOG_PUT    0x02
+#define FN_CMD_SLOT_CATALOG_DELETE 0x03
+#define FN_CMD_SLOT_CATALOG_RANGE  0x04
 
 /* ============================================================================
  * Protocol Version

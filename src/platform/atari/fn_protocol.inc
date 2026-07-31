@@ -15,6 +15,8 @@ FN_DEVICE_FUJI       = $70
 FN_DEVICE_NETWORK    = $FD
 FN_DEVICE_DISK       = $FC
 FN_DEVICE_FILE       = $FE
+FN_DEVICE_APPSTORE   = $F1
+FN_DEVICE_SLOT_CATALOG = $F2
 
 ; Atari SIO device IDs used to carry FujiBus over the SIO bus.
 ; The FujiBus packet inside the SIO payload still uses FN_DEVICE_NETWORK.

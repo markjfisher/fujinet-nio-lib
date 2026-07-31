@@ -1,4 +1,5 @@
         .export _fn_appstore_validate_io
+        .export _fn_slot_catalog_validate_io
         .export _fn_appstore_build_prefix
 
         .import popax, return0
@@ -35,6 +36,8 @@ _fn_appstore_validate_io:
         lda     #FN_ERR_INVALID
         ldx     #$00
         rts
+
+_fn_slot_catalog_validate_io := _fn_appstore_validate_io
 
 ; uint16_t fn_appstore_build_prefix(fn_appstore_io_t *io,
 ;                                   const char *namespace_name,

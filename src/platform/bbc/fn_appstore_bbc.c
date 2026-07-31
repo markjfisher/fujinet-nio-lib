@@ -6,10 +6,11 @@ uint8_t fn_appstore_call(fn_appstore_io_t *io,
                          uint16_t request_len,
                          uint16_t *response_len)
 {
-    return fn_bbc_file_call(command,
-                            io->buffer,
-                            request_len,
-                            io->buffer,
-                            io->capacity,
-                            response_len);
+    return fn_bbc_device_call(FN_DEVICE_APPSTORE,
+                              command,
+                              io->buffer,
+                              request_len,
+                              io->buffer,
+                              io->capacity,
+                              response_len);
 }

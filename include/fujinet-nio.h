@@ -272,11 +272,14 @@ typedef struct {
     uint16_t key_data_len;   /**< Bytes written into key_data */
 } fn_appstore_list_t;
 
-/** Caller-owned application storage scratch buffer */
+/** Caller-owned scratch buffer for request/response services. */
 typedef struct {
     uint8_t *buffer;         /**< Scratch buffer used for request and response */
     uint16_t capacity;       /**< Bytes available at buffer */
-} fn_appstore_io_t;
+} fn_service_io_t;
+
+typedef fn_service_io_t fn_appstore_io_t;
+typedef fn_service_io_t fn_slot_catalog_io_t;
 
 /** Slot catalogue range page; pointers refer to the caller-owned I/O buffer. */
 typedef struct {
@@ -293,7 +296,7 @@ typedef struct {
 typedef struct {
     uint8_t index;
     uint8_t flags;
-    uint8_t uri_len;
+    uint16_t uri_len;
     const uint8_t *uri;
 } fn_slot_catalog_entry_t;
 
@@ -542,7 +545,7 @@ uint8_t fn_appstore_delete(fn_appstore_io_t *io,
 /**
  * @brief List keys in an application storage namespace.
  *
- * key_data receives the raw FileDevice list blob: repeated u16 little-endian
+ * key_data receives the raw AppStore list blob: repeated u16 little-endian
  * key length followed by key bytes. Use fn_appstore_list_next_key() to iterate.
  */
 uint8_t fn_appstore_list(fn_appstore_io_t *io,
@@ -564,13 +567,35 @@ uint8_t fn_appstore_list_next_key(const uint8_t *key_data,
                                   char *key_out,
                                   uint16_t key_out_capacity);
 
+/** @brief Read one sparse slot entry by index. */
+uint8_t fn_slot_catalog_get(fn_slot_catalog_io_t *io,
+                            uint8_t index,
+                            fn_slot_catalog_entry_t *out);
+
+/**
+ * @brief Resolve a target and replace one sparse slot entry.
+ *
+ * Relative targets are resolved by SlotCatalogService against current host
+ * state. The returned entry points into the caller-owned I/O buffer.
+ */
+uint8_t fn_slot_catalog_put(fn_slot_catalog_io_t *io,
+                            uint8_t index,
+                            uint8_t flags,
+                            const char *target,
+                            fn_slot_catalog_entry_t *out);
+
+/** @brief Delete one sparse slot entry without renumbering any other entry. */
+uint8_t fn_slot_catalog_delete(fn_slot_catalog_io_t *io,
+                               uint8_t index,
+                               uint8_t *deleted);
+
 /**
  * @brief Read populated entries from an inclusive sparse slot range.
  *
  * max_payload_bytes covers the presence bitmap and complete entry records and
  * must not exceed io->capacity minus the seven-byte response header.
  */
-uint8_t fn_slot_catalog_range(fn_appstore_io_t *io,
+uint8_t fn_slot_catalog_range(fn_slot_catalog_io_t *io,
                               uint8_t lower,
                               uint8_t upper,
                               uint8_t cursor,

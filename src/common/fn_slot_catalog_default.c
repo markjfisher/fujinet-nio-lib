@@ -1,4 +1,4 @@
-#include "fn_appstore_internal.h"
+#include "fn_slot_catalog_internal.h"
 #include "fn_raw.h"
 
 static uint8_t map_status(uint8_t status)
@@ -17,15 +17,16 @@ static uint8_t map_status(uint8_t status)
     }
 }
 
-uint8_t fn_appstore_call(fn_appstore_io_t *io,
-                         uint8_t command,
-                         uint16_t request_len,
-                         uint16_t *response_len)
+uint8_t fn_slot_catalog_call(
+    fn_slot_catalog_io_t *io,
+    uint8_t command,
+    uint16_t request_len,
+    uint16_t *response_len)
 {
     fn_raw_response_t raw;
     uint8_t result;
 
-    result = fn_raw_call(FN_DEVICE_APPSTORE,
+    result = fn_raw_call(FN_DEVICE_SLOT_CATALOG,
                          command,
                          io->buffer,
                          request_len,

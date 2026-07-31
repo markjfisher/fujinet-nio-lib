@@ -1,7 +1,7 @@
 #include "fujinet-nio.h"
-#include "fn_appstore_internal.h"
+#include "fn_slot_catalog_internal.h"
 
-uint8_t fn_slot_catalog_range(fn_appstore_io_t *io,
+uint8_t fn_slot_catalog_range(fn_slot_catalog_io_t *io,
                               uint8_t lower,
                               uint8_t upper,
                               uint8_t cursor,
@@ -17,7 +17,7 @@ uint8_t fn_slot_catalog_range(fn_appstore_io_t *io,
     uint16_t entry_data_len;
     uint8_t result;
 
-    if (out == 0 || fn_appstore_validate_io(io, 8) != FN_OK ||
+    if (out == 0 || fn_slot_catalog_validate_io(io, 8) != FN_OK ||
         lower > upper || cursor < lower || cursor > upper ||
         max_uri_bytes == 0 || max_payload_bytes < 4 ||
         max_payload_bytes > (uint16_t)(io->capacity - 7)) {
@@ -25,7 +25,7 @@ uint8_t fn_slot_catalog_range(fn_appstore_io_t *io,
     }
 
     req = io->buffer;
-    req[0] = FN_FILEPROTO_VERSION;
+    req[0] = FN_SLOT_CATALOG_PROTOCOL_VERSION;
     req[1] = lower;
     req[2] = upper;
     req[3] = cursor;
@@ -33,13 +33,15 @@ uint8_t fn_slot_catalog_range(fn_appstore_io_t *io,
     req[5] = max_uri_bytes;
     FN_PUT_LE16(&req[6], max_payload_bytes);
 
-    result = fn_appstore_call(io, FN_CMD_SLOT_CATALOG_RANGE, 8, &response_len);
+    result = fn_slot_catalog_call(
+        io, FN_CMD_SLOT_CATALOG_RANGE, 8, &response_len);
     if (result != FN_OK) {
         return result;
     }
 
     resp = io->buffer;
-    if (response_len < 7 || resp[0] != FN_FILEPROTO_VERSION) {
+    if (response_len < 7 ||
+        resp[0] != FN_SLOT_CATALOG_PROTOCOL_VERSION) {
         return FN_ERR_IO;
     }
     entry_data_len = FN_GET_LE16(&resp[5]);

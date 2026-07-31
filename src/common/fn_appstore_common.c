@@ -52,7 +52,7 @@ uint16_t fn_appstore_build_prefix(fn_appstore_io_t *io,
 
     buf = io->buffer;
     off = 0;
-    buf[off++] = FN_FILEPROTO_VERSION;
+    buf[off++] = FN_APPSTORE_PROTOCOL_VERSION;
     FN_PUT_LE16(&buf[off], ns_len);
     off = (uint16_t)(off + 2);
     memcpy(&buf[off], namespace_name, ns_len);

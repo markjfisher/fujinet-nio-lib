@@ -80,7 +80,7 @@ request could not be exchanged or parsed.
 
 ## Application Storage
 
-The app-store API talks to fujinet-nio's FileDevice application storage commands.
+The app-store API talks to fujinet-nio's dedicated AppStore service (`0xF1`).
 It provides namespaced key/value storage for application preferences and state.
 Values are opaque bytes and can be larger than one FujiBus packet by using
 offset-based chunked reads and writes.
@@ -124,7 +124,7 @@ writing, so a new persistent store starts empty but usable.
 These functions live in separate `src/legacy` archive members. Normal
 applications do not link them unless they reference the legacy symbols. The BBC
 ROM-backed target does not currently include this layer because it does not use
-the common raw FileDevice call path.
+the common raw File service call path.
 
 App-store calls use caller-owned scratch storage so 8-bit applications can
 choose the smallest practical buffer and can share it with other temporary

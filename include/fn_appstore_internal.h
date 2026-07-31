@@ -4,7 +4,7 @@
 #include "fn_internal.h"
 
 enum {
-    FN_FILEPROTO_VERSION = 1,
+    FN_APPSTORE_PROTOCOL_VERSION = 1,
     FN_APPSTORE_PREFIX_MAX = 1 + 2 + 255 + 2 + 255
 };
 
