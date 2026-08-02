@@ -141,6 +141,10 @@ PLATFORM_SRCS := $(TARGET_PLATFORM_SRCS)
 else
 PLATFORM_SRCS := $(wildcard $(PLATFORM_DIR)/*.c)
 endif
+ifeq ($(PLATFORM),bbc)
+# Replaced by the smaller platform/bbc/fn_file_call.s implementation.
+PLATFORM_SRCS := $(filter-out $(PLATFORM_DIR)/fn_file_call.c,$(PLATFORM_SRCS))
+endif
 PLATFORM_ASMS := $(wildcard $(PLATFORM_DIR)/*.s)
 PLATFORM_ASM_INCLUDES := $(wildcard $(PLATFORM_DIR)/*.inc)
 
