@@ -109,6 +109,12 @@ def http_get_smoke_ssd(scaffold_info):
 
 
 @pytest.fixture(scope="session")
+def http_get_long_ssd(scaffold_info):
+    app_src = _HERE.parent / "apps" / "http_get_long.c"
+    return _build_bbc_test_ssd(app_src, "HTLONG", "HTLONG")
+
+
+@pytest.fixture(scope="session")
 def tcp_stream_partial_ssd(scaffold_info):
     app_src = _HERE.parent / "apps" / "tcp_stream_partial.c"
     return _build_bbc_test_ssd(app_src, "TPSTRM", "TPSTRM")

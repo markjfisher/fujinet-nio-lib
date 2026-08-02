@@ -45,6 +45,7 @@ The design is based on these `fn-rom` assets:
 Current scripted coverage:
 
 - HTTP GET smoke using `apps/http_get_smoke.c`
+- BBC `fn_open_long()` short-delegation and long-URL OSWORD paths using `apps/http_get_long.c`
 - TCP stream partial/no-probe smoke tests
 - app-store CRUD using `apps/appstore_crud.c`
 
