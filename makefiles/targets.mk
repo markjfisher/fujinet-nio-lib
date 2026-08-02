@@ -52,6 +52,12 @@ TRANSPORT_FAMILY := $(TRANSPORT_FAMILY_$(TARGET))
 
 # Target-specific flags
 
+# The session pool is part of the library's platform configuration.  Keep the
+# value in the target build and pass it to both C and assembly sources so the
+# C allocation and the ca65 session loops cannot drift apart.
+FN_MAX_SESSIONS_bbc      := 2
+FN_MAX_SESSIONS_bbc-clib := $(FN_MAX_SESSIONS_bbc)
+
 # Atari
 TARGET_CFLAGS_atari     :=
 TARGET_ASFLAGS_atari    :=
@@ -65,12 +71,12 @@ TARGET_CFLAGS_apple2enh :=
 TARGET_ASFLAGS_apple2enh :=
 
 # BBC Micro
-TARGET_CFLAGS_bbc      :=
-TARGET_ASFLAGS_bbc     :=
+TARGET_CFLAGS_bbc      := -DFN_MAX_SESSIONS=$(FN_MAX_SESSIONS_bbc)
+TARGET_ASFLAGS_bbc     := --asm-define FN_MAX_SESSIONS=$(FN_MAX_SESSIONS_bbc)
 
 # BBC Micro CLIB target
-TARGET_CFLAGS_bbc-clib  :=
-TARGET_ASFLAGS_bbc-clib :=
+TARGET_CFLAGS_bbc-clib  := -DFN_MAX_SESSIONS=$(FN_MAX_SESSIONS_bbc-clib)
+TARGET_ASFLAGS_bbc-clib := --asm-define FN_MAX_SESSIONS=$(FN_MAX_SESSIONS_bbc-clib)
 
 # Commodore 64
 TARGET_CFLAGS_c64       :=

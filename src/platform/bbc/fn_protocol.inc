@@ -22,7 +22,10 @@ FN_ERR_TRANSPORT    = $10
 FN_ERR_URL_TOO_LONG = $11
 FN_ERR_NO_HANDLES   = $12
 
-FN_MAX_SESSIONS     = 3
+; Supplied by the target build.  This must match the C session pool size.
+.ifndef FN_MAX_SESSIONS
+  .error "FN_MAX_SESSIONS must be supplied by the target build"
+.endif
 
 FN_PROTO_FLAG_SEQUENTIAL_READ  = $01
 FN_PROTO_FLAG_SEQUENTIAL_WRITE = $02
