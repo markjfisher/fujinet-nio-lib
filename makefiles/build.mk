@@ -106,8 +106,6 @@ COMMON_SRCS_BBC := $(SRCDIR)/common/fn_util.c \
                    $(SRCDIR)/common/fn_clock_set_timezone.c \
                    $(SRCDIR)/common/fn_clock_set_timezone_save.c \
                    $(SRCDIR)/common/fn_appstore_stat.c \
-                   $(SRCDIR)/common/fn_appstore_read.c \
-                   $(SRCDIR)/common/fn_appstore_write.c \
                    $(SRCDIR)/common/fn_appstore_delete.c \
                    $(SRCDIR)/common/fn_appstore_list.c \
                    $(SRCDIR)/common/fn_appstore_list_next_key.c \
@@ -121,6 +119,9 @@ COMMON_SRCS_BBC := $(SRCDIR)/common/fn_util.c \
                    $(SRCDIR)/common/fn_mount_resolve_build.c \
                    $(SRCDIR)/common/fn_resolve_mount_target.c \
                    $(SRCDIR)/common/fn_format_mount_display.c
+
+# BBC fn_appstore_read/write are supplied by platform/bbc assembly sources.
+# Other platforms retain the portable implementations in COMMON_SRCS_DEFAULT.
 
 ifeq ($(PLATFORM),bbc)
 COMMON_SRCS := $(COMMON_SRCS_BBC)
