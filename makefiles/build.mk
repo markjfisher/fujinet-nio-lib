@@ -145,7 +145,8 @@ ifeq ($(PLATFORM),bbc)
 # Replaced by smaller platform/bbc assembly implementations.
 PLATFORM_SRCS := $(filter-out $(PLATFORM_DIR)/fn_file_call.c \
                               $(PLATFORM_DIR)/fn_open.c \
-                              $(PLATFORM_DIR)/fn_open_long.c,$(PLATFORM_SRCS))
+                              $(PLATFORM_DIR)/fn_open_long.c \
+                              $(PLATFORM_DIR)/fn_tcp_open.c,$(PLATFORM_SRCS))
 endif
 PLATFORM_ASMS := $(wildcard $(PLATFORM_DIR)/*.s)
 PLATFORM_ASM_INCLUDES := $(wildcard $(PLATFORM_DIR)/*.inc)

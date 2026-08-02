@@ -127,6 +127,12 @@ def tcp_stream_no_probe_ssd(scaffold_info):
 
 
 @pytest.fixture(scope="session")
+def tcp_open_ports_ssd(scaffold_info):
+    app_src = _HERE.parent / "apps" / "tcp_open_ports.c"
+    return _build_bbc_test_ssd(app_src, "TPOPEN", "TPOPEN")
+
+
+@pytest.fixture(scope="session")
 def appstore_crud_ssd(scaffold_info):
     app_src = _HERE.parent / "apps" / "appstore_crud.c"
     return _build_bbc_test_ssd(app_src, "ASTORE", "ASTORE")

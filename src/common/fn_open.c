@@ -87,6 +87,7 @@ uint8_t fn_tcp_open(fn_handle_t *handle,
                     uint16_t port)
 {
     uint8_t offset;
+    uint8_t started;
     uint16_t p;
 
     strcpy(_fn_tcp_url, "tcp://");
@@ -101,19 +102,23 @@ uint8_t fn_tcp_open(fn_handle_t *handle,
     _fn_tcp_url[offset++] = ':';
 
     p = port;
+    started = 0;
     if (p >= 10000) {
         _fn_tcp_url[offset++] = (char)('0' + (p / 10000));
         p %= 10000;
+        started = 1;
     }
-    if (p >= 1000) {
+    if (started || p >= 1000) {
         _fn_tcp_url[offset++] = (char)('0' + (p / 1000));
         p %= 1000;
+        started = 1;
     }
-    if (p >= 100) {
+    if (started || p >= 100) {
         _fn_tcp_url[offset++] = (char)('0' + (p / 100));
         p %= 100;
+        started = 1;
     }
-    if (p >= 10) {
+    if (started || p >= 10) {
         _fn_tcp_url[offset++] = (char)('0' + (p / 10));
         p %= 10;
     }

@@ -12,6 +12,69 @@ from fujinet_tools import netproto as netp
 from helpers import command, dump_screen_text, wait_for_screen_text
 
 
+def _decode_open_url(payload: bytes) -> str:
+    url_len = payload[3] | (payload[4] << 8)
+    return payload[5:5 + url_len].decode("ascii")
+
+
+def test_fn_tcp_open_formats_decimal_ports(
+    beebium, fuji_device, tcp_open_ports_ssd
+):
+    expected_urls = [
+        "tcp://example.com:0",
+        "tcp://example.com:10",
+        "tcp://example.com:100",
+        "tcp://example.com:1000",
+        "tcp://example.com:10000",
+        "tcp://example.com:65535",
+        "tcp://" + ("0123456789" * 11) + "012345678" + ":0",
+    ]
+
+    def inner(pkt):
+        if pkt.device != netp.NETWORK_DEVICE_ID:
+            return None
+        if pkt.command == netp.CMD_OPEN:
+            return build_network_open_response(handle=0x1234, proto_flags=0)
+        if pkt.command == netp.CMD_CLOSE:
+            return build_network_close_response()
+        return None
+
+    fuji_device.set_responder(
+        disk_image_responder(
+            image_path=str(tcp_open_ports_ssd),
+            catalog_slot=7,
+            drive_slot=4,
+            uri="sd0:/tpopen.ssd",
+            inner=inner,
+        )
+    )
+
+    command(beebium, "*FHOST sd0:/")
+    time.sleep(0.2)
+    command(beebium, "*FIN 7 tpopen.ssd")
+    time.sleep(0.2)
+    command(beebium, "*FMOUNT 7 0")
+    time.sleep(0.2)
+    fuji_device.clear()
+    command(beebium, "*RUN TPOPEN")
+
+    wait_for_screen_text(beebium, "[OK]", timeout=8.0)
+    packets = [
+        pkt for pkt in fuji_device.requests
+        if pkt.device == netp.NETWORK_DEVICE_ID
+    ]
+    assert [pkt.command for pkt in packets] == [
+        command
+        for _ in expected_urls
+        for command in (netp.CMD_OPEN, netp.CMD_CLOSE)
+    ]
+    assert all(pkt.checksum_ok for pkt in packets)
+    assert [_decode_open_url(pkt.payload) for pkt in packets[::2]] == expected_urls
+    # BBC OPENUP maps bidirectional TCP streams to POST + ALLOW_EVICT on wire.
+    assert [pkt.payload[1] for pkt in packets[::2]] == [2] * len(expected_urls)
+    assert [pkt.payload[2] for pkt in packets[::2]] == [0x08] * len(expected_urls)
+
+
 def test_tcp_stream_single_fn_read_returns_partial_data_without_waiting_for_eof(
     beebium, fuji_device, tcp_stream_partial_ssd
 ):
