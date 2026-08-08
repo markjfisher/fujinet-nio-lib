@@ -22,8 +22,8 @@ INCDIR      := include
 # Platform-specific source directory
 PLATFORM_DIR := $(SRCDIR)/platform/$(PLATFORM)
 
-# Library extension (GCC uses .a, CC65 uses .lib)
-ifeq ($(COMPILER_FAMILY),gcc)
+# Library extension (GCC/amigagcc use .a, CC65 uses .lib)
+ifneq (,$(filter $(COMPILER_FAMILY),gcc amigagcc))
     LIBEXT := .a
 else
     LIBEXT := .lib
@@ -206,8 +206,8 @@ $(OBJDIR)/$(TARGET)/platform/$(PLATFORM)/%.o: $(SRCDIR)/platform/$(PLATFORM)/%.s
 	$(CC) -t $(TARGET) -c $(ASFLAGS) --listing $(@:.o=.lst) -o $@ $<
 
 # Compile C files
-ifeq ($(COMPILER_FAMILY),gcc)
-# GCC compilation
+ifneq (,$(filter $(COMPILER_FAMILY),gcc amigagcc))
+# GCC / amiga-gcc compilation
 $(OBJDIR)/$(TARGET)/common/%.o: $(SRCDIR)/common/%.c | $(OBJDIR)/$(TARGET)/common
 	@echo "  CC $<"
 	$(CC) -c $(CFLAGS) -MMD -MF $(@:.o=.d) -o $@ $<
@@ -248,7 +248,7 @@ $(OBJDIR)/$(TARGET)/platform/$(PLATFORM)/%.o: $(SRCDIR)/platform/$(PLATFORM)/%.c
 endif
 
 # Create library
-ifeq ($(COMPILER_FAMILY),gcc)
+ifneq (,$(filter $(COMPILER_FAMILY),gcc amigagcc))
 $(LIBRARY): $(OBJECTS) | $(BUILDDIR)
 	@echo "  AR $@"
 	$(AR) rcs $@ $(OBJECTS)
