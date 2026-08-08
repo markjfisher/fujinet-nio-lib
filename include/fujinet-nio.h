@@ -112,6 +112,11 @@ extern "C" {
 #define FN_WIFI_MAX_BSSID     17
 #define FN_WIFI_MAX_PASSWORD  64
 #define FN_WIFI_MAX_SCAN_RECORDS 32
+#define FN_WIFI_SCAN_RESPONSE_HEADER_SIZE 3
+#define FN_WIFI_SCAN_RECORD_WIRE_MAX (1 + FN_WIFI_MAX_SSID + 9)
+#define FN_WIFI_SCAN_RESPONSE_MAX \
+    (FN_WIFI_SCAN_RESPONSE_HEADER_SIZE + \
+     (FN_WIFI_MAX_SCAN_RECORDS * FN_WIFI_SCAN_RECORD_WIRE_MAX))
 #define FN_WIFI_SET_ENABLED   0x01
 #define FN_WIFI_SET_SSID      0x02
 #define FN_WIFI_SET_BSSID     0x04
@@ -162,9 +167,12 @@ uint8_t fn_wifi_get_status(fn_wifi_status_t *status);
 uint8_t fn_wifi_get_config(fn_wifi_config_t *config);
 uint8_t fn_wifi_set_config(const fn_wifi_config_update_t *update);
 /* offset is a record index; limit/capacity are bounded to 32 records and
- * count is the number written to records. */
+ * count is the number written to records. response_buffer is caller-owned
+ * scratch storage used for the wire response. The helper reduces the wire
+ * page size when the supplied storage cannot hold 32 maximum-size records. */
 uint8_t fn_wifi_scan(uint16_t offset, uint8_t limit, fn_wifi_scan_record_t *records,
-                     uint8_t capacity, uint8_t *count, uint8_t *more);
+                     uint8_t capacity, uint8_t *count, uint8_t *more,
+                     uint8_t *response_buffer, uint16_t response_capacity);
 
 /* ============================================================================
  * HTTP Method Codes

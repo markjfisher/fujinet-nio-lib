@@ -43,6 +43,7 @@
 static struct MsgPort   *_serial_port = NULL;
 static struct IOExtSer  *_serial_req  = NULL;
 static BYTE              _device_open = 0;
+static const UBYTE        _serial_device_name[] = "serial.device";
 
 static UBYTE _wire_buf[FN_TRANSPORT_WIRE_BUF_SIZE];
 
@@ -128,7 +129,7 @@ uint8_t fn_transport_init(void)
         return FN_ERR_IO;
     }
 
-    if (OpenDevice("serial.device", 0,
+    if (OpenDevice(_serial_device_name, 0,
                    (struct IORequest *)_serial_req, 0) != 0) {
         DeleteExtIO((struct IORequest *)_serial_req);
         DeletePort(_serial_port);
