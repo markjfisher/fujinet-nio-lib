@@ -62,6 +62,8 @@ extern "C" {
 /** Sparse slot-catalogue service */
 #define FN_DEVICE_SLOT_CATALOG 0xF2
 
+#define FN_DEVICE_WIFI        0xF3
+
 /** Clock device */
 #define FN_DEVICE_CLOCK      0x45
 
@@ -83,6 +85,12 @@ extern "C" {
 
 /** Get session information */
 #define FN_CMD_INFO    0x05
+
+#define FN_WIFI_PROTOCOL_VERSION 1
+#define FN_WIFI_CMD_GET_STATUS   0x01
+#define FN_WIFI_CMD_GET_CONFIG   0x02
+#define FN_WIFI_CMD_SET_CONFIG   0x03
+#define FN_WIFI_CMD_SCAN         0x04
 
 /* ============================================================================
  * Clock Device Commands

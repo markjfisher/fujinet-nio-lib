@@ -85,6 +85,7 @@ COMMON_SRCS_DEFAULT := $(SRCDIR)/common/fn_slip.c \
                        $(SRCDIR)/common/fn_resolve_mount_target.c \
                        $(SRCDIR)/common/fn_format_mount_display.c \
                        $(SRCDIR)/common/fn_raw.c
+COMMON_SRCS_DEFAULT += $(SRCDIR)/common/fn_wifi.c
 
 LEGACY_SRCS_DEFAULT := $(SRCDIR)/legacy/fn_legacy_appkey_state.c \
                        $(SRCDIR)/legacy/fn_legacy_appkey_util.c \
@@ -118,7 +119,8 @@ COMMON_SRCS_BBC := $(SRCDIR)/common/fn_util.c \
                    $(SRCDIR)/common/fn_mount_resolve_common.c \
                    $(SRCDIR)/common/fn_mount_resolve_build.c \
                    $(SRCDIR)/common/fn_resolve_mount_target.c \
-                   $(SRCDIR)/common/fn_format_mount_display.c
+                    $(SRCDIR)/common/fn_format_mount_display.c
+COMMON_SRCS_BBC += $(SRCDIR)/platform/bbc/fn_wifi.c
 
 # BBC fn_appstore_read/write are supplied by platform/bbc assembly sources.
 # Other platforms retain the portable implementations in COMMON_SRCS_DEFAULT.

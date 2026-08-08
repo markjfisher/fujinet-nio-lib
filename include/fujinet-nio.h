@@ -108,6 +108,64 @@ extern "C" {
 /** Unknown/unexpected error */
 #define FN_ERR_UNKNOWN      0xFF
 
+#define FN_WIFI_MAX_SSID      32
+#define FN_WIFI_MAX_BSSID     17
+#define FN_WIFI_MAX_PASSWORD  64
+#define FN_WIFI_MAX_SCAN_RECORDS 32
+#define FN_WIFI_SET_ENABLED   0x01
+#define FN_WIFI_SET_SSID      0x02
+#define FN_WIFI_SET_BSSID     0x04
+#define FN_WIFI_SET_PASSWORD  0x08
+#define FN_WIFI_SET_PERSIST   0x10
+#define FN_WIFI_SET_RECONNECT 0x20
+#define FN_WIFI_CAP_CONFIG    0x0001
+#define FN_WIFI_CAP_STATUS    0x0002
+#define FN_WIFI_CAP_CONNECT   0x0004
+#define FN_WIFI_CAP_DISCONNECT 0x0008
+#define FN_WIFI_CAP_SCAN      0x0010
+#define FN_WIFI_CAP_BSSID     0x0020
+#define FN_WIFI_CAP_HOST      0x0040
+#define FN_WIFI_CAP_SIMULATED 0x0080
+#define FN_WIFI_BACKEND_UNAVAILABLE 0
+#define FN_WIFI_BACKEND_ESP32       1
+#define FN_WIFI_BACKEND_POSIX_HOST  2
+#define FN_WIFI_BACKEND_POSIX_SIMULATED 3
+
+/* Wi-Fi API buffers are caller-owned. Returned strings are NUL terminated. */
+typedef struct { uint8_t bytes[6]; uint8_t valid; } fn_wifi_bssid_t;
+typedef struct {
+    uint8_t link_state, configured_enabled, bssid_valid, scan_supported;
+    int8_t rssi;
+    fn_wifi_bssid_t bssid;
+    uint16_t capabilities;
+    uint8_t backend_kind;
+    char ip[16], subnet[16], gateway[16], dns[16];
+} fn_wifi_status_t;
+typedef struct {
+    uint8_t enabled, password_present;
+    char ssid[FN_WIFI_MAX_SSID + 1];
+    char bssid[FN_WIFI_MAX_BSSID + 1];
+} fn_wifi_config_t;
+typedef struct {
+    uint8_t fields, enabled;
+    const char *ssid, *bssid, *password;
+} fn_wifi_config_update_t;
+typedef struct {
+    char ssid[FN_WIFI_MAX_SSID + 1];
+    fn_wifi_bssid_t bssid;
+    int8_t rssi;
+    uint8_t channel, auth;
+} fn_wifi_scan_record_t;
+
+/* Password input is consumed during the call and is never returned. */
+uint8_t fn_wifi_get_status(fn_wifi_status_t *status);
+uint8_t fn_wifi_get_config(fn_wifi_config_t *config);
+uint8_t fn_wifi_set_config(const fn_wifi_config_update_t *update);
+/* offset is a record index; limit/capacity are bounded to 32 records and
+ * count is the number written to records. */
+uint8_t fn_wifi_scan(uint16_t offset, uint8_t limit, fn_wifi_scan_record_t *records,
+                     uint8_t capacity, uint8_t *count, uint8_t *more);
+
 /* ============================================================================
  * HTTP Method Codes
  * ============================================================================ */
