@@ -20,6 +20,7 @@
 #include <devices/serial.h>
 #include <proto/exec.h>
 #include <clib/alib_protos.h>
+#include <stdlib.h>
 
 #include "fujinet-nio.h"
 #include "fn_platform.h"
@@ -46,6 +47,8 @@ static BYTE              _device_open = 0;
 static const UBYTE        _serial_device_name[] = "serial.device";
 
 static UBYTE _wire_buf[FN_TRANSPORT_WIRE_BUF_SIZE];
+
+void fn_transport_close(void);
 
 /* -------------------------------------------------------------------------
  * Internal helpers
@@ -157,6 +160,11 @@ uint8_t fn_transport_init(void)
     }
 
     _device_open = 1;
+    /* serial.device is process-global and exclusive on AmigaOS.  Applications
+     * commonly run as short-lived CLI commands, so release it automatically
+     * when the client process exits before another command tries to initialize
+     * the library. */
+    atexit(fn_transport_close);
     return FN_OK;
 }
 
