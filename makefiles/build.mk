@@ -34,6 +34,7 @@ LIBRARY     := $(BUILDDIR)/$(PROGRAM)-$(TARGET)$(LIBEXT)
 
 # Common sources (shared across all platforms)
 COMMON_SRCS_DEFAULT := $(SRCDIR)/common/fn_slip.c \
+                       $(SRCDIR)/common/fn_session.c \
                        $(SRCDIR)/common/fn_packet.c \
                        $(SRCDIR)/common/fn_packet_checksum.c \
                        $(SRCDIR)/common/fn_packet_header.c \

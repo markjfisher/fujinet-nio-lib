@@ -1,0 +1,119 @@
+#include <stdio.h>
+#include <string.h>
+
+#include "fn_protocol.h"
+#include "fn_internal.h"
+#include "fn_session.h"
+
+typedef struct {
+    uint8_t tx[128];
+    uint16_t tx_length;
+    uint8_t rx[128];
+    uint16_t rx_length;
+    uint16_t rx_offset;
+    uint8_t opened;
+    uint8_t flushed;
+} fake_serial_t;
+
+static uint8_t fake_open(void *context)
+{
+    fake_serial_t *fake = (fake_serial_t *)context;
+    fake->opened = 1;
+    return FN_OK;
+}
+
+static void fake_close(void *context)
+{
+    ((fake_serial_t *)context)->opened = 0;
+}
+
+static uint8_t fake_write(void *context, uint8_t value, uint16_t timeout_ms)
+{
+    fake_serial_t *fake = (fake_serial_t *)context;
+    (void)timeout_ms;
+    if (fake->tx_length >= sizeof(fake->tx)) return FN_ERR_IO;
+    fake->tx[fake->tx_length++] = value;
+    return FN_OK;
+}
+
+static uint8_t fake_read(void *context, uint8_t *value, uint16_t timeout_ms)
+{
+    fake_serial_t *fake = (fake_serial_t *)context;
+    (void)timeout_ms;
+    if (fake->rx_offset >= fake->rx_length) return 0;
+    *value = fake->rx[fake->rx_offset++];
+    return 1;
+}
+
+static void fake_flush(void *context)
+{
+    ((fake_serial_t *)context)->flushed = 1;
+}
+
+static const fn_stream_channel_ops_t fake_ops = {
+    fake_open, fake_close, fake_write, fake_read, fake_flush
+};
+
+static int test_rs232_slip_session(void)
+{
+    fake_serial_t fake = {0};
+    fn_stream_session_t session;
+    uint8_t wire[64];
+    uint8_t response[16];
+    uint16_t response_length = 0;
+    const uint8_t request[] = {0x01, 0xFC, 0xDB, 0xC0};
+    const uint8_t response_packet[] = {0x01, 0xFC, 0x00, 0xC0, 0xDB};
+    uint16_t encoded_length;
+
+    encoded_length = fn_slip_encode(response_packet, sizeof(response_packet), fake.rx);
+    fake.rx_length = encoded_length;
+    if (fn_stream_session_init(&session, &fake_ops, &fake, wire, sizeof(wire)) != FN_OK ||
+        fn_stream_session_open(&session) != FN_OK) return 1;
+    if (fn_stream_session_request(&session, request, sizeof(request), response,
+                                  sizeof(response), &response_length, 100) != FN_OK) return 1;
+    if (!fake.flushed || response_length != sizeof(response_packet) ||
+        memcmp(response, response_packet, sizeof(response_packet)) != 0) return 1;
+    if (fake.tx_length != 8 || fake.tx[0] != SLIP_END || fake.tx[7] != SLIP_END ||
+        fake.tx[3] != SLIP_ESCAPE || fake.tx[4] != SLIP_ESC_ESC ||
+        fake.tx[5] != SLIP_ESCAPE || fake.tx[6] != SLIP_ESC_END) return 1;
+    if (fn_stream_session_capabilities(&session)->max_outstanding != 1 ||
+        fn_stream_session_capabilities(&session)->packet_native != 0) return 1;
+    fn_stream_session_close(&session);
+    return fake.opened ? 1 : 0;
+}
+
+static int test_session_timeout_and_busy(void)
+{
+    fake_serial_t fake = {0};
+    fn_stream_session_t session;
+    uint8_t wire[32], response[8];
+    uint16_t response_length = 0;
+
+    if (fn_stream_session_init(&session, &fake_ops, &fake, wire, sizeof(wire)) != FN_OK ||
+        fn_stream_session_open(&session) != FN_OK) return 1;
+    if (fn_stream_session_request(&session, (const uint8_t *)"x", 1,
+                                  response, sizeof(response), &response_length, 20) !=
+        FN_ERR_TIMEOUT) return 1;
+    fake.rx[0] = SLIP_END;
+    memset(fake.rx + 1, 0x01, sizeof(fake.rx) - 1);
+    fake.rx_length = sizeof(fake.rx);
+    fake.rx_offset = 0;
+    if (fn_stream_session_request(&session, (const uint8_t *)"x", 1,
+                                  response, sizeof(response), &response_length, 20) !=
+        FN_ERR_IO) return 1;
+    session.busy = 1;
+    if (fn_stream_session_request(&session, (const uint8_t *)"x", 1,
+                                  response, sizeof(response), &response_length, 20) !=
+        FN_ERR_BUSY) return 1;
+    return 0;
+}
+
+int main(void)
+{
+    if (test_rs232_slip_session() || test_session_timeout_and_busy()) {
+        puts("session wire tests failed");
+        return 1;
+    }
+    puts("session wire tests passed");
+    return 0;
+}
