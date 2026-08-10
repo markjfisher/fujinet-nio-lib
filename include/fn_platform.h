@@ -63,6 +63,13 @@ uint8_t fn_transport_ready(void);
  */
 uint8_t fn_transport_exchange(void);
 
+/* Explicit-buffer transport entry point used by resident Amiga clients. */
+uint8_t fn_transport_exchange_buffers(const uint8_t *request,
+                                      uint16_t request_length,
+                                      uint8_t *response,
+                                      uint16_t response_capacity,
+                                      uint16_t *response_length);
+
 /**
  * @brief Get the platform name string.
  * 

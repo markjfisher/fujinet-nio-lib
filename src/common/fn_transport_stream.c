@@ -82,16 +82,23 @@ uint8_t fn_transport_ready(void)
 
 uint8_t fn_transport_exchange(void)
 {
-    uint8_t result;
+    return fn_transport_exchange_buffers(_fn_transport_ctx.request,
+                                         _fn_transport_ctx.req_len,
+                                         _fn_transport_ctx.response,
+                                         _fn_transport_ctx.resp_max,
+                                         &_fn_transport_ctx.resp_len);
+}
 
-    result = fn_stream_session_request(&_stream_session,
-                                      _fn_transport_ctx.request,
-                                      _fn_transport_ctx.req_len,
-                                      _fn_transport_ctx.response,
-                                      _fn_transport_ctx.resp_max,
-                                      &_fn_transport_ctx.resp_len,
-                                      FN_TRANSPORT_TIMEOUT);
-    return result;
+uint8_t fn_transport_exchange_buffers(const uint8_t *request,
+                                      uint16_t request_length,
+                                      uint8_t *response,
+                                      uint16_t response_capacity,
+                                      uint16_t *response_length)
+{
+    return fn_stream_session_request(&_stream_session, request,
+                                     request_length, response,
+                                     response_capacity, response_length,
+                                     FN_TRANSPORT_TIMEOUT);
 }
 
 void fn_transport_close(void)

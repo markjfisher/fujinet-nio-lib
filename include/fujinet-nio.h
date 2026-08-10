@@ -374,6 +374,36 @@ typedef struct {
     uint8_t last_error;
 } fn_disk_info_t;
 
+/** Explicit DiskDevice client state for resident or concurrent callers. */
+#define FN_DISK_CONTEXT_PACKET_SIZE 1024
+typedef uint8_t (*fn_disk_exchange_fn)(void *exchange_context,
+                                      const uint8_t *request,
+                                      uint16_t request_length,
+                                      uint8_t *response,
+                                      uint16_t response_capacity,
+                                      uint16_t *response_length);
+
+typedef struct {
+    fn_disk_exchange_fn exchange;
+    void *exchange_context;
+    uint8_t packet_request[FN_DISK_CONTEXT_PACKET_SIZE];
+    uint8_t packet_response[FN_DISK_CONTEXT_PACKET_SIZE];
+    uint8_t codec_scratch[FN_DISK_CONTEXT_PACKET_SIZE];
+} fn_disk_client_context_t;
+
+uint8_t fn_disk_context_init(fn_disk_client_context_t *context,
+                             fn_disk_exchange_fn exchange,
+                             void *exchange_context);
+uint8_t fn_disk_mount_context(fn_disk_client_context_t *context, uint8_t slot,
+                              const char *uri, uint8_t readonly, uint8_t type,
+                              uint16_t sector_size_hint, fn_disk_info_t *info);
+uint8_t fn_disk_info_context(fn_disk_client_context_t *context, uint8_t slot,
+                             fn_disk_info_t *info);
+uint8_t fn_disk_read_sector_context(fn_disk_client_context_t *context,
+                                    uint8_t slot, uint32_t lba, uint8_t *data,
+                                    uint16_t data_capacity,
+                                    uint16_t *data_length);
+
 /**
  * Mount an image URI into a DiskDevice slot.
  *

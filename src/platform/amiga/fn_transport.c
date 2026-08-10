@@ -241,10 +241,26 @@ uint8_t fn_transport_ready(void)
 
 uint8_t fn_transport_exchange(void)
 {
+    return fn_transport_exchange_buffers(_fn_transport_ctx.request,
+                                         _fn_transport_ctx.req_len,
+                                         _fn_transport_ctx.response,
+                                         _fn_transport_ctx.resp_max,
+                                         &_fn_transport_ctx.resp_len);
+}
+
+uint8_t fn_transport_exchange_buffers(const uint8_t *request,
+                                      uint16_t request_length,
+                                      uint8_t *response,
+                                      uint16_t response_capacity,
+                                      uint16_t *response_length)
+{
     struct MsgPort *caller_port;
     uint8_t result;
 
     if (!_device_open || !_session_initialized) return FN_ERR_NOT_FOUND;
+    if (request == NULL || response == NULL || response_length == NULL) {
+        return FN_ERR_INVALID;
+    }
 
     /* A resident device can be entered by different Amiga tasks over its
      * lifetime. The port used during fn_transport_init() belongs to the task
@@ -255,11 +271,11 @@ uint8_t fn_transport_exchange(void)
     _serial_req->IOSer.io_Message.mn_ReplyPort = caller_port;
 
     result = fn_stream_session_request(&_session,
-                                       _fn_transport_ctx.request,
-                                       _fn_transport_ctx.req_len,
-                                       _fn_transport_ctx.response,
-                                       _fn_transport_ctx.resp_max,
-                                       &_fn_transport_ctx.resp_len,
+                                       request,
+                                       request_length,
+                                       response,
+                                       response_capacity,
+                                       response_length,
                                        FN_TRANSPORT_TIMEOUT);
 
     _serial_req->IOSer.io_Message.mn_ReplyPort = _serial_port;

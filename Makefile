@@ -21,7 +21,7 @@ override PROGRAM := fujinet-nio
 # Phony targets
 .PHONY: all clean help disk-bbc disk-bbc-clib test-legacy test-mount-resolve \
 	test-appstore-read test-slot-catalog test-bbc test-bbc-scripted \
-	test-bbc-real test-wifi test-disk test-session test-library-link test \
+	test-bbc-real test-wifi test-disk test-disk-context test-session test-library-link test \
 	test-all-build check msdos $(TARGETS)
 
 # Default target: build all
@@ -119,6 +119,10 @@ test-disk:
 	@echo "Running DiskDevice API wire tests..."
 	bash ./tests/run_disk_wire_test.sh
 
+test-disk-context:
+	@echo "Running independent DiskDevice context tests..."
+	bash ./tests/run_disk_context_test.sh
+
 test-session:
 	@echo "Running channel/session wire tests..."
 	bash ./tests/run_session_wire_test.sh
@@ -131,7 +135,7 @@ test-all-build:
 	@echo "Building all configured library targets..."
 	$(MAKE) all
 
-test: test-library-link test-legacy test-mount-resolve test-appstore-read test-slot-catalog test-wifi test-disk test-session
+test: test-library-link test-legacy test-mount-resolve test-appstore-read test-slot-catalog test-wifi test-disk test-disk-context test-session
 
 # Fast required change check: compile every configured target, then run the
 # host-side tests and public archive-link test. Keep this as a recipe rather
