@@ -21,7 +21,8 @@ override PROGRAM := fujinet-nio
 # Phony targets
 .PHONY: all clean help disk-bbc disk-bbc-clib test-legacy test-mount-resolve \
 	test-appstore-read test-slot-catalog test-bbc test-bbc-scripted \
-	test-bbc-real test-wifi test-disk test-session test msdos $(TARGETS)
+	test-bbc-real test-wifi test-disk test-session test-library-link test \
+	test-all-build msdos $(TARGETS)
 
 # Default target: build all
 all:
@@ -122,7 +123,15 @@ test-session:
 	@echo "Running channel/session wire tests..."
 	bash ./tests/run_session_wire_test.sh
 
-test: test-legacy test-mount-resolve test-appstore-read test-slot-catalog test-wifi test-disk test-session
+test-library-link: linux
+	@echo "Running public API library-link test..."
+	bash ./tests/run_library_link_test.sh
+
+test-all-build:
+	@echo "Building all configured library targets..."
+	$(MAKE) all
+
+test: test-library-link test-legacy test-mount-resolve test-appstore-read test-slot-catalog test-wifi test-disk test-session
 
 # Help
 help:
@@ -139,6 +148,8 @@ help:
 	@echo "  make test-wifi - Run Wi-Fi API wire and buffer tests"
 	@echo "  make test-disk - Run DiskDevice API wire tests"
 	@echo "  make test-session - Run channel/session wire tests"
+	@echo "  make test-library-link - Build Linux library and link a public API consumer"
+	@echo "  make test-all-build - Build all configured library targets"
 	@echo "  make test - Run all host-side wire tests"
 	@echo "  make clean      - Remove all build artifacts"
 	@echo "  make help       - Show this help message"
