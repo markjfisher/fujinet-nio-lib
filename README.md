@@ -8,8 +8,8 @@ A clean, multi-platform 6502 library for communicating with FujiNet-NIO devices 
 
 - **Handle-based API** - Simple, intuitive session management
 - **FujiBus protocol** - Binary protocol with shared packet/checksum handling
-- **Multi-platform support** - Atari, Apple II, CoCo, C64, MS-DOS, and Linux
-- **Multi-compiler support** - CC65, CMOC, Watcom, GCC
+- **Multi-platform support** - Atari, BBC, MS-DOS, Amiga, and Linux
+- **Multi-compiler support** - CC65, Open Watcom, GCC, and amiga-gcc
 - **HTTP and TCP/TLS** - All protocols supported
 
 ## Features
@@ -54,6 +54,12 @@ make msdos-f5
 
 # Build for Atari
 make atari
+
+# Build the normal Amiga application library
+make amiga
+
+# Build the resident Amiga driver library variant
+make amiga-driver
 ```
 
 ### Basic HTTP GET
@@ -150,6 +156,8 @@ int main(void) {
 | MS-DOS | `FUJINET.SYS` block IOCTL | Watcom | ✅ Implemented |
 | MS-DOS | `FUJINET.SYS` INT F5 | Watcom | ✅ Implemented |
 | Linux | stream over POSIX serial/PTY | GCC | ✅ Working |
+| Amiga applications | `serial.device` RS-232 | amiga-gcc | ✅ Working |
+| Amiga resident driver | `serial.device` RS-232 | amiga-gcc | ✅ Working |
 
 ## Differences from fujinet-lib
 

@@ -22,6 +22,17 @@ This document describes how to build the fujinet-nio-lib library for various pla
 - GNU Make
 - See [Developer setup](DEVELOPMENT.md) for Beebium integration test prerequisites
 
+### For Amiga builds:
+- [amiga-gcc](https://github.com/bebbo/amiga-gcc), including
+  `m68k-amigaos-gcc`, `m68k-amigaos-ar`, readable NDK headers, `amiga.lib`,
+  and clib2
+- GNU Make
+- The toolchain binaries on `PATH`; for a typical `/opt/amiga` installation:
+
+  ```bash
+  export PATH=/opt/amiga/bin:$PATH
+  ```
+
 ## Building
 
 ### Build all targets:
@@ -39,6 +50,8 @@ make msdos-serial # MS-DOS direct COM backend
 make msdos-ioctl  # MS-DOS FUJINET.SYS IOCTL backend
 make msdos-f5     # MS-DOS FUJINET.SYS INT F5 backend
 make linux      # Native Linux (for testing)
+make amiga      # Amiga application archive
+make amiga-driver # Resident-driver archive (no application atexit cleanup)
 ```
 
 ### Clean build artifacts:
@@ -60,7 +73,23 @@ fujinet-nio-lib/
     fujinet-nio-msdos-serial.lib # MS-DOS direct COM backend
     fujinet-nio-msdos-ioctl.lib  # MS-DOS FUJINET.SYS IOCTL backend
     fujinet-nio-msdos-f5.lib     # MS-DOS FUJINET.SYS INT F5 backend
+    fujinet-nio-amiga.a          # Amiga application library
+    fujinet-nio-amiga-driver.a   # Amiga resident-driver library
 ```
+
+## Amiga variants
+
+`make amiga` builds the normal application library. It uses process-exit
+cleanup suitable for CLI programs.
+
+`make amiga-driver` builds the variant consumed by resident Exec devices. It
+defines `FN_AMIGA_EXPLICIT_LIFECYCLE`, so the device owns transport lifetime
+instead of registering application `atexit()` cleanup. Both variants expose
+the same typed DiskDevice context API and RS-232 FujiBus session behavior.
+
+The `amiga-driver` target is intentionally available explicitly but is not
+part of the top-level `make` all-target loop; ordinary users do not need the
+resident archive unless they are building an Exec device.
 
 ## Linux Native Testing
 
@@ -116,6 +145,7 @@ Platform-specific transport code is located in:
 - `src/platform/coco/` - CoCo Drivewire (planned)
 - `src/platform/msdos/` - MS-DOS serial, IOCTL, and F5 backends
 - `src/platform/linux/` - Linux/POSIX serial or PTY byte channel
+- `src/platform/amiga/` - Amiga `serial.device` RS-232 byte channel
 
 See [Transport Backends](transport-backends.md) for how library build targets map
 to `fujinet-nio` transports/channels, and how future MS-DOS parallel or BBC

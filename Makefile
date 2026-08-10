@@ -14,6 +14,7 @@
 # Supported targets
 # TARGETS = atari apple2 apple2enh bbc c64 coco msdos linux
 TARGETS = atari bbc bbc-clib msdos-serial msdos-ioctl msdos-f5 linux amiga
+EXTRA_TARGETS = amiga-driver
 
 # Output library name
 override PROGRAM := fujinet-nio
@@ -22,7 +23,7 @@ override PROGRAM := fujinet-nio
 .PHONY: all clean help disk-bbc disk-bbc-clib test-legacy test-mount-resolve \
 	test-appstore-read test-slot-catalog test-bbc test-bbc-scripted \
 	test-bbc-real test-wifi test-disk test-disk-context test-session test-library-link test \
-	test-all-build check msdos $(TARGETS)
+	test-all-build check msdos $(TARGETS) $(EXTRA_TARGETS)
 
 # Default target: build all
 all:
@@ -41,7 +42,7 @@ all:
 	@echo "========================================="
 
 # Individual platform targets
-$(TARGETS):
+$(TARGETS) $(EXTRA_TARGETS):
 	@echo "Building for $@..."
 	$(MAKE) -f makefiles/build.mk TARGET=$@ PROGRAM=$(PROGRAM) lib
 
