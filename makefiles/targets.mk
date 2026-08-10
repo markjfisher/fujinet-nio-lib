@@ -18,6 +18,7 @@ PLATFORM_msdos-ioctl := msdos
 PLATFORM_msdos-f5 := msdos
 PLATFORM_linux      := linux
 PLATFORM_amiga      := amiga
+PLATFORM_amiga-driver := amiga
 
 # Get platform for current target
 PLATFORM := $(PLATFORM_$(TARGET))
@@ -38,6 +39,7 @@ COMPILER_FAMILY_msdos-ioctl := wcc
 COMPILER_FAMILY_msdos-f5 := wcc
 COMPILER_FAMILY_linux      := gcc
 COMPILER_FAMILY_amiga      := amigagcc
+COMPILER_FAMILY_amiga-driver := amigagcc
 
 # Get compiler family for current target
 COMPILER_FAMILY := $(COMPILER_FAMILY_$(TARGET))
@@ -110,6 +112,11 @@ TARGET_ASFLAGS_linux    :=
 # Amiga (m68k-amigaos cross-compile via amiga-gcc)
 TARGET_CFLAGS_amiga     := -mcpu=68000 -msoft-float
 TARGET_ASFLAGS_amiga    :=
+
+# Resident Amiga drivers cannot depend on process-exit startup/teardown.
+# They own transport shutdown as part of their device lifecycle instead.
+TARGET_CFLAGS_amiga-driver := -mcpu=68000 -msoft-float -DFN_AMIGA_EXPLICIT_LIFECYCLE
+TARGET_ASFLAGS_amiga-driver :=
 
 # Get flags for current target
 TARGET_CFLAGS  := $(TARGET_CFLAGS_$(TARGET))

@@ -20,7 +20,9 @@
 #include <devices/serial.h>
 #include <proto/exec.h>
 #include <clib/alib_protos.h>
+#ifndef FN_AMIGA_EXPLICIT_LIFECYCLE
 #include <stdlib.h>
+#endif
 
 #include "fujinet-nio.h"
 #include "fn_platform.h"
@@ -181,11 +183,12 @@ uint8_t fn_transport_init(void)
     }
     _session_initialized = 1;
     _device_open = 1;
-    /* serial.device is process-global and exclusive on AmigaOS.  Applications
-     * commonly run as short-lived CLI commands, so release it automatically
-     * when the client process exits before another command tries to initialize
-     * the library. */
+    /* CLI applications use process-exit cleanup. Resident drivers are built
+     * with FN_AMIGA_EXPLICIT_LIFECYCLE because they have no process exit and
+     * must release the transport through their device lifecycle instead. */
+#ifndef FN_AMIGA_EXPLICIT_LIFECYCLE
     atexit(fn_transport_close);
+#endif
     return FN_OK;
 }
 
