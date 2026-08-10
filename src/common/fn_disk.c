@@ -22,9 +22,12 @@ enum {
 
 /* DiskDevice calls are synchronous in the client library. Keep the large
  * codec buffers out of 6502 stack frames; cc65 has a deliberately small local
- * variable budget and the raw transport already serializes requests. */
+ * variable budget and the raw transport already serializes requests. Hosted
+ * builds retain local buffers below so they do not inherit that limitation. */
+#if defined(__CC65__)
 static uint8_t disk_request[FN_MAX_PACKET_SIZE];
 static uint8_t disk_reply[FN_MAX_PACKET_SIZE];
+#endif
 
 static uint8_t disk_status(uint8_t status)
 {
@@ -111,6 +114,10 @@ uint8_t fn_disk_mount(uint8_t slot, const char *uri, uint8_t readonly,
                       uint8_t type, uint16_t sector_size_hint,
                       fn_disk_info_t *info)
 {
+#if !defined(__CC65__)
+    uint8_t disk_request[FN_MAX_PACKET_SIZE];
+    uint8_t disk_reply[FN_MAX_PACKET_SIZE];
+#endif
     uint16_t uri_length;
     uint16_t request_length;
     uint16_t reply_length = 0;
@@ -152,6 +159,10 @@ uint8_t fn_disk_mount(uint8_t slot, const char *uri, uint8_t readonly,
 
 uint8_t fn_disk_unmount(uint8_t slot)
 {
+#if !defined(__CC65__)
+    uint8_t disk_request[2];
+    uint8_t disk_reply[16];
+#endif
     uint16_t reply_length = 0;
     uint8_t result;
     disk_request[0] = FN_DISK_PROTOCOL_VERSION;
@@ -166,6 +177,10 @@ uint8_t fn_disk_unmount(uint8_t slot)
 
 uint8_t fn_disk_info(uint8_t slot, fn_disk_info_t *info)
 {
+#if !defined(__CC65__)
+    uint8_t disk_request[2];
+    uint8_t disk_reply[16];
+#endif
     uint16_t reply_length = 0;
     uint8_t result;
 
@@ -180,6 +195,10 @@ uint8_t fn_disk_info(uint8_t slot, fn_disk_info_t *info)
 
 uint8_t fn_disk_clear_changed(uint8_t slot)
 {
+#if !defined(__CC65__)
+    uint8_t disk_request[2];
+    uint8_t disk_reply[16];
+#endif
     uint16_t reply_length = 0;
     uint8_t result;
     disk_request[0] = FN_DISK_PROTOCOL_VERSION;
@@ -196,6 +215,10 @@ uint8_t fn_disk_read_sector(uint8_t slot, uint32_t lba,
                             uint8_t *data, uint16_t data_capacity,
                             uint16_t *data_length)
 {
+#if !defined(__CC65__)
+    uint8_t disk_request[8];
+    uint8_t disk_reply[FN_MAX_PACKET_SIZE];
+#endif
     uint16_t reply_length = 0;
     uint16_t payload_length;
     uint8_t result;
@@ -221,6 +244,10 @@ uint8_t fn_disk_read_sector(uint8_t slot, uint32_t lba,
 uint8_t fn_disk_write_sector(uint8_t slot, uint32_t lba,
                              const uint8_t *data, uint16_t data_length)
 {
+#if !defined(__CC65__)
+    uint8_t disk_request[FN_MAX_PACKET_SIZE];
+    uint8_t disk_reply[16];
+#endif
     uint16_t reply_length = 0;
     uint8_t result;
 

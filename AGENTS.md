@@ -7,6 +7,30 @@ correctness, especially on BBC Micro targets.
 
 Agents working in this repo should follow these rules.
 
+## Cross-target implementation rules
+
+The library serves different generations of systems: cc65-based 6502 targets,
+16-bit MS-DOS, 32-bit Amiga, and hosted development targets. A limitation of
+one compiler or machine must not silently become a limitation of every target.
+
+1. Keep protocol contracts, public APIs, wire formats, and test vectors shared
+   wherever practical.
+2. Before changing common C code, consider the constraints of every compiler
+   family that consumes it: cc65, Open Watcom, amiga-gcc, and hosted GCC.
+3. If a workaround is required only for cc65 or another constrained target,
+   isolate it with a target-specific source file, build selection, or a small
+   clearly documented conditional section. Do not impose it on MS-DOS, Amiga,
+   or hosted builds without a separate reason.
+4. In particular, do not introduce persistent global buffers, reduced
+   re-entrancy, or 8-bit-sized limits into non-cc65 implementations merely to
+   satisfy cc65. Case-specific duplication is acceptable when it preserves
+   materially better behavior on the larger targets.
+5. Document any target-specific memory, stack, re-entrancy, or calling-convention
+   trade-off next to the implementation and add tests for the shared behavior.
+6. Validate at least one constrained target and one non-cc65 target after
+   changes to shared code. When the relevant cross-toolchains are available,
+   include the MS-DOS and Amiga builds in the all-target build check.
+
 ## BBC size and RAM rules
 
 1. Prefer application-owned buffers over library-owned scratch space.
