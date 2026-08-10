@@ -44,6 +44,9 @@ static BYTE              _device_open = 0;
 static const UBYTE        _serial_device_name[] = "serial.device";
 
 static uint8_t _wire_buf[FN_TRANSPORT_WIRE_BUF_SIZE];
+static uint8_t _read_buf[128];
+static uint16_t _read_pos;
+static uint16_t _read_len;
 static fn_stream_session_t _session;
 static uint8_t _session_initialized;
 
@@ -66,12 +69,48 @@ static uint8_t serial_write(const uint8_t *buf, uint16_t len)
 
 static uint8_t serial_read_byte(uint8_t *byte_out)
 {
-    _serial_req->IOSer.io_Command  = CMD_READ;
-    _serial_req->IOSer.io_Data     = (APTR)byte_out;
-    _serial_req->IOSer.io_Length   = 1;
+    ULONG available;
+
+    if (_read_pos < _read_len) {
+        *byte_out = _read_buf[_read_pos++];
+        return FN_OK;
+    }
+
+    _serial_req->IOSer.io_Command = SDCMD_QUERY;
+    _serial_req->IOSer.io_Data = NULL;
+    _serial_req->IOSer.io_Length = 0;
+    _serial_req->IOSer.io_Actual = 0;
     if (DoIO((struct IORequest *)_serial_req) != 0) {
         return FN_ERR_IO;
     }
+    available = _serial_req->IOSer.io_Actual;
+    if (available == 0) {
+        /* SDCMD_QUERY is immediate. A tight session poll would consume its
+         * logical timeout before Amiberry or hardware can deliver the first
+         * response byte, so block for that byte and then drain in batches. */
+        _serial_req->IOSer.io_Command = CMD_READ;
+        _serial_req->IOSer.io_Data = (APTR)byte_out;
+        _serial_req->IOSer.io_Length = 1;
+        _serial_req->IOSer.io_Actual = 0;
+        return DoIO((struct IORequest *)_serial_req) == 0 ? FN_OK : FN_ERR_IO;
+    }
+    if (available > sizeof(_read_buf)) {
+        available = sizeof(_read_buf);
+    }
+
+    _serial_req->IOSer.io_Command  = CMD_READ;
+    _serial_req->IOSer.io_Data     = (APTR)_read_buf;
+    _serial_req->IOSer.io_Length   = available;
+    _serial_req->IOSer.io_Actual   = 0;
+    if (DoIO((struct IORequest *)_serial_req) != 0) {
+        return FN_ERR_IO;
+    }
+    _read_pos = 1;
+    _read_len = (uint16_t)_serial_req->IOSer.io_Actual;
+    if (_read_len == 0) {
+        return FN_ERR_NOT_READY;
+    }
+    *byte_out = _read_buf[0];
     return FN_OK;
 }
 
@@ -158,6 +197,7 @@ uint8_t fn_transport_init(void)
     _serial_req->io_ReadLen   = 8;
     _serial_req->io_WriteLen  = 8;
     _serial_req->io_StopBits  = 1;
+    _serial_req->io_RBufLen   = FN_TRANSPORT_WIRE_BUF_SIZE;
     /* SERF_XDISABLED: disable XON/XOFF — essential for binary SLIP data */
     _serial_req->io_SerFlags  = SERF_XDISABLED;
 
@@ -182,6 +222,8 @@ uint8_t fn_transport_init(void)
         return FN_ERR_IO;
     }
     _session_initialized = 1;
+    _read_pos = 0;
+    _read_len = 0;
     _device_open = 1;
     /* CLI applications use process-exit cleanup. Resident drivers are built
      * with FN_AMIGA_EXPLICIT_LIFECYCLE because they have no process exit and
@@ -199,14 +241,30 @@ uint8_t fn_transport_ready(void)
 
 uint8_t fn_transport_exchange(void)
 {
+    struct MsgPort *caller_port;
+    uint8_t result;
+
     if (!_device_open || !_session_initialized) return FN_ERR_NOT_FOUND;
-    return fn_stream_session_request(&_session,
-                                     _fn_transport_ctx.request,
-                                     _fn_transport_ctx.req_len,
-                                     _fn_transport_ctx.response,
-                                     _fn_transport_ctx.resp_max,
-                                     &_fn_transport_ctx.resp_len,
-                                     FN_TRANSPORT_TIMEOUT);
+
+    /* A resident device can be entered by different Amiga tasks over its
+     * lifetime. The port used during fn_transport_init() belongs to the task
+     * that mounted the image and becomes invalid when that CLI exits. Give
+     * each synchronous exchange a reply port owned by its current caller. */
+    caller_port = CreatePort(NULL, 0);
+    if (caller_port == NULL) return FN_ERR_IO;
+    _serial_req->IOSer.io_Message.mn_ReplyPort = caller_port;
+
+    result = fn_stream_session_request(&_session,
+                                       _fn_transport_ctx.request,
+                                       _fn_transport_ctx.req_len,
+                                       _fn_transport_ctx.response,
+                                       _fn_transport_ctx.resp_max,
+                                       &_fn_transport_ctx.resp_len,
+                                       FN_TRANSPORT_TIMEOUT);
+
+    _serial_req->IOSer.io_Message.mn_ReplyPort = _serial_port;
+    DeletePort(caller_port);
+    return result;
 }
 
 void fn_transport_close(void)

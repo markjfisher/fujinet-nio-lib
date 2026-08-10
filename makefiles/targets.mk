@@ -115,7 +115,7 @@ TARGET_ASFLAGS_amiga    :=
 
 # Resident Amiga drivers cannot depend on process-exit startup/teardown.
 # They own transport shutdown as part of their device lifecycle instead.
-TARGET_CFLAGS_amiga-driver := -mcpu=68000 -msoft-float -DFN_AMIGA_EXPLICIT_LIFECYCLE
+TARGET_CFLAGS_amiga-driver := -mcpu=68000 -msoft-float -DFN_AMIGA_EXPLICIT_LIFECYCLE -DFN_DISK_STATIC_BUFFERS
 TARGET_ASFLAGS_amiga-driver :=
 
 # Get flags for current target
