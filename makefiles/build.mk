@@ -227,15 +227,15 @@ else ifeq ($(COMPILER_FAMILY),wcc)
 # Open Watcom compilation
 $(OBJDIR)/$(TARGET)/common/%.o: $(SRCDIR)/common/%.c | $(OBJDIR)/$(TARGET)/common
 	@echo "  CC $<"
-	$(CC) $(CFLAGS) -fo=$@ $<
+	$(CC) $(CFLAGS) -fo=$@ -fr=$(@:.o=.err) $<
 
 $(OBJDIR)/$(TARGET)/legacy/%.o: $(SRCDIR)/legacy/%.c | $(OBJDIR)/$(TARGET)/legacy
 	@echo "  CC $<"
-	$(CC) $(CFLAGS) -fo=$@ $<
+	$(CC) $(CFLAGS) -fo=$@ -fr=$(@:.o=.err) $<
 
 $(OBJDIR)/$(TARGET)/platform/$(PLATFORM)/%.o: $(SRCDIR)/platform/$(PLATFORM)/%.c | $(OBJDIR)/$(TARGET)/platform/$(PLATFORM)
 	@echo "  CC $<"
-	$(CC) $(CFLAGS) -fo=$@ $<
+	$(CC) $(CFLAGS) -fo=$@ -fr=$(@:.o=.err) $<
 else
 # CC65 compilation
 $(OBJDIR)/$(TARGET)/common/%.o: $(SRCDIR)/common/%.c | $(OBJDIR)/$(TARGET)/common

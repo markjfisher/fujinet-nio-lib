@@ -124,7 +124,7 @@ uint8_t fn_disk_mount(uint8_t slot, const char *uri, uint8_t readonly,
     uint8_t result;
 
     if (!uri) return FN_ERR_INVALID;
-#if !defined(__CC65__)
+#if !defined(__CC65__) && !defined(__WATCOMC__)
     if (strlen(uri) > 0xFFFFu) return FN_ERR_INVALID;
 #endif
     uri_length = (uint16_t)strlen(uri);

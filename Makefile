@@ -22,7 +22,7 @@ override PROGRAM := fujinet-nio
 .PHONY: all clean help disk-bbc disk-bbc-clib test-legacy test-mount-resolve \
 	test-appstore-read test-slot-catalog test-bbc test-bbc-scripted \
 	test-bbc-real test-wifi test-disk test-session test-library-link test \
-	test-all-build msdos $(TARGETS)
+	test-all-build check msdos $(TARGETS)
 
 # Default target: build all
 all:
@@ -133,6 +133,15 @@ test-all-build:
 
 test: test-library-link test-legacy test-mount-resolve test-appstore-read test-slot-catalog test-wifi test-disk test-session
 
+# Fast required change check: compile every configured target, then run the
+# host-side tests and public archive-link test. Keep this as a recipe rather
+# than parallel prerequisites so a clean build always has a deterministic
+# order.
+check:
+	@echo "Running fast all-target library check..."
+	$(MAKE) all
+	$(MAKE) test
+
 # Help
 help:
 	@echo "FujiNet-NIO Library Build System"
@@ -150,6 +159,7 @@ help:
 	@echo "  make test-session - Run channel/session wire tests"
 	@echo "  make test-library-link - Build Linux library and link a public API consumer"
 	@echo "  make test-all-build - Build all configured library targets"
+	@echo "  make check - Build all targets and run the fast host-side test suite"
 	@echo "  make test - Run all host-side wire tests"
 	@echo "  make clean      - Remove all build artifacts"
 	@echo "  make help       - Show this help message"
