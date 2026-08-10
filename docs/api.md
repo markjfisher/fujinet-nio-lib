@@ -78,6 +78,14 @@ network-session API:
 contains the device status. Returns a library transport/error code if the
 request could not be exchanged or parsed.
 
+## DiskDevice client codec
+
+The typed `fn_disk_*` API wraps the generic DiskDevice v1 protocol at wire
+device `0xFC`. It provides Mount, Unmount, Info, ClearChanged, ReadSector, and
+WriteSector operations without exposing payload layouts to callers. See
+[`disk_device_client.md`](disk_device_client.md) for the complete codec
+contract and phase-one Amiga profile.
+
 ## Application Storage
 
 The app-store API talks to fujinet-nio's dedicated AppStore service (`0xF1`).

@@ -84,6 +84,7 @@ COMMON_SRCS_DEFAULT := $(SRCDIR)/common/fn_slip.c \
                        $(SRCDIR)/common/fn_mount_resolve_default.c \
                        $(SRCDIR)/common/fn_resolve_mount_target.c \
                        $(SRCDIR)/common/fn_format_mount_display.c \
+                       $(SRCDIR)/common/fn_disk.c \
                        $(SRCDIR)/common/fn_raw.c
 COMMON_SRCS_DEFAULT += $(SRCDIR)/common/fn_wifi.c
 

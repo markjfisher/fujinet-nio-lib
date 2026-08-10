@@ -347,6 +347,74 @@ typedef struct {
 typedef fn_service_io_t fn_appstore_io_t;
 typedef fn_service_io_t fn_slot_catalog_io_t;
 
+/* ============================================================================
+ * DiskDevice v1 client API
+ * ============================================================================ */
+
+#define FN_DISK_PROTOCOL_VERSION 1
+#define FN_DISK_TYPE_AUTO 0
+#define FN_DISK_TYPE_ATR  1
+#define FN_DISK_TYPE_SSD  2
+#define FN_DISK_TYPE_DSD  3
+#define FN_DISK_TYPE_RAW  4
+
+/** DiskDevice Info/Mount response flags. */
+#define FN_DISK_FLAG_MOUNTED  0x01
+#define FN_DISK_FLAG_READONLY 0x02
+#define FN_DISK_FLAG_DIRTY    0x04
+#define FN_DISK_FLAG_CHANGED  0x08
+
+/** Typed geometry and state returned by DiskDevice Mount/Info. */
+typedef struct {
+    uint8_t flags;
+    uint8_t slot;
+    uint8_t type;
+    uint16_t sector_size;
+    uint32_t sector_count;
+    uint8_t last_error;
+} fn_disk_info_t;
+
+/**
+ * Mount an image URI into a DiskDevice slot.
+ *
+ * The URI is copied into the FujiBus request and is not retained by the
+ * library. Slot numbering is 1-based. A non-zero readonly value requests
+ * read-only access; the effective mode is returned in info when supplied.
+ */
+uint8_t fn_disk_mount(uint8_t slot, const char *uri, uint8_t readonly,
+                      uint8_t type, uint16_t sector_size_hint,
+                      fn_disk_info_t *info);
+
+/** Unmount a DiskDevice slot. */
+uint8_t fn_disk_unmount(uint8_t slot);
+
+/** Query DiskDevice slot state and geometry. */
+uint8_t fn_disk_info(uint8_t slot, fn_disk_info_t *info);
+
+/** Clear the DiskDevice changed flag for a slot. */
+uint8_t fn_disk_clear_changed(uint8_t slot);
+
+/**
+ * Read one sector by LBA.
+ *
+ * `data_capacity` is sent as the protocol maxBytes value. The response may
+ * contain fewer bytes for variable-sector formats; `data_length` receives
+ * the returned byte count.
+ */
+uint8_t fn_disk_read_sector(uint8_t slot, uint32_t lba,
+                            uint8_t *data, uint16_t data_capacity,
+                            uint16_t *data_length);
+
+/**
+ * Write one sector by LBA.
+ *
+ * The server validates that data_length contains a complete sector. This
+ * helper does not assume a particular geometry, so callers should obtain
+ * sector_size through fn_disk_mount() or fn_disk_info() first.
+ */
+uint8_t fn_disk_write_sector(uint8_t slot, uint32_t lba,
+                             const uint8_t *data, uint16_t data_length);
+
 /** Slot catalogue range page; pointers refer to the caller-owned I/O buffer. */
 typedef struct {
     uint8_t flags;
