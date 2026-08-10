@@ -24,16 +24,11 @@
 
 #include "fujinet-nio.h"
 #include "fn_platform.h"
-#include "fn_protocol.h"
 #include "fn_internal.h"
+#include "fn_session.h"
 
 #ifndef FN_AMIGA_BAUD
 #define FN_AMIGA_BAUD 19200
-#endif
-
-/* Read timeout: number of 100ms polling loops before giving up */
-#ifndef FN_AMIGA_READ_TIMEOUT_LOOPS
-#define FN_AMIGA_READ_TIMEOUT_LOOPS 50   /* 50 * 100ms = 5 seconds */
 #endif
 
 #ifndef FN_TRANSPORT_WIRE_BUF_SIZE
@@ -46,7 +41,9 @@ static struct IOExtSer  *_serial_req  = NULL;
 static BYTE              _device_open = 0;
 static const UBYTE        _serial_device_name[] = "serial.device";
 
-static UBYTE _wire_buf[FN_TRANSPORT_WIRE_BUF_SIZE];
+static uint8_t _wire_buf[FN_TRANSPORT_WIRE_BUF_SIZE];
+static fn_stream_session_t _session;
+static uint8_t _session_initialized;
 
 void fn_transport_close(void);
 
@@ -76,35 +73,48 @@ static uint8_t serial_read_byte(uint8_t *byte_out)
     return FN_OK;
 }
 
-static uint8_t slip_write_frame(const uint8_t *request, uint16_t req_len)
+/* The Amiga serial device is opened by fn_transport_init(). The shared
+ * session therefore owns framing and request/response bounds, while these
+ * callbacks provide only the byte-oriented channel contract. */
+static uint8_t session_open(void *context)
 {
-    uint16_t i;
-    uint8_t byte;
-    uint8_t esc[2];
-    uint8_t end_byte = SLIP_END;
-
-    /* Leading END */
-    if (serial_write(&end_byte, 1) != FN_OK) return FN_ERR_IO;
-
-    for (i = 0; i < req_len; i++) {
-        byte = request[i];
-        if (byte == SLIP_END) {
-            esc[0] = SLIP_ESCAPE;
-            esc[1] = SLIP_ESC_END;
-            if (serial_write(esc, 2) != FN_OK) return FN_ERR_IO;
-        } else if (byte == SLIP_ESCAPE) {
-            esc[0] = SLIP_ESCAPE;
-            esc[1] = SLIP_ESC_ESC;
-            if (serial_write(esc, 2) != FN_OK) return FN_ERR_IO;
-        } else {
-            if (serial_write(&byte, 1) != FN_OK) return FN_ERR_IO;
-        }
-    }
-
-    /* Trailing END */
-    if (serial_write(&end_byte, 1) != FN_OK) return FN_ERR_IO;
+    (void)context;
     return FN_OK;
 }
+
+static void session_close(void *context)
+{
+    (void)context;
+}
+
+static uint8_t session_write_byte(void *context, uint8_t value,
+                                  uint16_t timeout_ms)
+{
+    (void)context;
+    (void)timeout_ms;
+    return serial_write(&value, 1);
+}
+
+static uint8_t session_read_byte(void *context, uint8_t *value,
+                                 uint16_t timeout_ms)
+{
+    (void)context;
+    (void)timeout_ms;
+    return serial_read_byte(value) == FN_OK ? 1 : 0;
+}
+
+static void session_flush(void *context)
+{
+    (void)context;
+}
+
+static const fn_stream_channel_ops_t _session_ops = {
+    session_open,
+    session_close,
+    session_write_byte,
+    session_read_byte,
+    session_flush
+};
 
 /* -------------------------------------------------------------------------
  * Public platform interface
@@ -159,6 +169,17 @@ uint8_t fn_transport_init(void)
         return FN_ERR_IO;
     }
 
+    if (fn_stream_session_init(&_session, &_session_ops, 0, _wire_buf,
+                               sizeof(_wire_buf)) != FN_OK ||
+        fn_stream_session_open(&_session) != FN_OK) {
+        CloseDevice((struct IORequest *)_serial_req);
+        DeleteExtIO((struct IORequest *)_serial_req);
+        DeletePort(_serial_port);
+        _serial_req  = NULL;
+        _serial_port = NULL;
+        return FN_ERR_IO;
+    }
+    _session_initialized = 1;
     _device_open = 1;
     /* serial.device is process-global and exclusive on AmigaOS.  Applications
      * commonly run as short-lived CLI commands, so release it automatically
@@ -175,63 +196,21 @@ uint8_t fn_transport_ready(void)
 
 uint8_t fn_transport_exchange(void)
 {
-    const uint8_t *request  = _fn_transport_ctx.request;
-    uint16_t       req_len  = _fn_transport_ctx.req_len;
-    uint8_t       *response = _fn_transport_ctx.response;
-    uint16_t       resp_max = _fn_transport_ctx.resp_max;
-    uint16_t       raw_len  = 0;
-    uint8_t        byte;
-    int            loops;
-    uint8_t        ret;
-
-    if (!_device_open) return FN_ERR_NOT_FOUND;
-    if (!request || req_len == 0 || !response) return FN_ERR_INVALID;
-
-    if (resp_max > FN_TRANSPORT_WIRE_BUF_SIZE) {
-        resp_max = FN_TRANSPORT_WIRE_BUF_SIZE;
-    }
-
-    /* Send the SLIP-encoded request */
-    ret = slip_write_frame(request, req_len);
-    if (ret != FN_OK) return ret;
-
-    /* Read SLIP-encoded response one byte at a time.
-     * We stop when we see the closing 0xC0 after at least one non-END byte,
-     * or when we time out. */
-    loops = 0;
-    while (raw_len < resp_max) {
-        if (serial_read_byte(&byte) != FN_OK) {
-            /* Treat a read error as a poll timeout — retry up to limit */
-            loops++;
-            if (loops >= FN_AMIGA_READ_TIMEOUT_LOOPS) {
-                return FN_ERR_TIMEOUT;
-            }
-            continue;
-        }
-        loops = 0;  /* reset timeout on successful byte */
-
-        _wire_buf[raw_len++] = byte;
-
-        /* Detect end of SLIP frame: leading C0 ... trailing C0 */
-        if (raw_len >= 2 &&
-            _wire_buf[0] == SLIP_END &&
-            byte == SLIP_END) {
-            break;
-        }
-    }
-
-    /* SLIP-decode the response */
-    _fn_transport_ctx.resp_len = fn_slip_decode(_wire_buf, raw_len, response);
-    if (_fn_transport_ctx.resp_len == 0) {
-        return FN_ERR_IO;
-    }
-
-    return FN_OK;
+    if (!_device_open || !_session_initialized) return FN_ERR_NOT_FOUND;
+    return fn_stream_session_request(&_session,
+                                     _fn_transport_ctx.request,
+                                     _fn_transport_ctx.req_len,
+                                     _fn_transport_ctx.response,
+                                     _fn_transport_ctx.resp_max,
+                                     &_fn_transport_ctx.resp_len,
+                                     FN_TRANSPORT_TIMEOUT);
 }
 
 void fn_transport_close(void)
 {
     if (!_device_open) return;
+    fn_stream_session_close(&_session);
+    _session_initialized = 0;
     CloseDevice((struct IORequest *)_serial_req);
     DeleteExtIO((struct IORequest *)_serial_req);
     DeletePort(_serial_port);

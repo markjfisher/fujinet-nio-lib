@@ -1,10 +1,8 @@
 # FujiBus channel/session contract
 
 `fn_stream_session_t` is the shared session boundary for legacy byte-stream
-channels. It is used by the current MS-DOS RS-232, POSIX serial/PTY, and
-TCP-style stream paths through the existing byte-channel adapters. Amiga
-serial support will consume the same contract when the Amiga driver skeleton
-is added.
+channels. It is used by the current MS-DOS RS-232, POSIX serial/PTY, Amiga
+serial, and TCP-style stream paths through their byte-channel adapters.
 
 The channel implementation supplies only:
 
