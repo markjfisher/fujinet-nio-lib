@@ -18,6 +18,7 @@
 #include <exec/types.h>
 #include <exec/memory.h>
 #include <devices/serial.h>
+#include <devices/timer.h>
 #include <proto/exec.h>
 #include <clib/alib_protos.h>
 #ifndef FN_AMIGA_EXPLICIT_LIFECYCLE
@@ -41,6 +42,10 @@
 static struct MsgPort   *_serial_port = NULL;
 static struct IOExtSer  *_serial_req  = NULL;
 static BYTE              _device_open = 0;
+static struct MsgPort   *_serial_reply_port = NULL;
+static struct MsgPort   *_timer_port = NULL;
+static struct timerequest *_timer_req = NULL;
+static BYTE              _timer_open = 0;
 static const UBYTE        _serial_device_name[] = "serial.device";
 
 static uint8_t _wire_buf[FN_TRANSPORT_WIRE_BUF_SIZE];
@@ -67,7 +72,7 @@ static uint8_t serial_write(const uint8_t *buf, uint16_t len)
     return FN_OK;
 }
 
-static uint8_t serial_read_byte(uint8_t *byte_out)
+static uint8_t serial_read_byte(uint8_t *byte_out, uint16_t timeout_ms)
 {
     ULONG available;
 
@@ -92,7 +97,28 @@ static uint8_t serial_read_byte(uint8_t *byte_out)
         _serial_req->IOSer.io_Data = (APTR)byte_out;
         _serial_req->IOSer.io_Length = 1;
         _serial_req->IOSer.io_Actual = 0;
-        return DoIO((struct IORequest *)_serial_req) == 0 ? FN_OK : FN_ERR_IO;
+        _timer_req->tr_node.io_Command = TR_ADDREQUEST;
+        _timer_req->tr_time.tv_secs = timeout_ms / 1000;
+        _timer_req->tr_time.tv_micro = (timeout_ms % 1000) * 1000;
+        SendIO((struct IORequest *)_serial_req);
+        SendIO((struct IORequest *)_timer_req);
+        Wait((1UL << _serial_reply_port->mp_SigBit) |
+             (1UL << _timer_port->mp_SigBit));
+        if (CheckIO((struct IORequest *)_serial_req)) {
+            AbortIO((struct IORequest *)_timer_req);
+            WaitIO((struct IORequest *)_timer_req);
+            return WaitIO((struct IORequest *)_serial_req) == 0 ?
+                   FN_OK : FN_ERR_IO;
+        }
+        if (CheckIO((struct IORequest *)_timer_req)) {
+            AbortIO((struct IORequest *)_serial_req);
+            WaitIO((struct IORequest *)_serial_req);
+            WaitIO((struct IORequest *)_timer_req);
+            return FN_ERR_TIMEOUT;
+        }
+        AbortIO((struct IORequest *)_timer_req);
+        WaitIO((struct IORequest *)_timer_req);
+        return WaitIO((struct IORequest *)_serial_req) == 0 ? FN_OK : FN_ERR_IO;
     }
     if (available > sizeof(_read_buf)) {
         available = sizeof(_read_buf);
@@ -140,8 +166,7 @@ static uint8_t session_read_byte(void *context, uint8_t *value,
                                  uint16_t timeout_ms)
 {
     (void)context;
-    (void)timeout_ms;
-    return serial_read_byte(value) == FN_OK ? 1 : 0;
+    return serial_read_byte(value, timeout_ms) == FN_OK ? 1 : 0;
 }
 
 static void session_flush(void *context)
@@ -211,9 +236,41 @@ uint8_t fn_transport_init(void)
         return FN_ERR_IO;
     }
 
+    _timer_port = CreatePort(NULL, 0);
+    if (!_timer_port) {
+        CloseDevice((struct IORequest *)_serial_req);
+        DeleteExtIO((struct IORequest *)_serial_req);
+        DeletePort(_serial_port);
+        _serial_req = NULL;
+        _serial_port = NULL;
+        return FN_ERR_IO;
+    }
+    _timer_req = (struct timerequest *)CreateExtIO(
+        _timer_port, sizeof(struct timerequest));
+    if (!_timer_req || OpenDevice((CONST_STRPTR)TIMERNAME, UNIT_MICROHZ,
+                                  (struct IORequest *)_timer_req, 0) != 0) {
+        if (_timer_req) DeleteExtIO((struct IORequest *)_timer_req);
+        DeletePort(_timer_port);
+        _timer_req = NULL;
+        _timer_port = NULL;
+        CloseDevice((struct IORequest *)_serial_req);
+        DeleteExtIO((struct IORequest *)_serial_req);
+        DeletePort(_serial_port);
+        _serial_req = NULL;
+        _serial_port = NULL;
+        return FN_ERR_NOT_FOUND;
+    }
+    _timer_open = 1;
+
     if (fn_stream_session_init(&_session, &_session_ops, 0, _wire_buf,
                                sizeof(_wire_buf)) != FN_OK ||
         fn_stream_session_open(&_session) != FN_OK) {
+        CloseDevice((struct IORequest *)_timer_req);
+        DeleteExtIO((struct IORequest *)_timer_req);
+        DeletePort(_timer_port);
+        _timer_open = 0;
+        _timer_req = NULL;
+        _timer_port = NULL;
         CloseDevice((struct IORequest *)_serial_req);
         DeleteExtIO((struct IORequest *)_serial_req);
         DeletePort(_serial_port);
@@ -225,6 +282,7 @@ uint8_t fn_transport_init(void)
     _read_pos = 0;
     _read_len = 0;
     _device_open = 1;
+    _serial_reply_port = _serial_port;
     /* CLI applications use process-exit cleanup. Resident drivers are built
      * with FN_AMIGA_EXPLICIT_LIFECYCLE because they have no process exit and
      * must release the transport through their device lifecycle instead. */
@@ -268,6 +326,7 @@ uint8_t fn_transport_exchange_buffers(const uint8_t *request,
      * each synchronous exchange a reply port owned by its current caller. */
     caller_port = CreatePort(NULL, 0);
     if (caller_port == NULL) return FN_ERR_IO;
+    _serial_reply_port = caller_port;
     _serial_req->IOSer.io_Message.mn_ReplyPort = caller_port;
 
     result = fn_stream_session_request(&_session,
@@ -279,6 +338,7 @@ uint8_t fn_transport_exchange_buffers(const uint8_t *request,
                                        FN_TRANSPORT_TIMEOUT);
 
     _serial_req->IOSer.io_Message.mn_ReplyPort = _serial_port;
+    _serial_reply_port = _serial_port;
     DeletePort(caller_port);
     return result;
 }
@@ -288,11 +348,20 @@ void fn_transport_close(void)
     if (!_device_open) return;
     fn_stream_session_close(&_session);
     _session_initialized = 0;
+    if (_timer_open) {
+        CloseDevice((struct IORequest *)_timer_req);
+        DeleteExtIO((struct IORequest *)_timer_req);
+        DeletePort(_timer_port);
+        _timer_open = 0;
+        _timer_req = NULL;
+        _timer_port = NULL;
+    }
     CloseDevice((struct IORequest *)_serial_req);
     DeleteExtIO((struct IORequest *)_serial_req);
     DeletePort(_serial_port);
     _serial_req  = NULL;
     _serial_port = NULL;
+    _serial_reply_port = NULL;
     _device_open = 0;
 }
 
