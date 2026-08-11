@@ -36,6 +36,9 @@ extern "C" {
  */
 uint8_t fn_transport_init(void);
 
+/** Close a platform transport opened by fn_transport_init(). */
+void fn_transport_close(void);
+
 /**
  * @brief Check if transport is ready for communication.
  * 
