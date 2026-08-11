@@ -54,6 +54,7 @@ uint8_t fn_raw_call(uint8_t device, uint8_t command,
             put_u32le(out + 8, 1760); response->payload_length = 12; break;
         case 0x02:
         case 0x06:
+        case 0x0E:
             if (reply_capacity < 5) return FN_ERR_INVALID;
             out[0] = 1; out[1] = 0; out[2] = 0; out[3] = 0; out[4] = in[1];
             response->payload_length = 5; break;
@@ -105,6 +106,9 @@ static int test_mount_info_read_write(void)
     if (fn_disk_write_sector(1, 1759, write_data, sizeof(write_data)) != FN_OK ||
         last_command != 0x04 || last_payload_length != 12) { puts("write mismatch"); return 1; }
     if (fn_disk_clear_changed(1) != FN_OK) { puts("clear mismatch"); return 1; }
+    if (fn_disk_flush(1) != FN_OK || last_command != 0x0E ||
+        last_payload_length != 2 || last_payload[0] != 1 ||
+        last_payload[1] != 1) { puts("flush mismatch"); return 1; }
     if (fn_disk_unmount(1) != FN_OK) { puts("unmount mismatch"); return 1; }
     return 0;
 }

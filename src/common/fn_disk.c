@@ -10,7 +10,8 @@ enum {
     FN_DISK_CMD_READ_SECTOR = 0x03,
     FN_DISK_CMD_WRITE_SECTOR = 0x04,
     FN_DISK_CMD_INFO = 0x05,
-    FN_DISK_CMD_CLEAR_CHANGED = 0x06
+    FN_DISK_CMD_CLEAR_CHANGED = 0x06,
+    FN_DISK_CMD_FLUSH = 0x0E
 };
 
 enum {
@@ -299,6 +300,56 @@ uint8_t fn_disk_read_sector_context(fn_disk_client_context_t *context,
     *data_length = payload_length;
     return FN_OK;
 }
+
+static uint8_t context_slot_command(fn_disk_client_context_t *context,
+                                    uint8_t command, uint8_t slot)
+{
+    uint16_t reply_length = 0;
+    uint8_t result;
+    if (context == NULL) return FN_ERR_INVALID;
+    context->codec_scratch[0] = FN_DISK_PROTOCOL_VERSION;
+    context->codec_scratch[1] = slot;
+    result = context_disk_call(context, command, 2, &reply_length);
+    if (result != FN_OK) return result;
+    if (reply_length != 5 ||
+        context->codec_scratch[0] != FN_DISK_PROTOCOL_VERSION ||
+        context->codec_scratch[4] != slot) return FN_ERR_IO;
+    return FN_OK;
+}
+
+uint8_t fn_disk_write_sector_context(fn_disk_client_context_t *context,
+                                     uint8_t slot, uint32_t lba,
+                                     const uint8_t *data,
+                                     uint16_t data_length)
+{
+    uint16_t reply_length = 0;
+    uint8_t result;
+    if (context == NULL || data == NULL || data_length == 0 ||
+        (uint32_t)8 + data_length > sizeof(context->codec_scratch))
+        return FN_ERR_INVALID;
+    context->codec_scratch[0] = FN_DISK_PROTOCOL_VERSION;
+    context->codec_scratch[1] = slot;
+    put_u32le(context->codec_scratch + 2, lba);
+    put_u16le(context->codec_scratch + 6, data_length);
+    memcpy(context->codec_scratch + 8, data, data_length);
+    result = context_disk_call(context, FN_DISK_CMD_WRITE_SECTOR,
+                               (uint16_t)(8 + data_length), &reply_length);
+    if (result != FN_OK) return result;
+    if (reply_length != 11 ||
+        context->codec_scratch[0] != FN_DISK_PROTOCOL_VERSION ||
+        context->codec_scratch[4] != slot ||
+        get_u32le(context->codec_scratch + 5) != lba ||
+        get_u16le(context->codec_scratch + 9) != data_length) return FN_ERR_IO;
+    return FN_OK;
+}
+
+uint8_t fn_disk_unmount_context(fn_disk_client_context_t *context, uint8_t slot)
+{ return context_slot_command(context, FN_DISK_CMD_UNMOUNT, slot); }
+uint8_t fn_disk_clear_changed_context(fn_disk_client_context_t *context,
+                                      uint8_t slot)
+{ return context_slot_command(context, FN_DISK_CMD_CLEAR_CHANGED, slot); }
+uint8_t fn_disk_flush_context(fn_disk_client_context_t *context, uint8_t slot)
+{ return context_slot_command(context, FN_DISK_CMD_FLUSH, slot); }
 #endif
 
 uint8_t fn_disk_mount(uint8_t slot, const char *uri, uint8_t readonly,
@@ -359,6 +410,24 @@ uint8_t fn_disk_unmount(uint8_t slot)
     disk_request[0] = FN_DISK_PROTOCOL_VERSION;
     disk_request[1] = slot;
     result = disk_call(FN_DISK_CMD_UNMOUNT, disk_request, 2,
+                       disk_reply, sizeof(disk_reply), &reply_length);
+    if (result != FN_OK) return result;
+    if (reply_length != 5 || disk_reply[0] != FN_DISK_PROTOCOL_VERSION ||
+        disk_reply[4] != slot) return FN_ERR_IO;
+    return FN_OK;
+}
+
+uint8_t fn_disk_flush(uint8_t slot)
+{
+#if !defined(__CC65__)
+    uint8_t disk_request[2];
+    uint8_t disk_reply[16];
+#endif
+    uint16_t reply_length = 0;
+    uint8_t result;
+    disk_request[0] = FN_DISK_PROTOCOL_VERSION;
+    disk_request[1] = slot;
+    result = disk_call(FN_DISK_CMD_FLUSH, disk_request, 2,
                        disk_reply, sizeof(disk_reply), &reply_length);
     if (result != FN_OK) return result;
     if (reply_length != 5 || disk_reply[0] != FN_DISK_PROTOCOL_VERSION ||

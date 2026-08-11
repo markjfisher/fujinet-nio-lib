@@ -46,10 +46,19 @@ uint8_t fn_raw_call(uint8_t device, uint8_t command,
     uint8_t *out = (uint8_t *)reply;
 
     (void)device;
-    (void)command;
     (void)payload;
     (void)payload_length;
-    if (reply_capacity < 12 || !response) return FN_ERR_INVALID;
+    if (!response) return FN_ERR_INVALID;
+    if (command == 0x0E) {
+        if (reply_capacity < 5) return FN_ERR_INVALID;
+        out[0] = FN_DISK_PROTOCOL_VERSION;
+        out[1] = out[2] = out[3] = 0;
+        out[4] = 1;
+        response->status = FN_OK;
+        response->payload_length = 5;
+        return FN_OK;
+    }
+    if (reply_capacity < 12) return FN_ERR_INVALID;
     out[0] = FN_DISK_PROTOCOL_VERSION;
     out[1] = FN_DISK_FLAG_MOUNTED | FN_DISK_FLAG_READONLY;
     out[2] = 0;
@@ -83,5 +92,10 @@ int main(void)
                       &info) != FN_OK) return 1;
     if (info.slot != 1 || info.sector_size != 512 ||
         info.sector_count != 1760) return 1;
+    if (fn_disk_flush(1) != FN_OK) return 1;
+    (void)&fn_disk_write_sector_context;
+    (void)&fn_disk_flush_context;
+    (void)&fn_disk_unmount_context;
+    (void)&fn_disk_clear_changed_context;
     return 0;
 }

@@ -403,6 +403,16 @@ uint8_t fn_disk_read_sector_context(fn_disk_client_context_t *context,
                                     uint8_t slot, uint32_t lba, uint8_t *data,
                                     uint16_t data_capacity,
                                     uint16_t *data_length);
+uint8_t fn_disk_write_sector_context(fn_disk_client_context_t *context,
+                                     uint8_t slot, uint32_t lba,
+                                     const uint8_t *data,
+                                     uint16_t data_length);
+uint8_t fn_disk_unmount_context(fn_disk_client_context_t *context,
+                                uint8_t slot);
+uint8_t fn_disk_clear_changed_context(fn_disk_client_context_t *context,
+                                      uint8_t slot);
+uint8_t fn_disk_flush_context(fn_disk_client_context_t *context,
+                              uint8_t slot);
 
 /**
  * Mount an image URI into a DiskDevice slot.
@@ -417,6 +427,9 @@ uint8_t fn_disk_mount(uint8_t slot, const char *uri, uint8_t readonly,
 
 /** Unmount a DiskDevice slot. */
 uint8_t fn_disk_unmount(uint8_t slot);
+
+/** Make successful writes since the previous flush durable. */
+uint8_t fn_disk_flush(uint8_t slot);
 
 /** Query DiskDevice slot state and geometry. */
 uint8_t fn_disk_info(uint8_t slot, fn_disk_info_t *info);
