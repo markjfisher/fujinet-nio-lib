@@ -42,7 +42,6 @@
 static struct MsgPort   *_serial_port = NULL;
 static struct IOExtSer  *_serial_req  = NULL;
 static BYTE              _device_open = 0;
-static struct MsgPort   *_serial_reply_port = NULL;
 static struct MsgPort   *_timer_port = NULL;
 static struct timerequest *_timer_req = NULL;
 static BYTE              _timer_open = 0;
@@ -90,35 +89,32 @@ static uint8_t serial_read_byte(uint8_t *byte_out, uint16_t timeout_ms)
     }
     available = _serial_req->IOSer.io_Actual;
     if (available == 0) {
-        /* SDCMD_QUERY is immediate. A tight session poll would consume its
-         * logical timeout before Amiberry or hardware can deliver the first
-         * response byte, so block for that byte and then drain in batches. */
-        _serial_req->IOSer.io_Command = CMD_READ;
-        _serial_req->IOSer.io_Data = (APTR)byte_out;
-        _serial_req->IOSer.io_Length = 1;
-        _serial_req->IOSer.io_Actual = 0;
-        _timer_req->tr_node.io_Command = TR_ADDREQUEST;
-        _timer_req->tr_time.tv_secs = timeout_ms / 1000;
-        _timer_req->tr_time.tv_micro = (timeout_ms % 1000) * 1000;
-        SendIO((struct IORequest *)_serial_req);
-        SendIO((struct IORequest *)_timer_req);
-        Wait((1UL << _serial_reply_port->mp_SigBit) |
-             (1UL << _timer_port->mp_SigBit));
-        if (CheckIO((struct IORequest *)_serial_req)) {
-            AbortIO((struct IORequest *)_timer_req);
-            WaitIO((struct IORequest *)_timer_req);
-            return WaitIO((struct IORequest *)_serial_req) == 0 ?
-                   FN_OK : FN_ERR_IO;
+        /* SDCMD_QUERY is immediate. Poll in timer-backed slices instead of
+         * leaving a serial CMD_READ outstanding and aborting it on timeout.
+         * The latter is not reliably cancellable by every Amiga serial.device
+         * implementation, including the Amiberry emulation. */
+        uint16_t remaining = timeout_ms;
+        while (remaining != 0) {
+            uint16_t slice = remaining > 10 ? 10 : remaining;
+            _timer_req->tr_node.io_Command = TR_ADDREQUEST;
+            _timer_req->tr_time.tv_secs = 0;
+            _timer_req->tr_time.tv_micro = slice * 1000;
+            if (DoIO((struct IORequest *)_timer_req) != 0)
+                return FN_ERR_IO;
+
+            _serial_req->IOSer.io_Command = SDCMD_QUERY;
+            _serial_req->IOSer.io_Data = NULL;
+            _serial_req->IOSer.io_Length = 0;
+            _serial_req->IOSer.io_Actual = 0;
+            if (DoIO((struct IORequest *)_serial_req) != 0)
+                return FN_ERR_IO;
+            if (_serial_req->IOSer.io_Actual != 0) {
+                available = _serial_req->IOSer.io_Actual;
+                break;
+            }
+            remaining = (uint16_t)(remaining - slice);
         }
-        if (CheckIO((struct IORequest *)_timer_req)) {
-            AbortIO((struct IORequest *)_serial_req);
-            WaitIO((struct IORequest *)_serial_req);
-            WaitIO((struct IORequest *)_timer_req);
-            return FN_ERR_TIMEOUT;
-        }
-        AbortIO((struct IORequest *)_timer_req);
-        WaitIO((struct IORequest *)_timer_req);
-        return WaitIO((struct IORequest *)_serial_req) == 0 ? FN_OK : FN_ERR_IO;
+        if (available == 0) return FN_ERR_TIMEOUT;
     }
     if (available > sizeof(_read_buf)) {
         available = sizeof(_read_buf);
@@ -282,7 +278,6 @@ uint8_t fn_transport_init(void)
     _read_pos = 0;
     _read_len = 0;
     _device_open = 1;
-    _serial_reply_port = _serial_port;
     /* CLI applications use process-exit cleanup. Resident drivers are built
      * with FN_AMIGA_EXPLICIT_LIFECYCLE because they have no process exit and
      * must release the transport through their device lifecycle instead. */
@@ -326,7 +321,6 @@ uint8_t fn_transport_exchange_buffers(const uint8_t *request,
      * each synchronous exchange a reply port owned by its current caller. */
     caller_port = CreatePort(NULL, 0);
     if (caller_port == NULL) return FN_ERR_IO;
-    _serial_reply_port = caller_port;
     _serial_req->IOSer.io_Message.mn_ReplyPort = caller_port;
 
     result = fn_stream_session_request(&_session,
@@ -338,7 +332,6 @@ uint8_t fn_transport_exchange_buffers(const uint8_t *request,
                                        FN_TRANSPORT_TIMEOUT);
 
     _serial_req->IOSer.io_Message.mn_ReplyPort = _serial_port;
-    _serial_reply_port = _serial_port;
     DeletePort(caller_port);
     return result;
 }
@@ -361,7 +354,6 @@ void fn_transport_close(void)
     DeletePort(_serial_port);
     _serial_req  = NULL;
     _serial_port = NULL;
-    _serial_reply_port = NULL;
     _device_open = 0;
 }
 
