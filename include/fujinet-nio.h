@@ -374,6 +374,13 @@ typedef struct {
     uint8_t last_error;
 } fn_disk_info_t;
 
+#define FN_DISK_INSPECT_BOOT_BYTES 512U
+typedef struct {
+    fn_disk_info_t media;
+    uint16_t boot_length;
+    uint8_t boot_bytes[FN_DISK_INSPECT_BOOT_BYTES];
+} fn_disk_inspection_t;
+
 /** Explicit DiskDevice client state for resident or concurrent callers. */
 #define FN_DISK_CONTEXT_PACKET_SIZE 1024
 typedef uint8_t (*fn_disk_exchange_fn)(void *exchange_context,
@@ -412,7 +419,11 @@ uint8_t fn_disk_unmount_context(fn_disk_client_context_t *context,
 uint8_t fn_disk_clear_changed_context(fn_disk_client_context_t *context,
                                       uint8_t slot);
 uint8_t fn_disk_flush_context(fn_disk_client_context_t *context,
-                              uint8_t slot);
+                               uint8_t slot);
+uint8_t fn_disk_inspect_context(fn_disk_client_context_t *context,
+                                const char *uri, uint8_t type,
+                                uint16_t sector_size_hint,
+                                fn_disk_inspection_t *inspection);
 
 /**
  * Mount an image URI into a DiskDevice slot.

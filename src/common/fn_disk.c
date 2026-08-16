@@ -11,7 +11,8 @@ enum {
     FN_DISK_CMD_WRITE_SECTOR = 0x04,
     FN_DISK_CMD_INFO = 0x05,
     FN_DISK_CMD_CLEAR_CHANGED = 0x06,
-    FN_DISK_CMD_FLUSH = 0x0E
+    FN_DISK_CMD_FLUSH = 0x0E,
+    FN_DISK_CMD_INSPECT = 0x0F
 };
 
 enum {
@@ -270,6 +271,41 @@ uint8_t fn_disk_info_context(fn_disk_client_context_t *context, uint8_t slot,
     result = context_disk_call(context, FN_DISK_CMD_INFO, 2, &reply_length);
     if (result != FN_OK) return result;
     return parse_info(context->codec_scratch, reply_length, info);
+}
+
+uint8_t fn_disk_inspect_context(fn_disk_client_context_t *context,
+                                const char *uri, uint8_t type,
+                                uint16_t sector_size_hint,
+                                fn_disk_inspection_t *inspection)
+{
+    uint16_t uri_length;
+    uint16_t reply_length = 0;
+    uint16_t boot_length;
+    uint8_t result;
+    if (context == NULL || uri == NULL || inspection == NULL) return FN_ERR_INVALID;
+    uri_length = (uint16_t)strlen(uri);
+    if ((uint32_t)10 + uri_length > sizeof(context->codec_scratch)) return FN_ERR_INVALID;
+    context->codec_scratch[0] = FN_DISK_PROTOCOL_VERSION;
+    context->codec_scratch[1] = 0;
+    context->codec_scratch[2] = type;
+    put_u16le(context->codec_scratch + 3, sector_size_hint);
+    put_u16le(context->codec_scratch + 5, FN_DISK_INSPECT_BOOT_BYTES);
+    put_u16le(context->codec_scratch + 7, uri_length);
+    memcpy(context->codec_scratch + 9, uri, uri_length);
+    result = context_disk_call(context, FN_DISK_CMD_INSPECT,
+                               (uint16_t)(9 + uri_length), &reply_length);
+    if (result != FN_OK) return result;
+    if (reply_length < 10 || context->codec_scratch[0] != FN_DISK_PROTOCOL_VERSION) return FN_ERR_IO;
+    boot_length = get_u16le(context->codec_scratch + 8);
+    if (boot_length > FN_DISK_INSPECT_BOOT_BYTES || reply_length != (uint16_t)(10 + boot_length)) return FN_ERR_IO;
+    memset(inspection, 0, sizeof(*inspection));
+    inspection->media.flags = FN_DISK_FLAG_MOUNTED | FN_DISK_FLAG_READONLY;
+    inspection->media.type = context->codec_scratch[1];
+    inspection->media.sector_size = get_u16le(context->codec_scratch + 2);
+    inspection->media.sector_count = get_u32le(context->codec_scratch + 4);
+    inspection->boot_length = boot_length;
+    memcpy(inspection->boot_bytes, context->codec_scratch + 10, boot_length);
+    return FN_OK;
 }
 
 uint8_t fn_disk_read_sector_context(fn_disk_client_context_t *context,
