@@ -509,6 +509,13 @@ typedef struct {
 uint8_t fn_init(void);
 
 /**
+ * @brief Release the active transport and reset library session state.
+ *
+ * A later fn_init() opens a new transport session normally.
+ */
+void fn_shutdown(void);
+
+/**
  * @brief Check if the FujiNet device is present and ready.
  * 
  * @return 1 if ready, 0 if not ready or not present

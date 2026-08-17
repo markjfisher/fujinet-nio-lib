@@ -47,6 +47,7 @@ COMMON_SRCS_DEFAULT := $(SRCDIR)/common/fn_slip.c \
                        $(SRCDIR)/common/fn_packet_parse_info.c \
                        $(SRCDIR)/common/fn_state.c \
                        $(SRCDIR)/common/fn_init.c \
+                       $(SRCDIR)/common/fn_shutdown.c \
                        $(SRCDIR)/common/fn_open.c \
                        $(SRCDIR)/common/fn_rw.c \
                        $(SRCDIR)/common/fn_info_close.c \
