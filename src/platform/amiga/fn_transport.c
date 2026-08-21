@@ -22,7 +22,11 @@
 #include <proto/exec.h>
 #include <clib/alib_protos.h>
 #ifndef FN_AMIGA_EXPLICIT_LIFECYCLE
+#include <stdio.h>
 #include <stdlib.h>
+#define DBG_PRINTF(...) printf(__VA_ARGS__)
+#else
+#define DBG_PRINTF(...) ((void)0)
 #endif
 
 #include "fujinet-nio.h"
@@ -204,13 +208,19 @@ uint8_t fn_transport_init(void)
         return FN_ERR_IO;
     }
 
-    if (OpenDevice(_serial_device_name, 0,
-                   (struct IORequest *)_serial_req, 0) != 0) {
-        DeleteExtIO((struct IORequest *)_serial_req);
-        DeletePort(_serial_port);
-        _serial_req  = NULL;
-        _serial_port = NULL;
-        return FN_ERR_NOT_FOUND;
+    {
+        LONG od_ret = OpenDevice(_serial_device_name, 0,
+                                 (struct IORequest *)_serial_req, 0);
+        DBG_PRINTF("DBG fn_transport_init OpenDevice(%s,0) ret=%ld io_Error=%d\n",
+                   _serial_device_name, (long)od_ret,
+                   (int)_serial_req->IOSer.io_Error);
+        if (od_ret != 0) {
+            DeleteExtIO((struct IORequest *)_serial_req);
+            DeletePort(_serial_port);
+            _serial_req  = NULL;
+            _serial_port = NULL;
+            return FN_ERR_NOT_FOUND;
+        }
     }
 
     /* Configure serial parameters */
@@ -243,9 +253,7 @@ uint8_t fn_transport_init(void)
     }
     _timer_req = (struct timerequest *)CreateExtIO(
         _timer_port, sizeof(struct timerequest));
-    if (!_timer_req || OpenDevice((CONST_STRPTR)TIMERNAME, UNIT_MICROHZ,
-                                  (struct IORequest *)_timer_req, 0) != 0) {
-        if (_timer_req) DeleteExtIO((struct IORequest *)_timer_req);
+    if (!_timer_req) {
         DeletePort(_timer_port);
         _timer_req = NULL;
         _timer_port = NULL;
@@ -255,6 +263,25 @@ uint8_t fn_transport_init(void)
         _serial_req = NULL;
         _serial_port = NULL;
         return FN_ERR_NOT_FOUND;
+    }
+    {
+        LONG od_ret = OpenDevice((CONST_STRPTR)TIMERNAME, UNIT_MICROHZ,
+                                 (struct IORequest *)_timer_req, 0);
+        DBG_PRINTF("DBG fn_transport_init OpenDevice(%s,%d) ret=%ld io_Error=%d\n",
+                   TIMERNAME, (int)UNIT_MICROHZ, (long)od_ret,
+                   (int)_timer_req->tr_node.io_Error);
+        if (od_ret != 0) {
+            DeleteExtIO((struct IORequest *)_timer_req);
+            DeletePort(_timer_port);
+            _timer_req = NULL;
+            _timer_port = NULL;
+            CloseDevice((struct IORequest *)_serial_req);
+            DeleteExtIO((struct IORequest *)_serial_req);
+            DeletePort(_serial_port);
+            _serial_req = NULL;
+            _serial_port = NULL;
+            return FN_ERR_NOT_FOUND;
+        }
     }
     _timer_open = 1;
 
