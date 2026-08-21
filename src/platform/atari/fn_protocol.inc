@@ -4,6 +4,8 @@
 ; Assembly-language definitions for FujiBus protocol
 ;=============================================================================
 
+; TODO THIS NEEDS REVIEWING AS IT LOOKS OLD
+
 ; SLIP Protocol Constants
 SLIP_END         = $C0
 SLIP_ESCAPE      = $DB
