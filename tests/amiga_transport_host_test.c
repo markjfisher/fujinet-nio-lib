@@ -309,6 +309,43 @@ static void test_reopen_after_close(void)
     CHECK("ready again", fn_transport_ready() == 1);
 }
 
+static void test_not_open_clears_length(void)
+{
+    uint8_t req[1] = {0};
+    uint8_t resp[8];
+    uint16_t resp_len = 99;
+
+    reset_stubs();
+    CHECK("not found",
+          fn_transport_exchange_buffers(req, 1, resp, sizeof(resp),
+                                        &resp_len) == FN_ERR_NOT_FOUND);
+    CHECK("resp_len 0", resp_len == 0);
+    CHECK("no DoIO", g_doio_count == 0);
+}
+
+static void test_invalid_buffers_clears_length(void)
+{
+    uint8_t req[1] = {0};
+    uint8_t resp[8];
+    uint16_t resp_len;
+
+    reset_stubs();
+    CHECK("init", fn_transport_init() == FN_OK);
+
+    resp_len = 99;
+    CHECK("null request",
+          fn_transport_exchange_buffers(NULL, 1, resp, sizeof(resp),
+                                        &resp_len) == FN_ERR_INVALID);
+    CHECK("null request len", resp_len == 0);
+
+    resp_len = 99;
+    CHECK("null response",
+          fn_transport_exchange_buffers(req, 1, NULL, sizeof(resp),
+                                        &resp_len) == FN_ERR_INVALID);
+    CHECK("null response len", resp_len == 0);
+    CHECK("no DoIO", g_doio_count == 0);
+}
+
 static void test_other_io_error(void)
 {
     uint8_t req[1] = {0};
@@ -339,6 +376,8 @@ int main(void)
     test_exchange_field_reset();
     test_close_no_abort();
     test_reopen_after_close();
+    test_not_open_clears_length();
+    test_invalid_buffers_clears_length();
     test_other_io_error();
 
     if (failures != 0) {

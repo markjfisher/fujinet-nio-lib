@@ -129,9 +129,13 @@ uint8_t fn_transport_exchange_buffers(const uint8_t *request,
                                       uint16_t response_capacity,
                                       uint16_t *response_length)
 {
+    if (response_length != NULL)
+        *response_length = 0;
+    if (response_length == NULL)
+        return FN_ERR_INVALID;
     if (!g_transport.device_open)
         return FN_ERR_NOT_FOUND;
-    if (request == NULL || response == NULL || response_length == NULL)
+    if (request == NULL || response == NULL)
         return FN_ERR_INVALID;
 
     prepare_exchange(request, request_length, response, response_capacity);
