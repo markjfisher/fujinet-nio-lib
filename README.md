@@ -1,10 +1,13 @@
 # fujinet-nio-lib
 
-A clean, multi-platform 6502 library for communicating with FujiNet-NIO devices using the FujiBus protocol.
+A clean, multi-platform FujiNet NIO client library for communicating with
+FujiNet NIO devices using the FujiBus protocol. 6502 (cc65) targets are an
+important class of supported machines, not the definition of the library.
 
 ## Overview
 
-**fujinet-nio-lib** is a modern C library designed for 8-bit applications that need to communicate with FujiNet-NIO devices. It provides:
+**fujinet-nio-lib** is a modern C library for applications that need to
+communicate with FujiNet NIO devices. It provides:
 
 - **Handle-based API** - Simple, intuitive session management
 - **FujiBus protocol** - Binary protocol with shared packet/checksum handling
