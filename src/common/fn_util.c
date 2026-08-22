@@ -15,6 +15,7 @@ const char *fn_error_string(uint8_t error)
         case FN_ERR_TRANSPORT:    return "Transport error";
         case FN_ERR_URL_TOO_LONG: return "URL too long";
         case FN_ERR_NO_HANDLES:   return "No free handles";
+        case FN_ERR_ABORTED:      return "Aborted";
         default:                  return "Unknown error";
     }
 }

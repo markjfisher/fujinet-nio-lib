@@ -1,8 +1,9 @@
 #include "fn_session.h"
 
 #include "fujinet-nio.h"
-#include "fn_internal.h"
 #include "fn_protocol.h"
+
+uint16_t fn_slip_decode(const uint8_t *input, uint16_t in_len, uint8_t *output);
 
 #ifndef FN_SESSION_WRITE_TIMEOUT
 #define FN_SESSION_WRITE_TIMEOUT 1000

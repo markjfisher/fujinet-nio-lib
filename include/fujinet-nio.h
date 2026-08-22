@@ -105,6 +105,9 @@ extern "C" {
 /** No free handles available */
 #define FN_ERR_NO_HANDLES   0x12
 
+/** Request aborted locally (client-visible FN error; not a FujiBus wire status) */
+#define FN_ERR_ABORTED      0x13
+
 /** Unknown/unexpected error */
 #define FN_ERR_UNKNOWN      0xFF
 

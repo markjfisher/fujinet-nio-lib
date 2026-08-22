@@ -578,6 +578,7 @@ const char *fn_version(void);
 | 0x10 | `FN_ERR_TRANSPORT` | Transport layer error |
 | 0x11 | `FN_ERR_URL_TOO_LONG` | URL exceeds maximum length |
 | 0x12 | `FN_ERR_NO_HANDLES` | No free handles available |
+| 0x13 | `FN_ERR_ABORTED` | Request aborted locally (client-visible FN error; not a FujiBus wire status) |
 | 0xFF | `FN_ERR_UNKNOWN` | Unknown/unexpected error |
 
 ## HTTP Methods
