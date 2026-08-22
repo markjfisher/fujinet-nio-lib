@@ -117,12 +117,8 @@ uint16_t fn_slip_decode(const uint8_t *input, uint16_t in_len, uint8_t *output)
 }
 
 /**
- * Calculate the maximum encoded size for a given input size.
- * 
- * Worst case: every byte needs escaping (2x) plus 2 END markers.
- * 
- * @param in_len   Input data length
- * @return Maximum encoded length
+ * Worst-case encoded length: every byte escaped plus two END markers.
+ * Not in fn_slip.h: no in-tree caller, and 2A does not size serial buffers.
  */
 uint16_t fn_slip_max_encoded_size(uint16_t in_len)
 {
