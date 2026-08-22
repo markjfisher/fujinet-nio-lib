@@ -159,8 +159,8 @@ int main(void) {
 | MS-DOS | `FUJINET.SYS` block IOCTL | Watcom | ✅ Implemented |
 | MS-DOS | `FUJINET.SYS` INT F5 | Watcom | ✅ Implemented |
 | Linux | stream over POSIX serial/PTY | GCC | ✅ Working |
-| Amiga applications | `serial.device` RS-232 | amiga-gcc | ✅ Working |
-| Amiga resident driver | `serial.device` RS-232 | amiga-gcc | ✅ Working |
+| Amiga applications | `fujinet-nio.device` broker | amiga-gcc | ✅ Working |
+| Amiga resident driver | `fujinet-nio.device` broker | amiga-gcc | ✅ Working |
 
 ## Differences from fujinet-lib
 

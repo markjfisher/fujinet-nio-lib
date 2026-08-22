@@ -1,313 +1,108 @@
 /*
  * fn_transport.c - AmigaOS Transport Implementation
  *
- * Uses serial.device to communicate with fujinet-nio over RS-232.
- * Implements SLIP framing for the FujiBus protocol.
+ * Broker client for fujinet-nio.device. Does not open serial.device or
+ * timer.device; SLIP framing stays in the broker backend.
  *
- * Requires: exec.library, serial.device
+ * Requires: exec.library, fujinet-nio.device
  * Compiler: m68k-amigaos-gcc (amiga-gcc)
  *
- * Serial port configuration:
- *   Baud rate: 19200 (default) — set FN_AMIGA_BAUD at compile time to override
- *   Format: 8N1
- *   Flow control: none (XON/XOFF disabled — required for binary SLIP data)
- *
- * See: contracts/rs232-hardware.md, contracts/fujibus-protocol.md
+ * Kickstart 1.3: CreatePort/DeletePort (amiga.lib), not CreateMsgPort.
  */
 
-#include <exec/types.h>
-#include <exec/memory.h>
-#include <devices/serial.h>
-#include <devices/timer.h>
+#include <exec/errors.h>
+#include <exec/io.h>
+#include <exec/nodes.h>
 #include <proto/exec.h>
 #include <clib/alib_protos.h>
+
+#include <string.h>
+
 #ifndef FN_AMIGA_EXPLICIT_LIFECYCLE
-#include <stdio.h>
 #include <stdlib.h>
-#define DBG_PRINTF(...) printf(__VA_ARGS__)
-#else
-#define DBG_PRINTF(...) ((void)0)
 #endif
 
 #include "fujinet-nio.h"
 #include "fn_platform.h"
 #include "fn_internal.h"
-#include "fn_session.h"
+#include "fujinet_nio_device.h"
 
-#ifndef FN_AMIGA_BAUD
-#define FN_AMIGA_BAUD 19200
-#endif
+struct fn_amiga_transport {
+    struct MsgPort *port;
+    struct FujiNetNIORequest req;
+    uint8_t device_open;
+};
 
-#ifndef FN_TRANSPORT_WIRE_BUF_SIZE
-#define FN_TRANSPORT_WIRE_BUF_SIZE ((FN_MAX_PACKET_SIZE * 2) + 2)
-#endif
-
-/* Module state */
-static struct MsgPort   *_serial_port = NULL;
-static struct IOExtSer  *_serial_req  = NULL;
-static BYTE              _device_open = 0;
-static struct MsgPort   *_timer_port = NULL;
-static struct timerequest *_timer_req = NULL;
-static BYTE              _timer_open = 0;
-static const UBYTE        _serial_device_name[] = "serial.device";
-
-static uint8_t _wire_buf[FN_TRANSPORT_WIRE_BUF_SIZE];
-static uint8_t _read_buf[128];
-static uint16_t _read_pos;
-static uint16_t _read_len;
-static fn_stream_session_t _session;
-static uint8_t _session_initialized;
+static struct fn_amiga_transport g_transport;
 
 void fn_transport_close(void);
 
-/* -------------------------------------------------------------------------
- * Internal helpers
- * ---------------------------------------------------------------------- */
-
-static uint8_t serial_write(const uint8_t *buf, uint16_t len)
+static uint8_t map_native_io_error(BYTE io_error)
 {
-    _serial_req->IOSer.io_Command  = CMD_WRITE;
-    _serial_req->IOSer.io_Data     = (APTR)buf;
-    _serial_req->IOSer.io_Length   = len;
-    if (DoIO((struct IORequest *)_serial_req) != 0) {
-        return FN_ERR_IO;
-    }
-    return FN_OK;
+    if (io_error == IOERR_ABORTED)
+        return FN_ERR_ABORTED;
+    if (io_error == IOERR_NOCMD ||
+        io_error == IOERR_BADLENGTH ||
+        io_error == IOERR_BADADDRESS)
+        return FN_ERR_INVALID;
+    return FN_ERR_IO;
 }
 
-static uint8_t serial_read_byte(uint8_t *byte_out, uint16_t timeout_ms)
+static void init_request_for_open(void)
 {
-    ULONG available;
-
-    if (_read_pos < _read_len) {
-        *byte_out = _read_buf[_read_pos++];
-        return FN_OK;
-    }
-
-    _serial_req->IOSer.io_Command = SDCMD_QUERY;
-    _serial_req->IOSer.io_Data = NULL;
-    _serial_req->IOSer.io_Length = 0;
-    _serial_req->IOSer.io_Actual = 0;
-    if (DoIO((struct IORequest *)_serial_req) != 0) {
-        return FN_ERR_IO;
-    }
-    available = _serial_req->IOSer.io_Actual;
-    if (available == 0) {
-        /* SDCMD_QUERY is immediate. Poll in timer-backed slices instead of
-         * leaving a serial CMD_READ outstanding and aborting it on timeout.
-         * The latter is not reliably cancellable by every Amiga serial.device
-         * implementation, including the Amiberry emulation. */
-        uint16_t remaining = timeout_ms;
-        while (remaining != 0) {
-            uint16_t slice = remaining > 10 ? 10 : remaining;
-            _timer_req->tr_node.io_Command = TR_ADDREQUEST;
-            _timer_req->tr_time.tv_secs = 0;
-            _timer_req->tr_time.tv_micro = slice * 1000;
-            if (DoIO((struct IORequest *)_timer_req) != 0)
-                return FN_ERR_IO;
-
-            _serial_req->IOSer.io_Command = SDCMD_QUERY;
-            _serial_req->IOSer.io_Data = NULL;
-            _serial_req->IOSer.io_Length = 0;
-            _serial_req->IOSer.io_Actual = 0;
-            if (DoIO((struct IORequest *)_serial_req) != 0)
-                return FN_ERR_IO;
-            if (_serial_req->IOSer.io_Actual != 0) {
-                available = _serial_req->IOSer.io_Actual;
-                break;
-            }
-            remaining = (uint16_t)(remaining - slice);
-        }
-        if (available == 0) return FN_ERR_TIMEOUT;
-    }
-    if (available > sizeof(_read_buf)) {
-        available = sizeof(_read_buf);
-    }
-
-    _serial_req->IOSer.io_Command  = CMD_READ;
-    _serial_req->IOSer.io_Data     = (APTR)_read_buf;
-    _serial_req->IOSer.io_Length   = available;
-    _serial_req->IOSer.io_Actual   = 0;
-    if (DoIO((struct IORequest *)_serial_req) != 0) {
-        return FN_ERR_IO;
-    }
-    _read_pos = 1;
-    _read_len = (uint16_t)_serial_req->IOSer.io_Actual;
-    if (_read_len == 0) {
-        return FN_ERR_NOT_READY;
-    }
-    *byte_out = _read_buf[0];
-    return FN_OK;
+    memset(&g_transport.req, 0, sizeof(g_transport.req));
+    g_transport.req.fn_io.io_Message.mn_Node.ln_Type = NT_MESSAGE;
+    g_transport.req.fn_io.io_Message.mn_ReplyPort = g_transport.port;
+    g_transport.req.fn_io.io_Message.mn_Length =
+        (UWORD)sizeof(struct FujiNetNIORequest);
 }
 
-/* The Amiga serial device is opened by fn_transport_init(). The shared
- * session therefore owns framing and request/response bounds, while these
- * callbacks provide only the byte-oriented channel contract. */
-static uint8_t session_open(void *context)
+static void prepare_exchange(const uint8_t *request,
+                             uint16_t request_length,
+                             uint8_t *response,
+                             uint16_t response_capacity)
 {
-    (void)context;
-    return FN_OK;
+    g_transport.req.fn_io.io_Command = FUJINET_NIO_CMD_EXCHANGE;
+    g_transport.req.fn_io.io_Flags = 0;
+    g_transport.req.fn_io.io_Error = 0;
+    g_transport.req.fn_struct_size = (UWORD)FUJINET_NIO_REQUEST_SIZE;
+    g_transport.req.fn_flags = 0;
+    g_transport.req.fn_pad[0] = 0;
+    g_transport.req.fn_pad[1] = 0;
+    g_transport.req.fn_pad[2] = 0;
+    g_transport.req.fn_request_data = request;
+    g_transport.req.fn_request_length = request_length;
+    g_transport.req.fn_response_data = response;
+    g_transport.req.fn_response_capacity = response_capacity;
+    g_transport.req.fn_response_length = 0;
+    g_transport.req.fn_nio_error = 0;
 }
-
-static void session_close(void *context)
-{
-    (void)context;
-}
-
-static uint8_t session_write_byte(void *context, uint8_t value,
-                                  uint16_t timeout_ms)
-{
-    (void)context;
-    (void)timeout_ms;
-    return serial_write(&value, 1);
-}
-
-static uint8_t session_read_byte(void *context, uint8_t *value,
-                                 uint16_t timeout_ms)
-{
-    (void)context;
-    return serial_read_byte(value, timeout_ms) == FN_OK ? 1 : 0;
-}
-
-static void session_flush(void *context)
-{
-    (void)context;
-}
-
-static const fn_stream_channel_ops_t _session_ops = {
-    session_open,
-    session_close,
-    session_write_byte,
-    session_read_byte,
-    session_flush
-};
-
-/* -------------------------------------------------------------------------
- * Public platform interface
- * ---------------------------------------------------------------------- */
 
 uint8_t fn_transport_init(void)
 {
-    if (_device_open) {
+    LONG od_ret;
+
+    if (g_transport.device_open)
         return FN_OK;
-    }
 
-    /* CreatePort/DeletePort and CreateExtIO/DeleteExtIO are amiga.lib functions
-     * compatible with all Kickstart versions including 1.3 (exec V34).
-     * CreateMsgPort/CreateIORequest require exec V36 (Kickstart 2.0+). */
-    _serial_port = CreatePort(NULL, 0);
-    if (!_serial_port) {
+    /* CreatePort/DeletePort are amiga.lib and Kickstart 1.3-safe.
+     * CreateMsgPort requires exec V36. */
+    g_transport.port = CreatePort(NULL, 0);
+    if (g_transport.port == NULL)
         return FN_ERR_IO;
-    }
 
-    _serial_req = (struct IOExtSer *)CreateExtIO(_serial_port,
-                                                 sizeof(struct IOExtSer));
-    if (!_serial_req) {
-        DeletePort(_serial_port);
-        _serial_port = NULL;
-        return FN_ERR_IO;
-    }
+    init_request_for_open();
 
-    {
-        LONG od_ret = OpenDevice(_serial_device_name, 0,
-                                 (struct IORequest *)_serial_req, 0);
-        DBG_PRINTF("DBG fn_transport_init OpenDevice(%s,0) ret=%ld io_Error=%d\n",
-                   _serial_device_name, (long)od_ret,
-                   (int)_serial_req->IOSer.io_Error);
-        if (od_ret != 0) {
-            DeleteExtIO((struct IORequest *)_serial_req);
-            DeletePort(_serial_port);
-            _serial_req  = NULL;
-            _serial_port = NULL;
-            return FN_ERR_NOT_FOUND;
-        }
-    }
-
-    /* Configure serial parameters */
-    _serial_req->io_Baud      = FN_AMIGA_BAUD;
-    _serial_req->io_ReadLen   = 8;
-    _serial_req->io_WriteLen  = 8;
-    _serial_req->io_StopBits  = 1;
-    _serial_req->io_RBufLen   = FN_TRANSPORT_WIRE_BUF_SIZE;
-    /* SERF_XDISABLED: disable XON/XOFF — essential for binary SLIP data */
-    _serial_req->io_SerFlags  = SERF_XDISABLED;
-
-    _serial_req->IOSer.io_Command = SDCMD_SETPARAMS;
-    if (DoIO((struct IORequest *)_serial_req) != 0) {
-        CloseDevice((struct IORequest *)_serial_req);
-        DeleteExtIO((struct IORequest *)_serial_req);
-        DeletePort(_serial_port);
-        _serial_req  = NULL;
-        _serial_port = NULL;
-        return FN_ERR_IO;
-    }
-
-    _timer_port = CreatePort(NULL, 0);
-    if (!_timer_port) {
-        CloseDevice((struct IORequest *)_serial_req);
-        DeleteExtIO((struct IORequest *)_serial_req);
-        DeletePort(_serial_port);
-        _serial_req = NULL;
-        _serial_port = NULL;
-        return FN_ERR_IO;
-    }
-    _timer_req = (struct timerequest *)CreateExtIO(
-        _timer_port, sizeof(struct timerequest));
-    if (!_timer_req) {
-        DeletePort(_timer_port);
-        _timer_req = NULL;
-        _timer_port = NULL;
-        CloseDevice((struct IORequest *)_serial_req);
-        DeleteExtIO((struct IORequest *)_serial_req);
-        DeletePort(_serial_port);
-        _serial_req = NULL;
-        _serial_port = NULL;
+    od_ret = OpenDevice((CONST_STRPTR)FUJINET_NIO_DEVICE_NAME,
+                        FUJINET_NIO_DEVICE_UNIT,
+                        &g_transport.req.fn_io, 0);
+    if (od_ret != 0) {
+        DeletePort(g_transport.port);
+        g_transport.port = NULL;
         return FN_ERR_NOT_FOUND;
     }
-    {
-        LONG od_ret = OpenDevice((CONST_STRPTR)TIMERNAME, UNIT_MICROHZ,
-                                 (struct IORequest *)_timer_req, 0);
-        DBG_PRINTF("DBG fn_transport_init OpenDevice(%s,%d) ret=%ld io_Error=%d\n",
-                   TIMERNAME, (int)UNIT_MICROHZ, (long)od_ret,
-                   (int)_timer_req->tr_node.io_Error);
-        if (od_ret != 0) {
-            DeleteExtIO((struct IORequest *)_timer_req);
-            DeletePort(_timer_port);
-            _timer_req = NULL;
-            _timer_port = NULL;
-            CloseDevice((struct IORequest *)_serial_req);
-            DeleteExtIO((struct IORequest *)_serial_req);
-            DeletePort(_serial_port);
-            _serial_req = NULL;
-            _serial_port = NULL;
-            return FN_ERR_NOT_FOUND;
-        }
-    }
-    _timer_open = 1;
 
-    if (fn_stream_session_init(&_session, &_session_ops, 0, _wire_buf,
-                               sizeof(_wire_buf)) != FN_OK ||
-        fn_stream_session_open(&_session) != FN_OK) {
-        CloseDevice((struct IORequest *)_timer_req);
-        DeleteExtIO((struct IORequest *)_timer_req);
-        DeletePort(_timer_port);
-        _timer_open = 0;
-        _timer_req = NULL;
-        _timer_port = NULL;
-        CloseDevice((struct IORequest *)_serial_req);
-        DeleteExtIO((struct IORequest *)_serial_req);
-        DeletePort(_serial_port);
-        _serial_req  = NULL;
-        _serial_port = NULL;
-        return FN_ERR_IO;
-    }
-    _session_initialized = 1;
-    _read_pos = 0;
-    _read_len = 0;
-    _device_open = 1;
-    /* CLI applications use process-exit cleanup. Resident drivers are built
-     * with FN_AMIGA_EXPLICIT_LIFECYCLE because they have no process exit and
-     * must release the transport through their device lifecycle instead. */
+    g_transport.device_open = 1;
 #ifndef FN_AMIGA_EXPLICIT_LIFECYCLE
     atexit(fn_transport_close);
 #endif
@@ -316,7 +111,7 @@ uint8_t fn_transport_init(void)
 
 uint8_t fn_transport_ready(void)
 {
-    return _device_open ? 1 : 0;
+    return g_transport.device_open ? 1 : 0;
 }
 
 uint8_t fn_transport_exchange(void)
@@ -334,54 +129,32 @@ uint8_t fn_transport_exchange_buffers(const uint8_t *request,
                                       uint16_t response_capacity,
                                       uint16_t *response_length)
 {
-    struct MsgPort *caller_port;
-    uint8_t result;
-
-    if (!_device_open || !_session_initialized) return FN_ERR_NOT_FOUND;
-    if (request == NULL || response == NULL || response_length == NULL) {
+    if (!g_transport.device_open)
+        return FN_ERR_NOT_FOUND;
+    if (request == NULL || response == NULL || response_length == NULL)
         return FN_ERR_INVALID;
+
+    prepare_exchange(request, request_length, response, response_capacity);
+    (void)DoIO(&g_transport.req.fn_io);
+
+    if (g_transport.req.fn_io.io_Error != 0) {
+        *response_length = 0;
+        return map_native_io_error(g_transport.req.fn_io.io_Error);
     }
 
-    /* A resident device can be entered by different Amiga tasks over its
-     * lifetime. The port used during fn_transport_init() belongs to the task
-     * that mounted the image and becomes invalid when that CLI exits. Give
-     * each synchronous exchange a reply port owned by its current caller. */
-    caller_port = CreatePort(NULL, 0);
-    if (caller_port == NULL) return FN_ERR_IO;
-    _serial_req->IOSer.io_Message.mn_ReplyPort = caller_port;
-
-    result = fn_stream_session_request(&_session,
-                                       request,
-                                       request_length,
-                                       response,
-                                       response_capacity,
-                                       response_length,
-                                       FN_TRANSPORT_TIMEOUT);
-
-    _serial_req->IOSer.io_Message.mn_ReplyPort = _serial_port;
-    DeletePort(caller_port);
-    return result;
+    *response_length = g_transport.req.fn_response_length;
+    return g_transport.req.fn_nio_error;
 }
 
 void fn_transport_close(void)
 {
-    if (!_device_open) return;
-    fn_stream_session_close(&_session);
-    _session_initialized = 0;
-    if (_timer_open) {
-        CloseDevice((struct IORequest *)_timer_req);
-        DeleteExtIO((struct IORequest *)_timer_req);
-        DeletePort(_timer_port);
-        _timer_open = 0;
-        _timer_req = NULL;
-        _timer_port = NULL;
-    }
-    CloseDevice((struct IORequest *)_serial_req);
-    DeleteExtIO((struct IORequest *)_serial_req);
-    DeletePort(_serial_port);
-    _serial_req  = NULL;
-    _serial_port = NULL;
-    _device_open = 0;
+    if (!g_transport.device_open)
+        return;
+
+    CloseDevice(&g_transport.req.fn_io);
+    DeletePort(g_transport.port);
+    g_transport.port = NULL;
+    g_transport.device_open = 0;
 }
 
 const char *fn_platform_name(void)

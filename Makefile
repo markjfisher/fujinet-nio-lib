@@ -22,7 +22,8 @@ override PROGRAM := fujinet-nio
 # Phony targets
 .PHONY: all clean help disk-bbc disk-bbc-clib test-legacy test-mount-resolve \
 	test-appstore-read test-slot-catalog test-bbc test-bbc-scripted \
-	test-bbc-real test-wifi test-disk test-disk-context test-session test-library-link test \
+	test-bbc-real test-wifi test-disk test-disk-context test-session test-library-link \
+	test-amiga-transport test \
 	test-all-build check msdos $(TARGETS) $(EXTRA_TARGETS)
 
 # Default target: build all
@@ -132,11 +133,15 @@ test-library-link: linux
 	@echo "Running public API library-link test..."
 	bash ./tests/run_library_link_test.sh
 
+test-amiga-transport:
+	@echo "Running Amiga broker-transport host tests..."
+	bash ./tests/run_amiga_transport_host_test.sh
+
 test-all-build:
 	@echo "Building all configured library targets..."
 	$(MAKE) all
 
-test: test-library-link test-legacy test-mount-resolve test-appstore-read test-slot-catalog test-wifi test-disk test-disk-context test-session
+test: test-library-link test-legacy test-mount-resolve test-appstore-read test-slot-catalog test-wifi test-disk test-disk-context test-session test-amiga-transport
 
 # Fast required change check: compile every configured target, then run the
 # host-side tests and public archive-link test. Keep this as a recipe rather
@@ -145,6 +150,11 @@ test: test-library-link test-legacy test-mount-resolve test-appstore-read test-s
 check:
 	@echo "Running fast all-target library check..."
 	$(MAKE) all
+	@for target in $(EXTRA_TARGETS); do \
+		echo ""; \
+		echo "Building extra target $$target..."; \
+		$(MAKE) $$target || exit 1; \
+	done
 	$(MAKE) test
 
 # Help
@@ -163,6 +173,7 @@ help:
 	@echo "  make test-disk - Run DiskDevice API wire tests"
 	@echo "  make test-session - Run channel/session wire tests"
 	@echo "  make test-library-link - Build Linux library and link a public API consumer"
+	@echo "  make test-amiga-transport - Run Amiga broker-client host tests"
 	@echo "  make test-all-build - Build all configured library targets"
 	@echo "  make check - Build all targets and run the fast host-side test suite"
 	@echo "  make test - Run all host-side wire tests"

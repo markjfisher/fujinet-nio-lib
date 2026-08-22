@@ -145,7 +145,7 @@ Platform-specific transport code is located in:
 - `src/platform/coco/` - CoCo Drivewire (planned)
 - `src/platform/msdos/` - MS-DOS serial, IOCTL, and F5 backends
 - `src/platform/linux/` - Linux/POSIX serial or PTY byte channel
-- `src/platform/amiga/` - Amiga `serial.device` RS-232 byte channel
+- `src/platform/amiga/` - Amiga `fujinet-nio.device` broker client
 
 See [Transport Backends](transport-backends.md) for how library build targets map
 to `fujinet-nio` transports/channels, and how future MS-DOS parallel or BBC

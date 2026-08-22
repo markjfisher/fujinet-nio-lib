@@ -110,12 +110,14 @@ TARGET_CFLAGS_linux     :=
 TARGET_ASFLAGS_linux    :=
 
 # Amiga (m68k-amigaos cross-compile via amiga-gcc)
-TARGET_CFLAGS_amiga     := -mcpu=68000 -msoft-float
+# Broker ABI lives in the driver tree; do not vendor a second copy.
+AMIGA_NIO_DEVICE_INCLUDE := -I../fujinet-nio-driver/amiga/include
+TARGET_CFLAGS_amiga     := -mcpu=68000 -msoft-float $(AMIGA_NIO_DEVICE_INCLUDE)
 TARGET_ASFLAGS_amiga    :=
 
 # Resident Amiga drivers cannot depend on process-exit startup/teardown.
 # They own transport shutdown as part of their device lifecycle instead.
-TARGET_CFLAGS_amiga-driver := -mcpu=68000 -msoft-float -DFN_AMIGA_EXPLICIT_LIFECYCLE
+TARGET_CFLAGS_amiga-driver := -mcpu=68000 -msoft-float -DFN_AMIGA_EXPLICIT_LIFECYCLE $(AMIGA_NIO_DEVICE_INCLUDE)
 TARGET_ASFLAGS_amiga-driver :=
 
 # Get flags for current target
