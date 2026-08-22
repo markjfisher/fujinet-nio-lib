@@ -96,19 +96,7 @@ void fn_free_handle(fn_handle_t handle);
         (p)[3] = (uint8_t)(_fn_le_value >> 24); \
     } while (0)
 
-/* ============================================================================
- * SLIP Functions
- * ============================================================================ */
-
-/**
- * Encode data with SLIP framing.
- */
-uint16_t fn_slip_encode(const uint8_t *input, uint16_t in_len, uint8_t *output);
-
-/**
- * Decode SLIP-framed data.
- */
-uint16_t fn_slip_decode(const uint8_t *input, uint16_t in_len, uint8_t *output);
+#include "fn_slip.h"
 
 /* ============================================================================
  * Packet Building Functions

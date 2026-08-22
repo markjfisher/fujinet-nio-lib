@@ -9,6 +9,7 @@
  */
 
 #include "fn_protocol.h"
+#include "fn_slip.h"
 
 /**
  * Encode data with SLIP framing.
