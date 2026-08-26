@@ -201,6 +201,29 @@ static void test_happy_exchange(void)
           fn_transport_exchange_buffers(req, sizeof(req), resp, sizeof(resp),
                                         &resp_len) == FN_OK);
     CHECK("resp_len", resp_len == 5);
+    CHECK("exchange has caller port", g_create_port_count == 2);
+    CHECK("exchange port released", g_delete_port_count == 1);
+    CHECK("exchange reply port is not opener port",
+          g_doio_snapshot.fn_io.io_Message.mn_ReplyPort !=
+              g_open_snapshot.fn_io.io_Message.mn_ReplyPort);
+    CHECK("exchange retains opened device binding",
+          g_doio_snapshot.fn_io.io_Device == g_dummy_device);
+}
+
+static void test_exchange_port_alloc_fail(void)
+{
+    uint8_t req[1] = {0};
+    uint8_t resp[8];
+    uint16_t resp_len = 99;
+
+    reset_stubs();
+    CHECK("init", fn_transport_init() == FN_OK);
+    g_port_fail = 1;
+    CHECK("exchange port failure",
+          fn_transport_exchange_buffers(req, 1, resp, sizeof(resp),
+                                        &resp_len) == FN_ERR_IO);
+    CHECK("exchange failure clears length", resp_len == 0);
+    CHECK("exchange failure does not submit", g_doio_count == 0);
 }
 
 static void test_stale_fn_on_native_fail(void)
@@ -369,6 +392,7 @@ int main(void)
     test_broker_absent();
     test_reinit_no_second_open();
     test_happy_exchange();
+    test_exchange_port_alloc_fail();
     test_stale_fn_on_native_fail();
     test_beginio_reject_class(IOERR_NOCMD, "NOCMD");
     test_beginio_reject_class(IOERR_BADLENGTH, "BADLENGTH");

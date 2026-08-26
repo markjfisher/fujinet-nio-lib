@@ -57,25 +57,26 @@ static void init_request_for_open(void)
         (UWORD)sizeof(struct FujiNetNIORequest);
 }
 
-static void prepare_exchange(const uint8_t *request,
+static void prepare_exchange(struct FujiNetNIORequest *req,
+                             const uint8_t *request,
                              uint16_t request_length,
                              uint8_t *response,
                              uint16_t response_capacity)
 {
-    g_transport.req.fn_io.io_Command = FUJINET_NIO_CMD_EXCHANGE;
-    g_transport.req.fn_io.io_Flags = 0;
-    g_transport.req.fn_io.io_Error = 0;
-    g_transport.req.fn_struct_size = (UWORD)FUJINET_NIO_REQUEST_SIZE;
-    g_transport.req.fn_flags = 0;
-    g_transport.req.fn_pad[0] = 0;
-    g_transport.req.fn_pad[1] = 0;
-    g_transport.req.fn_pad[2] = 0;
-    g_transport.req.fn_request_data = request;
-    g_transport.req.fn_request_length = request_length;
-    g_transport.req.fn_response_data = response;
-    g_transport.req.fn_response_capacity = response_capacity;
-    g_transport.req.fn_response_length = 0;
-    g_transport.req.fn_nio_error = 0;
+    req->fn_io.io_Command = FUJINET_NIO_CMD_EXCHANGE;
+    req->fn_io.io_Flags = 0;
+    req->fn_io.io_Error = 0;
+    req->fn_struct_size = (UWORD)FUJINET_NIO_REQUEST_SIZE;
+    req->fn_flags = 0;
+    req->fn_pad[0] = 0;
+    req->fn_pad[1] = 0;
+    req->fn_pad[2] = 0;
+    req->fn_request_data = request;
+    req->fn_request_length = request_length;
+    req->fn_response_data = response;
+    req->fn_response_capacity = response_capacity;
+    req->fn_response_length = 0;
+    req->fn_nio_error = 0;
 }
 
 uint8_t fn_transport_init(void)
@@ -129,6 +130,10 @@ uint8_t fn_transport_exchange_buffers(const uint8_t *request,
                                       uint16_t response_capacity,
                                       uint16_t *response_length)
 {
+    struct MsgPort *port;
+    struct FujiNetNIORequest req;
+    uint8_t result;
+
     if (response_length != NULL)
         *response_length = 0;
     if (response_length == NULL)
@@ -138,16 +143,37 @@ uint8_t fn_transport_exchange_buffers(const uint8_t *request,
     if (request == NULL || response == NULL)
         return FN_ERR_INVALID;
 
-    prepare_exchange(request, request_length, response, response_capacity);
-    (void)DoIO(&g_transport.req.fn_io);
+    /* A MsgPort is bound to the task that creates it.  The original global
+     * port worked only while every fn_* call came from the initial task: a
+     * second task could send the request but its DoIO() waited for a reply
+     * signal delivered to the original task.  Give every synchronous
+     * exchange a caller-owned port and IORequest instead.  The opened device
+     * stays global; copying its device/unit binding is the normal Exec way
+     * to submit another request to that open device. */
+    port = CreatePort(NULL, 0);
+    if (port == NULL)
+        return FN_ERR_IO;
 
-    if (g_transport.req.fn_io.io_Error != 0) {
+    memset(&req, 0, sizeof(req));
+    req.fn_io.io_Message.mn_Node.ln_Type = NT_MESSAGE;
+    req.fn_io.io_Message.mn_ReplyPort = port;
+    req.fn_io.io_Message.mn_Length = (UWORD)sizeof(req);
+    req.fn_io.io_Device = g_transport.req.fn_io.io_Device;
+    req.fn_io.io_Unit = g_transport.req.fn_io.io_Unit;
+    prepare_exchange(&req, request, request_length, response, response_capacity);
+    (void)DoIO(&req.fn_io);
+
+    if (req.fn_io.io_Error != 0) {
+        result = map_native_io_error(req.fn_io.io_Error);
+        DeletePort(port);
         *response_length = 0;
-        return map_native_io_error(g_transport.req.fn_io.io_Error);
+        return result;
     }
 
-    *response_length = g_transport.req.fn_response_length;
-    return g_transport.req.fn_nio_error;
+    *response_length = req.fn_response_length;
+    result = req.fn_nio_error;
+    DeletePort(port);
+    return result;
 }
 
 void fn_transport_close(void)
