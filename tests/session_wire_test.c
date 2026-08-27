@@ -13,6 +13,8 @@ typedef struct {
     uint16_t rx_offset;
     uint8_t opened;
     uint8_t flushed;
+    uint8_t byte_write_calls;
+    uint8_t bulk_write_calls;
 } fake_serial_t;
 
 static uint8_t fake_open(void *context)
@@ -32,7 +34,20 @@ static uint8_t fake_write(void *context, uint8_t value, uint16_t timeout_ms)
     fake_serial_t *fake = (fake_serial_t *)context;
     (void)timeout_ms;
     if (fake->tx_length >= sizeof(fake->tx)) return FN_ERR_IO;
+    fake->byte_write_calls++;
     fake->tx[fake->tx_length++] = value;
+    return FN_OK;
+}
+
+static uint8_t fake_write_bytes(void *context, const uint8_t *data,
+                                uint16_t length, uint16_t timeout_ms)
+{
+    fake_serial_t *fake = (fake_serial_t *)context;
+    (void)timeout_ms;
+    if ((uint32_t)fake->tx_length + length > sizeof(fake->tx)) return FN_ERR_IO;
+    memcpy(&fake->tx[fake->tx_length], data, length);
+    fake->tx_length = (uint16_t)(fake->tx_length + length);
+    fake->bulk_write_calls++;
     return FN_OK;
 }
 
@@ -51,7 +66,11 @@ static void fake_flush(void *context)
 }
 
 static const fn_stream_channel_ops_t fake_ops = {
-    fake_open, fake_close, fake_write, fake_read, fake_flush
+    fake_open, fake_close, fake_write, fake_read, fake_flush, NULL
+};
+
+static const fn_stream_channel_ops_t fake_bulk_ops = {
+    fake_open, fake_close, fake_write, fake_read, fake_flush, fake_write_bytes
 };
 
 static int test_rs232_slip_session(void)
@@ -82,6 +101,34 @@ static int test_rs232_slip_session(void)
     return fake.opened ? 1 : 0;
 }
 
+static int test_bulk_write_slip_session(void)
+{
+    fake_serial_t fake = {0};
+    fn_stream_session_t session;
+    uint8_t wire[64];
+    uint8_t response[16];
+    uint16_t response_length = 0;
+    const uint8_t request[] = {0x01, 0xFC, 0xDB, 0xC0};
+    const uint8_t response_packet[] = {0x01, 0xFC, 0x00};
+
+    fake.rx_length = fn_slip_encode(response_packet, sizeof(response_packet),
+                                    fake.rx);
+    if (fn_stream_session_init(&session, &fake_bulk_ops, &fake, wire,
+                               sizeof(wire)) != FN_OK ||
+        fn_stream_session_open(&session) != FN_OK) return 1;
+    if (fn_stream_session_request(&session, request, sizeof(request), response,
+                                  sizeof(response), &response_length, 100) != FN_OK)
+        return 1;
+    if (fake.bulk_write_calls != 1 || fake.byte_write_calls != 0 ||
+        fake.tx_length != 8 || fake.tx[0] != SLIP_END ||
+        fake.tx[3] != SLIP_ESCAPE || fake.tx[4] != SLIP_ESC_ESC ||
+        fake.tx[5] != SLIP_ESCAPE || fake.tx[6] != SLIP_ESC_END ||
+        fake.tx[7] != SLIP_END || response_length != sizeof(response_packet) ||
+        memcmp(response, response_packet, sizeof(response_packet)) != 0)
+        return 1;
+    return 0;
+}
+
 static int test_session_timeout_and_busy(void)
 {
     fake_serial_t fake = {0};
@@ -110,7 +157,8 @@ static int test_session_timeout_and_busy(void)
 
 int main(void)
 {
-    if (test_rs232_slip_session() || test_session_timeout_and_busy()) {
+    if (test_rs232_slip_session() || test_bulk_write_slip_session() ||
+        test_session_timeout_and_busy()) {
         puts("session wire tests failed");
         return 1;
     }

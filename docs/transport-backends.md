@@ -24,6 +24,10 @@ The library has four practical layers:
    `fn_channel_init`, `fn_channel_ready`, `fn_channel_read_byte`,
    `fn_channel_write_byte`, `fn_channel_drain_rx`, and `fn_channel_close`, or a
    target-specific implementation of the higher-level transport functions.
+   The shared stream session also has an optional bulk raw-byte write callback:
+   it submits an already-SLIP-encoded frame in one physical operation while
+   retaining ordered byte-stream semantics. This is a stream optimization, not
+   packet-native FujiBus transport and not a change to the public API.
 
 For direct transports that cannot sensibly share `fn_transport_stream.c`, a
 platform can still implement

@@ -58,7 +58,8 @@ static const fn_stream_channel_ops_t _stream_channel_ops = {
     channel_close,
     channel_write_byte,
     channel_read_byte,
-    channel_flush
+    channel_flush,
+    NULL
 };
 
 uint8_t fn_transport_init(void)

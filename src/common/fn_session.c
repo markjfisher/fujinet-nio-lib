@@ -15,9 +15,21 @@
 static uint8_t write_frame(fn_stream_session_t *session,
                            const uint8_t *request, uint16_t request_length)
 {
+    uint16_t encoded_length;
     uint16_t i;
     uint8_t value;
     uint8_t result;
+
+    /* A bulk-capable channel is still a byte stream, not a packet-native
+     * transport: the common session performs exactly the same SLIP encoding
+     * and submits the resulting ordered bytes in one physical operation. */
+    if (session->ops->write_bytes != NULL) {
+        encoded_length = fn_slip_encode(request, request_length,
+                                        session->wire_buffer);
+        return session->ops->write_bytes(session->context, session->wire_buffer,
+                                         encoded_length,
+                                         FN_SESSION_WRITE_TIMEOUT);
+    }
 
     result = session->ops->write_byte(session->context, SLIP_END,
                                       FN_SESSION_WRITE_TIMEOUT);

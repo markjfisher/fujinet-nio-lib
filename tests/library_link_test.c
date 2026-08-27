@@ -80,7 +80,7 @@ int main(void)
 {
     static const fn_stream_channel_ops_t channel_ops = {
         channel_open, channel_close, channel_write, channel_read,
-        channel_flush
+        channel_flush, NULL
     };
     fn_stream_session_t session;
     fn_disk_info_t info;

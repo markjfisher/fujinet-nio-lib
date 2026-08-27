@@ -29,6 +29,11 @@ typedef struct {
     uint8_t (*write_byte)(void *context, uint8_t value, uint16_t timeout_ms);
     uint8_t (*read_byte)(void *context, uint8_t *value, uint16_t timeout_ms);
     void (*flush)(void *context);
+    /* Optional raw byte-stream fast path. The session still owns SLIP
+     * framing; channels that implement this receive one complete encoded
+     * frame and must preserve ordered stream semantics. */
+    uint8_t (*write_bytes)(void *context, const uint8_t *data,
+                           uint16_t length, uint16_t timeout_ms);
 } fn_stream_channel_ops_t;
 
 typedef struct {
