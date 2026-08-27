@@ -1,9 +1,20 @@
 #include "fn_internal.h"
 #include "fn_platform.h"
 
+#include <string.h>
+
 #ifndef FN_WRITE_RETRY_LIMIT
 #define FN_WRITE_RETRY_LIMIT 500
 #endif
+
+static fn_write_diagnostics_t last_write_diagnostics;
+
+void fn_write_get_last_diagnostics(fn_write_diagnostics_t *diagnostics)
+{
+    if (diagnostics != NULL) {
+        *diagnostics = last_write_diagnostics;
+    }
+}
 
 uint8_t fn_write(fn_handle_t handle,
                  uint32_t offset,
@@ -18,6 +29,8 @@ uint8_t fn_write(fn_handle_t handle,
     uint16_t retries;
     uint8_t result;
     int8_t slot;
+
+    memset(&last_write_diagnostics, 0, sizeof(last_write_diagnostics));
 
     if (written != NULL) {
         *written = 0;
@@ -64,8 +77,10 @@ uint8_t fn_write(fn_handle_t handle,
         _fn_transport_ctx.response = _fn_resp_buf;
         _fn_transport_ctx.resp_max = FN_MAX_PACKET_SIZE;
 
+        last_write_diagnostics.exchanges++;
         result = fn_transport_exchange();
         if (result == FN_ERR_NOT_READY || result == FN_ERR_BUSY) {
+            last_write_diagnostics.transport_retry++;
             if (retries-- > 0) {
                 continue;
             }
@@ -73,6 +88,12 @@ uint8_t fn_write(fn_handle_t handle,
         }
         if (result != FN_OK) {
             return result;
+        }
+
+        last_write_diagnostics.response_length = _fn_transport_ctx.resp_len;
+        if (_fn_transport_ctx.resp_len >= 2) {
+            last_write_diagnostics.response_device = _fn_resp_buf[0];
+            last_write_diagnostics.response_command = _fn_resp_buf[1];
         }
 
         _fn_parse_ctx.response = _fn_resp_buf;
@@ -84,6 +105,7 @@ uint8_t fn_write(fn_handle_t handle,
 
         if (_fn_parse_ctx.status == FN_ERR_NOT_READY ||
             _fn_parse_ctx.status == FN_ERR_BUSY) {
+            last_write_diagnostics.service_retry++;
             if (retries-- > 0) {
                 continue;
             }
@@ -109,6 +131,7 @@ uint8_t fn_write(fn_handle_t handle,
         }
 
         if (accepted == 0) {
+            last_write_diagnostics.zero_accepted++;
             if (retries-- > 0) {
                 continue;
             }

@@ -608,6 +608,26 @@ uint8_t fn_tcp_open(fn_handle_t *handle,
  * @param written    Pointer to receive bytes actually written
  * @return FN_OK on success, error code on failure
  */
+typedef struct {
+    uint16_t exchanges;          /* transport exchanges issued by fn_write */
+    uint16_t transport_retry;    /* transport returned BUSY or NOT_READY */
+    uint16_t service_retry;      /* parsed write response was BUSY/NOT_READY */
+    uint16_t zero_accepted;      /* successful response accepted no bytes */
+    uint16_t response_length;    /* raw response size from the final exchange */
+    uint8_t response_device;     /* raw response header device, if present */
+    uint8_t response_command;    /* raw response header command, if present */
+} fn_write_diagnostics_t;
+
+/* Diagnostics for the most recent fn_write(). This is observational only:
+ * it does not alter the retry or write behaviour. */
+void fn_write_get_last_diagnostics(fn_write_diagnostics_t *diagnostics);
+
+#ifdef __AMIGA__
+/* Request-local broker completion detail from the most recent transport
+ * exchange. Intended for focused diagnostics; zero means no broker detail. */
+void fn_amiga_transport_last_broker_detail(uint8_t *stage, uint8_t *result);
+#endif
+
 uint8_t fn_write(fn_handle_t handle,
                  uint32_t offset,
                  const uint8_t *data,
