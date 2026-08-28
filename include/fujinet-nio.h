@@ -626,6 +626,9 @@ void fn_write_get_last_diagnostics(fn_write_diagnostics_t *diagnostics);
 /* Request-local broker completion detail from the most recent transport
  * exchange. Intended for focused diagnostics; zero means no broker detail. */
 void fn_amiga_transport_last_broker_detail(uint8_t *stage, uint8_t *result);
+/* Detailed class for the most recent broker exchange: zero on success.
+ * The value is observational and does not alter fn_* error handling. */
+void fn_amiga_transport_last_broker_cause(uint8_t *cause);
 #endif
 
 uint8_t fn_write(fn_handle_t handle,
