@@ -58,6 +58,9 @@ typedef struct {
 extern fn_transport_ctx_t _fn_transport_ctx;
 extern fn_parse_ctx_t _fn_parse_ctx;
 
+uint16_t fn_checksum_fold(const uint8_t *data, uint16_t len,
+                          uint16_t checksum);
+
 int8_t fn_find_free_slot(void);
 int8_t fn_find_session(fn_handle_t handle);
 void fn_free_handle(fn_handle_t handle);

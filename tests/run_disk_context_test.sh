@@ -10,6 +10,8 @@ gcc -std=c99 -Wall -Wextra -Werror \
     "$ROOT/tests/disk_context_test.c" \
     "$ROOT/src/common/fn_disk.c" \
     "$ROOT/src/common/fn_packet_header.c" \
+    "$ROOT/src/common/fn_checksum_fold.c" \
     "$ROOT/src/common/fn_packet_checksum.c" \
+    "$ROOT/src/common/fn_packet_checksum_packet.c" \
     -o "$OUT"
 "$OUT"

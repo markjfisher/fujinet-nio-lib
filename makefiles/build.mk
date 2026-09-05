@@ -36,7 +36,9 @@ LIBRARY     := $(BUILDDIR)/$(PROGRAM)-$(TARGET)$(LIBEXT)
 COMMON_SRCS_DEFAULT := $(SRCDIR)/common/fn_slip.c \
                        $(SRCDIR)/common/fn_session.c \
                        $(SRCDIR)/common/fn_packet.c \
+                       $(SRCDIR)/common/fn_checksum_fold.c \
                        $(SRCDIR)/common/fn_packet_checksum.c \
+                       $(SRCDIR)/common/fn_packet_checksum_packet.c \
                        $(SRCDIR)/common/fn_packet_header.c \
                        $(SRCDIR)/common/fn_packet_build_open.c \
                        $(SRCDIR)/common/fn_packet_build_rw.c \
