@@ -17,6 +17,11 @@ AS      = m68k-amigaos-as
 # -DNO_INLINE_MULDIV: avoid inline multiply/divide that may need 68020+
 CFLAGS  = -Wall -O2 -std=c99 -mcpu=68000 -msoft-float -DNO_INLINE_MULDIV
 
+# Keep the compiler-generated m68k assembly beside each Amiga object.  Using
+# GCC's obj-relative save-temps mode lets the normal compile still produce the
+# object while retaining the optimized .s output for inspection.
+CFLAGS += -save-temps=obj
+
 # Assembler flags
 ASFLAGS =
 
