@@ -264,6 +264,9 @@ extern "C" {
 /** FujiBus packet header size */
 #define FN_HEADER_SIZE       6
 
+/** Byte offset of the checksum field within a FujiBus packet */
+#define FN_CHECKSUM_OFFSET   4
+
 /** Legacy name for compatibility */
 #define FN_PACKET_HEADER_SIZE FN_HEADER_SIZE
 
@@ -308,11 +311,20 @@ typedef struct {
 /**
  * Calculate FujiBus checksum.
  * 
- * @param data      Packet data
+ * @param data      Byte array
  * @param len       Length of data
  * @return Checksum byte
  */
 uint8_t fn_calc_checksum(const uint8_t *data, uint16_t len);
+
+/**
+ * Calculate a FujiBus packet checksum without mutating the packet.
+ *
+ * The encoded checksum field at FN_CHECKSUM_OFFSET is excluded from the
+ * calculation. Packet creation callers assign the returned byte to that
+ * field; validation callers compare it with the received field.
+ */
+uint8_t fn_calc_packet_checksum(const uint8_t *packet, uint16_t len);
 
 /**
  * Build a FujiBus packet header.

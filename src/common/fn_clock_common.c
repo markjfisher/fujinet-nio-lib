@@ -21,7 +21,7 @@ uint8_t fn_clock_exchange(uint8_t command,
         --payload_len;
     }
 
-    _fn_req_buf[4] = fn_calc_checksum(_fn_req_buf, req_len);
+    _fn_req_buf[FN_CHECKSUM_OFFSET] = fn_calc_packet_checksum(_fn_req_buf, req_len);
 
     _fn_transport_ctx.request = _fn_req_buf;
     _fn_transport_ctx.req_len = req_len;

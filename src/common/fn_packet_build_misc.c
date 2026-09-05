@@ -8,7 +8,7 @@ uint16_t fn_build_close_packet(uint8_t *buffer, fn_handle_t handle)
     buffer[offset++] = FN_PROTOCOL_VERSION;
     buffer[offset++] = (uint8_t)(handle & 0xFF);
     buffer[offset++] = (uint8_t)((handle >> 8) & 0xFF);
-    buffer[4] = fn_calc_checksum(buffer, offset);
+    buffer[FN_CHECKSUM_OFFSET] = fn_calc_packet_checksum(buffer, offset);
 
     return offset;
 }
@@ -21,7 +21,7 @@ uint16_t fn_build_info_packet(uint8_t *buffer, fn_handle_t handle)
     buffer[offset++] = FN_PROTOCOL_VERSION;
     buffer[offset++] = (uint8_t)(handle & 0xFF);
     buffer[offset++] = (uint8_t)((handle >> 8) & 0xFF);
-    buffer[4] = fn_calc_checksum(buffer, offset);
+    buffer[FN_CHECKSUM_OFFSET] = fn_calc_packet_checksum(buffer, offset);
 
     return offset;
 }

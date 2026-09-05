@@ -19,7 +19,7 @@ uint16_t fn_build_read_packet(uint8_t *buffer,
     buffer[offset++] = (uint8_t)((offset_val >> 24) & 0xFF);
     buffer[offset++] = (uint8_t)(max_bytes & 0xFF);
     buffer[offset++] = (uint8_t)((max_bytes >> 8) & 0xFF);
-    buffer[4] = fn_calc_checksum(buffer, offset);
+    buffer[FN_CHECKSUM_OFFSET] = fn_calc_packet_checksum(buffer, offset);
 
     return offset;
 }
@@ -49,6 +49,6 @@ uint16_t fn_build_write_packet(uint8_t *buffer,
         offset += data_len;
     }
 
-    buffer[4] = fn_calc_checksum(buffer, offset);
+    buffer[FN_CHECKSUM_OFFSET] = fn_calc_packet_checksum(buffer, offset);
     return offset;
 }

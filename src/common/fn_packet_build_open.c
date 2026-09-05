@@ -40,6 +40,6 @@ uint16_t fn_build_open_packet(uint8_t *buffer,
     buffer[offset++] = 0;
     buffer[offset++] = 0;
 
-    buffer[4] = fn_calc_checksum(buffer, offset);
+    buffer[FN_CHECKSUM_OFFSET] = fn_calc_packet_checksum(buffer, offset);
     return offset;
 }

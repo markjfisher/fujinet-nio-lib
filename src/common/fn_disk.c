@@ -123,8 +123,6 @@ static uint8_t context_parse_response(fn_disk_client_context_t *context,
     static const uint8_t field_counts[8] = { 0, 1, 2, 3, 4, 1, 2, 1 };
     uint8_t *response = context->packet_response;
     uint16_t offset = FN_HEADER_SIZE;
-    uint16_t checksum = 0;
-    uint16_t i;
     uint8_t descriptor;
     uint8_t field_size;
     uint8_t field_count;
@@ -133,13 +131,7 @@ static uint8_t context_parse_response(fn_disk_client_context_t *context,
         response[1] != command || get_u16le(response + 2) != response_length) {
         return FN_ERR_INVALID;
     }
-    for (i = 0; i < response_length; ++i) {
-        if (i != 4) {
-            checksum += response[i];
-            checksum = (checksum >> 8) + (checksum & 0xFFu);
-        }
-    }
-    if ((uint8_t)checksum != response[4]) {
+    if (fn_calc_packet_checksum(response, response_length) != response[FN_CHECKSUM_OFFSET]) {
         return FN_ERR_IO;
     }
 
@@ -189,8 +181,8 @@ static uint8_t context_disk_call(fn_disk_client_context_t *context,
                context->codec_scratch, request_length);
         packet_length = (uint16_t)(packet_length + request_length);
     }
-    context->packet_request[4] =
-        fn_calc_checksum(context->packet_request, packet_length);
+    context->packet_request[FN_CHECKSUM_OFFSET] =
+        fn_calc_packet_checksum(context->packet_request, packet_length);
 
     result = context->exchange(context->exchange_context,
                                context->packet_request, packet_length,

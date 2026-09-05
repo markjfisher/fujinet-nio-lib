@@ -3,25 +3,6 @@
 static const uint8_t fn_field_size_table[8] = { 0, 1, 1, 1, 1, 2, 2, 4 };
 static const uint8_t fn_field_count_table[8] = { 0, 1, 2, 3, 4, 1, 2, 1 };
 
-static uint8_t fn_calc_checksum_skip_offset(const uint8_t *data,
-                                            uint16_t len,
-                                            uint16_t skip_offset)
-{
-    uint16_t chk;
-    uint16_t i;
-
-    chk = 0;
-    for (i = 0; i < len; ++i) {
-        if (i == skip_offset) {
-            continue;
-        }
-        chk += data[i];
-        chk = ((chk >> 8) + (chk & 0xFF)) & 0xFFFF;
-    }
-
-    return (uint8_t)(chk & 0xFF);
-}
-
 uint8_t fn_parse_response_header(void)
 {
     uint16_t pkt_len;
@@ -44,8 +25,8 @@ uint8_t fn_parse_response_header(void)
         return FN_ERR_INVALID;
     }
 
-    checksum = fn_calc_checksum_skip_offset(response, resp_len, 4);
-    if (checksum != response[4]) {
+    checksum = fn_calc_packet_checksum(response, resp_len);
+    if (checksum != response[FN_CHECKSUM_OFFSET]) {
         return FN_ERR_IO;
     }
 
