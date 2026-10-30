@@ -19,6 +19,7 @@ PLATFORM_msdos-f5 := msdos
 PLATFORM_linux      := linux
 PLATFORM_amiga      := amiga
 PLATFORM_amiga-driver := amiga
+PLATFORM_palmos-springboard := palmos
 
 # Get platform for current target
 PLATFORM := $(PLATFORM_$(TARGET))
@@ -40,6 +41,7 @@ COMPILER_FAMILY_msdos-f5 := wcc
 COMPILER_FAMILY_linux      := gcc
 COMPILER_FAMILY_amiga      := amigagcc
 COMPILER_FAMILY_amiga-driver := amigagcc
+COMPILER_FAMILY_palmos-springboard := prcgcc
 
 # Get compiler family for current target
 COMPILER_FAMILY := $(COMPILER_FAMILY_$(TARGET))
@@ -119,6 +121,12 @@ TARGET_ASFLAGS_amiga    :=
 # They own transport shutdown as part of their device lifecycle instead.
 TARGET_CFLAGS_amiga-driver := -mcpu=68000 -msoft-float -DFN_AMIGA_EXPLICIT_LIFECYCLE $(AMIGA_NIO_DEVICE_INCLUDE)
 TARGET_ASFLAGS_amiga-driver :=
+
+# Palm OS (Handspring Visor + RP2350 Springboard module over CS1, prc-tools)
+# The CS1 ABI header (sbnio.h) lives in fujinet-nio; do not vendor a second copy.
+SBNIO_ABI_INCLUDE ?= -I../fujinet-nio/bridges/rp2350-springboard/include
+TARGET_CFLAGS_palmos-springboard  := -Iinclude/palmos $(SBNIO_ABI_INCLUDE)
+TARGET_ASFLAGS_palmos-springboard :=
 
 # Get flags for current target
 TARGET_CFLAGS  := $(TARGET_CFLAGS_$(TARGET))

@@ -14,7 +14,7 @@
 # Supported targets
 # TARGETS = atari apple2 apple2enh bbc c64 coco msdos linux
 TARGETS = atari bbc bbc-clib msdos-serial msdos-ioctl msdos-f5 linux amiga
-EXTRA_TARGETS = amiga-driver
+EXTRA_TARGETS = amiga-driver palmos-springboard
 
 # Output library name
 override PROGRAM := fujinet-nio
@@ -23,7 +23,7 @@ override PROGRAM := fujinet-nio
 .PHONY: all clean help disk-bbc disk-bbc-clib test-legacy test-mount-resolve \
 	test-appstore-read test-list-pages test-slot-catalog test-bbc test-bbc-scripted \
 	test-bbc-real test-fuji test-wifi test-disk test-disk-context test-session test-open-ext test-open-wire test-ready-wire test-library-link \
-	test-amiga-transport test-atari-transport test-atari-hsio test-atari-proc test-atari-read-profile test-atari-list-pages test-atari-compact test-raw-transport-retry test \
+	test-amiga-transport test-palmos-transport test-atari-transport test-atari-hsio test-atari-proc test-atari-read-profile test-atari-list-pages test-atari-compact test-raw-transport-retry test \
 	test-all-build check msdos $(TARGETS) $(EXTRA_TARGETS)
 
 # Default target: build all
@@ -164,6 +164,10 @@ test-amiga-transport:
 	@echo "Running Amiga broker-transport host tests..."
 	bash ./tests/run_amiga_transport_host_test.sh
 
+test-palmos-transport:
+	@echo "Running Palm OS Springboard transport host tests..."
+	bash ./tests/run_palmos_transport_host_test.sh
+
 test-atari-transport:
 	@echo "Running Atari assembled SIOV/DCB transport test..."
 	bash ./tests/run_atari_transport_sim_test.sh
@@ -191,7 +195,7 @@ test-all-build:
 	@echo "Building all configured library targets..."
 	$(MAKE) all
 
-test: test-library-link test-legacy test-mount-resolve test-appstore-read test-list-pages test-atari-list-pages test-slot-catalog test-fuji test-wifi test-disk test-disk-context test-session test-open-ext test-open-wire test-ready-wire test-large-read test-amiga-transport test-atari-transport test-atari-hsio test-atari-proc test-atari-read-profile test-atari-compact test-raw-transport-retry
+test: test-library-link test-legacy test-mount-resolve test-appstore-read test-list-pages test-atari-list-pages test-slot-catalog test-fuji test-wifi test-disk test-disk-context test-session test-open-ext test-open-wire test-ready-wire test-large-read test-amiga-transport test-palmos-transport test-atari-transport test-atari-hsio test-atari-proc test-atari-read-profile test-atari-compact test-raw-transport-retry
 
 # Fast required change check: compile every configured target, then run the
 # host-side tests and public archive-link test. Keep this as a recipe rather
@@ -224,6 +228,7 @@ help:
 	@echo "  make test-session - Run channel/session wire tests"
 	@echo "  make test-library-link - Build Linux library and link a public API consumer"
 	@echo "  make test-amiga-transport - Run Amiga broker-client host tests"
+	@echo "  make test-palmos-transport - Run Palm OS Springboard client host tests"
 	@echo "  make test-all-build - Build all configured library targets"
 	@echo "  make check - Build all targets and run the fast host-side test suite"
 	@echo "  make test - Run all host-side wire tests"
@@ -239,10 +244,12 @@ help:
 	@echo "  msdos-ioctl  - MS-DOS FUJINET.SYS IOCTL backend (Open Watcom)"
 	@echo "  msdos-f5     - MS-DOS FUJINET.SYS INT F5 backend (Open Watcom)"
 	@echo "  linux       - Linux/Posix (gcc)"
+	@echo "  palmos-springboard - Palm OS over a Springboard module's CS1 link (prc-tools)"
 	@echo ""
 	@echo "Environment:"
 	@echo "  CC65_HOME   - cc65 checkout root (required for bbc/bbc-clib)"
 	@echo "  CC65_BASE   - accepted as an alias for CC65_HOME"
+	@echo "  SBNIO_ABI_INCLUDE - -I path to sbnio.h for palmos-springboard"
 	@echo ""
 	@echo "Output:"
 	@echo "  Libraries are placed in build/"

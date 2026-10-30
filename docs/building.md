@@ -33,6 +33,15 @@ This document describes how to build the fujinet-nio-lib library for various pla
   export PATH=/opt/amiga/bin:$PATH
   ```
 
+### For Palm OS builds:
+- [prc-tools](https://github.com/jichu4n/prc-tools-remix) (`m68k-palmos-gcc`
+  and `m68k-palmos-ar`, gcc 2.95.3) with the Palm OS 3.5 SDK
+- GNU Make
+- `sbnio.h` from a `fujinet-nio` checkout
+  (`bridges/rp2350-springboard/include`), found as `../fujinet-nio` unless
+  `SBNIO_ABI_INCLUDE` says otherwise
+- See [Palm OS Springboard](palmos/springboard.md) for a Docker toolchain
+
 ## Building
 
 ### Build all targets:
@@ -52,6 +61,7 @@ make msdos-f5     # MS-DOS FUJINET.SYS INT F5 backend
 make linux      # Native Linux (for testing)
 make amiga      # Amiga application archive
 make amiga-driver # Resident-driver archive (no application atexit cleanup)
+make palmos-springboard # Palm OS archive (prc-tools, Springboard CS1 link)
 ```
 
 ### Clean build artifacts:
@@ -75,6 +85,7 @@ fujinet-nio-lib/
     fujinet-nio-msdos-f5.lib     # MS-DOS FUJINET.SYS INT F5 backend
     fujinet-nio-amiga.a          # Amiga application library
     fujinet-nio-amiga-driver.a   # Amiga resident-driver library
+    fujinet-nio-palmos-springboard.a # Palm OS Springboard library
 ```
 
 ## Amiga variants
@@ -90,6 +101,16 @@ the same typed DiskDevice context API and RS-232 FujiBus session behavior.
 The `amiga-driver` target is intentionally available explicitly but is not
 part of the top-level `make` all-target loop; ordinary users do not need the
 resident archive unless they are building an Exec device.
+
+## Palm OS variant
+
+`make palmos-springboard` builds the Handspring Visor library with prc-tools.
+Like `amiga-driver` it is in `EXTRA_TARGETS`: `make check` builds it, but the
+default `make` loop does not, because it needs prc-tools and `sbnio.h` from
+`fujinet-nio`. Pass `SBNIO_ABI_INCLUDE=-I<dir>` if `../fujinet-nio` is not
+where the header lives. Applications also add `-Iinclude/palmos` for the
+`stdint.h` and `string.h` that prc-tools lacks. See
+[Palm OS Springboard](palmos/springboard.md).
 
 ## Linux Native Testing
 
@@ -146,6 +167,8 @@ Platform-specific transport code is located in:
 - `src/platform/msdos/` - MS-DOS serial, IOCTL, and F5 backends
 - `src/platform/linux/` - Linux/POSIX serial or PTY byte channel
 - `src/platform/amiga/` - Amiga `fujinet-nio.device` broker client
+- `src/platform/palmos/` - Palm OS Springboard CS1 link client
+- `include/palmos/` - `stdint.h` and `string.h` for prc-tools
 
 See [Transport Backends](transport-backends.md) for how library build targets map
 to `fujinet-nio` transports/channels, and how future MS-DOS parallel or BBC
