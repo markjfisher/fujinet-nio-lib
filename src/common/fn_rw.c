@@ -63,6 +63,10 @@ uint8_t fn_write(fn_handle_t handle,
 
     do {
         remaining = (uint16_t)(len - total);
+        /* More would overrun _fn_req_buf; the loop sends the rest */
+        if (remaining > FN_WRITE_DATA_MAX) {
+            remaining = FN_WRITE_DATA_MAX;
+        }
 
         req_len = fn_build_write_packet(_fn_req_buf,
                                         handle,

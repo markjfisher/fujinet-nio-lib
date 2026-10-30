@@ -498,6 +498,8 @@ uint8_t fn_write(fn_handle_t handle,
 `FN_ERR_BUSY` responses and continues partial writes internally until all
 requested bytes have been accepted or a non-transient error occurs. This hides
 asynchronous TCP connect completion from applications after `fn_open()`.
+Data longer than one packet carries (`FN_WRITE_DATA_MAX`, `FN_MAX_PACKET_SIZE - 15`
+bytes: 1009, or 497 on cc65) goes out in several Write requests.
 
 **Half-Close:** To signal end of write (send FIN), call with `len=0` at current offset:
 ```c

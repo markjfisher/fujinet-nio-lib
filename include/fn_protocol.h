@@ -289,6 +289,10 @@ extern "C" {
 /** Legacy name for compatibility */
 #define FN_PACKET_HEADER_SIZE FN_HEADER_SIZE
 
+/** Most data one Write request carries: a packet less its header and the
+    Write fields */
+#define FN_WRITE_DATA_MAX    (FN_MAX_PACKET_SIZE - FN_HEADER_SIZE - 9)
+
 /* ============================================================================
  * Parameter Descriptor Format
  * ============================================================================ */

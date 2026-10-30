@@ -22,7 +22,7 @@ override PROGRAM := fujinet-nio
 # Phony targets
 .PHONY: all clean help disk-bbc disk-bbc-clib test-legacy test-mount-resolve \
 	test-appstore-read test-list-pages test-slot-catalog test-bbc test-bbc-scripted \
-	test-bbc-real test-fuji test-wifi test-disk test-disk-context test-session test-open-ext test-open-wire test-ready-wire test-library-link \
+	test-bbc-real test-fuji test-wifi test-disk test-disk-context test-session test-open-ext test-open-wire test-ready-wire test-write-wire test-library-link \
 	test-amiga-transport test-atari-transport test-atari-hsio test-atari-proc test-atari-read-profile test-atari-list-pages test-atari-compact test-raw-transport-retry test \
 	test-all-build check msdos $(TARGETS) $(EXTRA_TARGETS)
 
@@ -156,6 +156,10 @@ test-ready-wire:
 test-large-read:
 	bash ./tests/run_large_read_wire_test.sh
 
+test-write-wire:
+	@echo "Running Write packet-size wire test..."
+	bash ./tests/run_write_wire_test.sh
+
 test-library-link: linux
 	@echo "Running public API library-link test..."
 	bash ./tests/run_library_link_test.sh
@@ -191,7 +195,7 @@ test-all-build:
 	@echo "Building all configured library targets..."
 	$(MAKE) all
 
-test: test-library-link test-legacy test-mount-resolve test-appstore-read test-list-pages test-atari-list-pages test-slot-catalog test-fuji test-wifi test-disk test-disk-context test-session test-open-ext test-open-wire test-ready-wire test-large-read test-amiga-transport test-atari-transport test-atari-hsio test-atari-proc test-atari-read-profile test-atari-compact test-raw-transport-retry
+test: test-library-link test-legacy test-mount-resolve test-appstore-read test-list-pages test-atari-list-pages test-slot-catalog test-fuji test-wifi test-disk test-disk-context test-session test-open-ext test-open-wire test-ready-wire test-large-read test-write-wire test-amiga-transport test-atari-transport test-atari-hsio test-atari-proc test-atari-read-profile test-atari-compact test-raw-transport-retry
 
 # Fast required change check: compile every configured target, then run the
 # host-side tests and public archive-link test. Keep this as a recipe rather
